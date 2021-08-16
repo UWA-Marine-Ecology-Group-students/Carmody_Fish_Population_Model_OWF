@@ -6,39 +6,10 @@ library(raster)
 library(stringr)
 library(forcats)
 library(RColorBrewer)
+library(geosphere)
 
-
-#DATA + DIRECTORIES
-working.dir<-dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
-
-## Save these directory names to use later----
-data_dir <- paste(working.dir, "Data", sep="/")
-fig_dir <- paste(working.dir, "Figures", sep="/")
-cm_dir <- paste(working.dir, "Connectivity_Matrices", sep="/")
-sp_dir <- paste(working.dir, "Spatial Data", sep="/")
-
-#### PARAMETER VALUES ####
-StartN <- 2000 # Number of fish in each cell at the beginning of the model
-M <- 0.146 # Natural mortality rate, Marriot et al. 2011
-totaltime <- 20 # Number of time steps, each time step is half a day
-
-#Ricker recruitment model parameters (these are currently just made up values)
-a <- 7
-b <- 0.0017
-M50 <- 2 # From Grandcourt et al. 2010
-M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
-
-#Fishing mortality parameters
-q <- 0.3 # Made this value up
-E <- 1 # Can get real value in days per year from Marriott et al. 2012
-A50 <- 4 # For L. miniatus from Williams et al. 2010
-A95 <- 6 # For L. miniatus from Williams et al. 2012
-
-Fishing <- E*q
-
-#### SPATIAL DATA ####
-
-# THis returns the centre of the ploygon, but if it's on land it will create a new centroid
+## Functions
+# This returns the centre of the ploygon, but if it's on land it will create a new centroid
 
 st_centroid_within_poly <- function (poly) { #returns true centroid if inside polygon otherwise makes a centroid inside the polygon
   
@@ -54,22 +25,103 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
   return(centroid_in_poly)
 }
 
-## Load spatial files for area your model covers
+## Create colours for the plot
+cols <- brewer.pal(8, "RdBu")
+levels_water <- data.frame(c("<1000",  "1000-5000", "5000-10000", "10000-15000",
+                             "15000-20000", "20000-25000", "25000-30000", ">30000"))
+names(levels_water)[1] <- "Levels"
+levels_water$Levels <- as.factor(levels_water$Levels)
+names(cols) <- levels(levels_water$Levels)
+
+#### SET DIRECTORIES ####
+working.dir<-dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
+
+data_dir <- paste(working.dir, "Data", sep="/")
+fig_dir <- paste(working.dir, "Figures", sep="/")
+cm_dir <- paste(working.dir, "Connectivity_Matrices", sep="/")
+sp_dir <- paste(working.dir, "Spatial Data", sep="/")
+
+#### LOAD FILES ####
 setwd(sp_dir)
+
+# Map of WA Coastline
 wa_map <- st_read("WACoastline.shp")%>%
   st_transform(4283)%>%
   st_make_valid
+
+# Map of State Marine Parks
+MP <- st_read("WA_MPA_2018.shp")%>%
+  st_transform(4283)%>%
+  st_make_valid%>%
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+
+NTZ <- MP%>%
+  filter(IUCN == "IA")
+
+# Habitat Layers
+reef <- st_read("ReefHabitat.gpkg")%>%
+  st_transform(4283)%>%
+  st_make_valid%>%
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+
+reef$type <- "reef"
+
+lagoon <- st_read("LagoonHabitat.gpkg")%>%
+  st_transform(4283)%>%
+  st_make_valid%>%
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+
+lagoon$type <- "lagoon"
+
+rocky <- st_read("RockReefHabitat.gpkg")%>%
+  st_transform(4283)%>%
+  st_make_valid%>%
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+
+rocky$type <- "rocky"
+
+pelagic <- st_read("PelagicHabitat.gpkg")%>%
+  st_transform(4283)%>%
+  st_make_valid%>%
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+
+pelagic$type <- "pelagic"
+
+#### PARAMETER VALUES ####
+M <- 0.146 # Natural mortality rate, Marriot et al. 2011
+
+#Ricker recruitment model parameters (these are currently just made up values)
+a <- 7
+b <- 0.0017
+M50 <- 2 # From Grandcourt et al. 2010
+M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
+
+#Fishing mortality parameters
+q <- 0.3 # Made this value up
+E <- 1 # Can get real value in days per year from Marriott et al. 2012
+A50 <- 4 # For L. miniatus from Williams et al. 2010
+A95 <- 6 # For L. miniatus from Williams et al. 2012
+
+Fishing <- E*q
+
+#Fish movement parameters
+SwimSpeed <- 1.0 # Swim 5km in a day - this is completely made up 
+
+#### SPATIAL DATA ####
+
+## Create extent of area you want to cover 
 
 ningaloo_map <- st_crop(wa_map, xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
 plot(ningaloo_map$geometry)
 
 # Make grid cells for fish to live in
-grd <- st_make_grid(ningaloo_map, cellsize=0.1, square=FALSE)%>%
+grd <- st_make_grid(ningaloo_map, cellsize=0.05, square=FALSE)%>%
   st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21) #make sure extent of grid is the same as the polygon
 plot(grd, add=TRUE)
 
 water <- st_difference(grd, ningaloo_map)
 plot(water)
+
 # turn water into a data frame for easier use
 water <- st_sf(water)
 
@@ -83,12 +135,251 @@ plot(centroids, cex=0.3 ,add=TRUE) #Something is wrong with where the centroids 
 
 points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the bottom left and then work their way their way right
   mutate(ID=row_number())
-  
-# Calculate a distance matrix between the cells 
-  # To make them go round the land, create visibility graph (grass function), then distance between nodes, then pick the
-  # shortest path
+
+NCELL <- nrow(points) #Set the number of cells in the model
+
+## Add habitat data and assign it to the grid cells e.g. % cover 
+## Can then put a coefficient on the different types of habitat to change how the fish move (i.e. they move towards reef)
+
+# Join all the habitat together
+reef <- reef%>%
+  dplyr::select(geom, type)
+lagoon <- lagoon%>%
+  dplyr::select(geom, type)
+rocky <- rocky%>%
+  dplyr::select(geom, type)
+pelagic <- pelagic%>%
+  dplyr::select(geom, type)
+
+habitat <- rbind(reef, lagoon, rocky, pelagic)
+plot(habitat$geom)
+plot(water, add=T)
+
+# Calculate the percentage of each habitat type in each of the different cells 
+intersection <- st_intersection(habitat, water) #This gives you all the individual areas where there is overlap, the ID of the original grid cell and the habitat in each of the new little cells
+plot(intersection)
+
+intersection$area <- st_area(intersection) #gives you the area each of the small cells covers 
+water$area <- st_area(water) #gives you the area of each of the cells in the grid
+
+hab_perc <- merge(st_drop_geometry(intersection), st_drop_geometry(water), by.x="ID", by.y="ID")%>%
+  mutate(area.x = as.numeric(area.x))%>%
+  mutate(area.y = as.numeric(area.y))%>%
+  mutate(perc_habitat = ((area.x/area.y)*100)) # This tells you how much of each water grid cell is made up of the different habitat types 
+
+# Create separate data frames for each habitat type and fill in for where cells don't have a certain habitat type
+
+pelagic_perc <- hab_perc%>%
+  filter(type=="pelagic")%>%
+  dplyr::select(ID, type, perc_habitat)%>%
+  mutate(ID = as.numeric(ID))%>%
+  complete(ID = 1:NCELL, fill = list(perc_habitat=0))%>%
+  mutate(type = replace_na("pelagic"))
+
+reef_perc <- hab_perc%>%
+  filter(type=="reef")%>%
+  dplyr::select(ID, type, perc_habitat)%>%
+  mutate(ID = as.numeric(ID))%>%
+  complete(ID = 1:NCELL, fill = list(perc_habitat=0))%>%
+  mutate(type = replace_na("reef"))
+
+rocky_perc <- hab_perc%>%
+  filter(type=="rocky")%>%
+  dplyr::select(ID, type, perc_habitat)%>%
+  mutate(ID = as.numeric(ID))%>%
+  complete(ID = 1:NCELL, fill = list(perc_habitat=0))%>%
+  mutate(type = replace_na("rocky"))
+
+lagoon_perc <- hab_perc%>%
+  filter(type=="lagoon")%>%
+  dplyr::select(ID, type, perc_habitat)%>%
+  mutate(ID = as.numeric(ID))%>%
+  complete(ID = 1:NCELL, fill = list(perc_habitat=0))%>%
+  mutate(type = replace_na("lagoon"))
+
+### CREATE MATRIX OF CONNVECTIVITY FOR FISH MOVEMENT ####
+## Calculate a distance matrix between the cells 
+# To make them go round the land, create visibility graph (grass function), then distance between nodes, then pick the
+# shortest path
 dist_matrix <- as.matrix(dist(points)) #This is just the linear distance  between the centroids of the grid cells
 
+## Calculate the probability a fish moves to this site in a given time step using the swimming speed we set earlier 
+# This creates a dispersal kernel based on the negative exponential distribution
+# Need to put density dependence into the movement!
+
+pDist <- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for(r in 1:NCELL){
+  for(c in 1:NCELL){
+    p <- exp(-dist_matrix[r,c]/SwimSpeed)
+    pDist[r,c] <- p
+  }
+}
+
+## Calculate the difference in habitat types between each of the cells i.e. will there be an increase in reef % if you go from site 1 to site 2
+
+pPelagic <- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for (r in 1:NCELL){
+  for (c in 1:NCELL){
+    p <- as.numeric((pelagic_perc[c,3]) - (pelagic_perc[r,3]))
+    pPelagic[r,c] <- p
+  }
+}
+
+pReef <- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for (r in 1:NCELL){
+  for (c in 1:NCELL){
+    p <- as.numeric((reef_perc[c,3]) - (reef_perc[r,3]))
+    pReef[r,c] <- p
+  }
+}
+
+pLagoon <- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for (r in 1:NCELL){
+  for (c in 1:NCELL){
+    p <- as.numeric((lagoon_perc[c,3]) - (lagoon_perc[r,3]))
+    pLagoon[r,c] <- p
+  }
+}
+
+pRocky<- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for (r in 1:NCELL){
+  for (c in 1:NCELL){
+    p <- as.numeric((rocky_perc[c,3]) - (rocky_perc[r,3]))
+    pRocky[r,c] <- p
+  }
+}
+
+#### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
+# First determine the utility of each of the sites 
+# This is very sensitive to changes in the values particularly for reef - if you make the coefficient too large it breaks the model...? Ask Matt about this -.-
+
+a = 1
+b = 1
+c = 1
+d = 1
+e = 1
+
+Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
+
+# Calculate the summed utility across the rows 
+rowU <- matrix(NA, ncol=1, nrow=NCELL)
+cellU <- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for (r in 1:NCELL){
+  for (c in 1:NCELL){
+    U <- exp(Vj[r,c])
+    cellU[r,c] <- U
+  }
+}
+
+rowU <- as.data.frame(rowSums(cellU))
+
+# Calculate the probability that the fish will move to this site
+
+Pj <- matrix(NA, ncol=NCELL, nrow=NCELL)
+
+for (r in 1:NCELL){
+  for (c in 1:NCELL){
+    Pj[r,c] <- (exp(Vj[r,c]))/rowU[r,1]
+  }
+}
+rowSums(Pj)
+
+#
+cols <- brewer.pal(8, "RdBu")
+levels_water <- data.frame(c("<1000",  "1000-1100", "1100-1200", "1200-1300",
+                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
+names(levels_water)[1] <- "Levels"
+levels_water$Levels <- as.factor(levels_water$Levels)
+names(cols) <- levels(levels_water$Levels)
+
+# Fill the array with random numbers of fish for now
+# Need to change the loop so that rather than filling in a column it adds a new column each time 
+
+PopTotal <- array(0, dim = c(NCELL,100,10)) #This is our population
+for(d in 1:10){
+  PopTotal[,1,] <- matrix(floor(runif(NCELL, 1, 300)))
+}
+
+Movement <- NULL
+
+#### RUN MODEL ####
+# The time steps now represent 1 day (distance fish can swim in a day is 5km, included using the distance matrix)
+for(t in 2:11){
+   
+    for(A in 2:dim(PopTotal)[3]){
+      if(A==2){PopTotal[,t,A-1] <- matrix(floor(runif(NCELL, 1, 300)))}
+      else{ }
+      
+      Pop <- matrix(PopTotal[ ,t-1,A-1]) #This gives you the fish in all the sites at timestep t-1 of age A-1
+      Movers <- sum(Pop)
+      Movement <- NULL
+      Movement2 <- NULL
+    
+     for(s in 1:NCELL){
+      Pop2 <- as.matrix(Pj[s,] * Pop[s,1]) #This should give you the number of fish that move from site s to all the other sites
+      Pop2 <- t(Pop2)
+      Movement <- rbind(Movement, Pop2) #This should give you an array with 143 rows representing the fish that move from each site to all the other sites 
+     }
+      
+    Movement2 <- as.matrix(colSums(Movement))
+    Moved <- sum(Movement2)
+    print(isTRUE(all.equal(Movers,Moved)))
+    if((isTRUE(all.equal(Movers,Moved))) == FALSE)
+    {print(Movers)
+      print(Moved)}
+    else{ }
+    
+    
+    PopTotal[ ,t,A] <- Movement2
+    
+    }
+  print(t)
+  water$pop <- rowSums(PopTotal[ ,t-1, ])
+  
+  water <- water%>%
+    mutate(Population = ifelse(pop < 1000, "<1000",
+                               ifelse (pop>1000 & pop<110, "1000-1100",
+                                       ifelse (pop>1100 & pop<1200, "1100-1200",
+                                               ifelse (pop>1200 & pop<1300, "1200-1300",
+                                                       ifelse(pop>1300 & pop<1400, "1300-1400",
+                                                              ifelse(pop>1400 & pop<1500, "1400-1500",
+                                                                     ifelse(pop>1500 & pop<1600, "1500-1600", ">1600"
+                                                                            
+                                                                     ))))))))%>%
+  mutate(Population = factor(Population))
+  water$Population <- fct_relevel(water$Population, "<1000",  "1000-1100", "1100-1200", "1200-1300",
+                                  "1300-1400", "1400-1500", "1500-1600", ">1600")
+  
+  print(map <- ggplot(water)+
+          geom_sf(aes(fill=Population))+
+          scale_fill_manual(name="Population", values= cols, drop=FALSE)+
+          theme_void())
+  Sys.sleep(3)
+}
+
+### Things I need to try and do
+## Make recruitment equilibrate to natural mortality - need to figure out what numbers mean that the number of recruits 
+# produced each year equals the number of fish that die every year
+# Can also work out a and b using the equations in Eva's sea cucumber paper
+## Also need to determine the size of the cells and the swimming speed so we can figure out how far the fish can move in
+# one time step
+# 50% kernal density has a mean of 2.3km and 95% is 8.6 
+# In the lagoon they moved on average 2.92km in 30 days in the lagoon and 4.21km on the reef slope (Pillans 2014)
+# Also show seasonal migration based on spawning
+# Also move from the sargassum to the reefs as part of an ontogenic shift - need to have a different matrix for the one year old fish to make them move to the reef
+## Will need to make sure when you put mortaility back in that you're subsetting the population between the ones that are in/outside a sanctuary zone and apply the correct mortality
+# this will have to be based on the intersection of our grid with a shape file of the sanctuary zones
+
+
+#### OLD THINGS THAT I'VE TRIED AND DON'T USE ANYMORE ####
+
+##INITIAL POPULATION MODEL##
 # Bring in the habitat data 
 setwd(sp_dir)
 habitat <- st_read("SeamapAus_WA_DPAW_marine_habitatsPolygon.shp")%>%
@@ -99,15 +390,15 @@ ningaloo_habitat <- st_crop(habitat, xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
 plot(ningaloo_habitat$geometry, add=TRUE)
 
 # Set the different habitat types to be a value between 0 and 4
-  # 0 is places fish are unlikely to be found e.g.  mudflats and saltmarsh
-  # 2 is unnatractive places for fish including mobile sand, deep water habitat, pelagic
-  # 5 is macroalgae and mangroves where you're likely to get juvenile fish not targeted by fishers
-  # 10 is coral reef and subtidal bare reef (subtidal and intertidal)
+# 0 is places fish are unlikely to be found e.g.  mudflats and saltmarsh
+# 2 is unnatractive places for fish including mobile sand, deep water habitat, pelagic
+# 5 is macroalgae and mangroves where you're likely to get juvenile fish not targeted by fishers
+# 10 is coral reef and subtidal bare reef (subtidal and intertidal)
 
 ningaloo_habitat_cls <- ningaloo_habitat%>%
   mutate(classification = ifelse(str_detect(SM_HAB_CLS, "Mudflat|Saltmarsh"), 0,
-                                ifelse(str_detect(SM_HAB_CLS, "Mobile sand|Pelagic"), 2,
-                                       ifelse(str_detect(SM_HAB_CLS, "Macroalgae|Mangroves"), 5, 10))))
+                                 ifelse(str_detect(SM_HAB_CLS, "Mobile sand|Pelagic"), 2,
+                                        ifelse(str_detect(SM_HAB_CLS, "Macroalgae|Mangroves"), 5, 10))))
 
 # Create an intersection of the habitat and the grid cells to see what overlaps where, then
 # calculate the area of each polygon
@@ -136,115 +427,118 @@ per_reef <- water%>%
   full_join(water, by="ID")%>%
   dplyr::select(ID, percent_reef)
 
-
-# For cells where we are missing data about habitat take raster data and then calculate
-# the average rugosity, for now we'll just say anything over XXX is reef
-setwd(sp_dir)
-bathy <- raster("Carnarvon_Shelf_Bathymetry_3_2008_3m_cog.tiff")
-bathy <- flip(bathy, direction="y")
-proj4string(bathy) #check projection
-
-
-
-water_ras <- st_transform(water, "+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
-
-grd_transform <- st_transform(grd, "+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
-
-plot(bathy)
-plot(water_ras$water, add=TRUE)
-
-st_crs(grd_transform)
-
-#### CREATE CONNECTIVITY COEFFICIENT ####
+# 
+# # For cells where we are missing data about habitat take raster data and then calculate
+# # the average rugosity, for now we'll just say anything over XXX is reef
+# setwd(sp_dir)
+# bathy <- raster("Carnarvon_Shelf_Bathymetry_3_2008_3m_cog.tiff")
+# bathy <- flip(bathy, direction="y")
+# proj4string(bathy) #check projection
+# 
+# 
+# 
+# water_ras <- st_transform(water, "+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+# 
+# grd_transform <- st_transform(grd, "+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+# 
+# plot(bathy)
+# plot(water_ras$water, add=TRUE)
+# 
+# st_crs(grd_transform)
 
 # This needs to be habitat matrix*coefficient + distance*coefficient in some form or another. Need to figure out how to decide
 # what the coefficients should be so we can weight the importance of habitat relative to distance
 
-## Settlement matrix
+## Settlement
 Settlement <- matrix(runif(143, 1, 10),nrow=143) # Random for now
 # Need to normalise so that it sums to 1 so we're not adding or subtracting any fish anywhere
 Settlement_norm <- (Settlement[,1] = (Settlement[,1]/sum(Settlement[,1])))
 Settlement_norm <- as.matrix(Settlement_norm)
 
-## Movement matrix
-Movement <- array(1, dim= c(143,143,1))
-for(c in 1:143){
-  Movement_norm[,c,] <- (Movement[,c,] = (Movement[,c,]/sum(Movement[,c,])))
-}
-Movement_norm <- as.matrix(Movement_norm)
+# ## Movement 
+# Movement <- array(1, dim= c(143,143,1))
+# for(c in 1:143){
+#   Movement_norm[,c,] <- (Movement[,c,] = (Movement[,c,]/sum(Movement[,c,])))
+# }
+# Movement_norm <- as.matrix(Movement_norm)
 
 ## Set up the model
-Days <- array(0, dim = c(143,100,10)) # This would have to be t+1 as you need the matrix to run for as many years as the model will run
+Pop <- array(0, dim = c(143,100,10)) #This is our population
 
 # Fill the array with random numbers of fish for now
 for(d in 1:10){
- Days[,1,d] <- matrix(runif(143, 1, 10000))
+  Pop[,1,d] <- matrix(runif(143, 1, 10000))
 }
-Days <- round(Days, digits=0)
+Pop <- round(Pop, digits=0)
 Recruits <- 2000
 
-## Create colours for the plot
-cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000",  "1000-5000", "5000-10000", "10000-15000",
-                             "15000-20000", "20000-25000", "25000-30000", ">30000"))
-names(levels_water)[1] <- "Levels"
-levels_water$Levels <- as.factor(levels_water$Levels)
-names(cols) <- levels(levels_water$Levels)
 
-
+##Population Model###
 ## Run the model
 for(t in 2:5){
-  for(d in 1:dim(Days)[3]){
-    if(d==1){Days[,t-1,d] <- Recruits}
-    else {Days[,t,d] <-  Days[,t-1,d-1]}
+  for(A in 1:dim(Pop)[3]){
+    if(A==1){Pop[,t-1,A] <- Recruits}
+    else {Pop[,t,A] <-  Pop[,t-1,A-1]}
     #else if (d>=6) {Days[,t,d] <-  Movement[,,1] %*% Days[,t-1,d-1]}
     #else {Days[,t,d] <- Movement[,,1] %*% Days[,t-1,d-1]}
   }
-  Recs <- matrix(0, nrow=1, ncol=1)
   # Mortality
-  for(d in 1:dim(Days)[3]){
-    sa <- 1/(1+(exp(-log(19)*((d-A95/A95-A50)))))
-    Days[,t,d] <- Days[,t,d]*exp(-M)*exp(-sa*Fishing)
+  for(A in 1:dim(Pop)[3]){
+    sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50)))))
+    Pop[,t,A] <- Pop[,t,A]*exp(-M)*exp(-sa*Fishing)
   }
   # Ricker recruitment model with maturation
-  Recruitment <- as.matrix(colSums(Days[,t,], dims=1)) 
-  for(Age in 1:dim(Recruitment)[1]){
-    Mature <- 1/(1+(exp(-log(19)*((Age-M95)/(M95-M50)))))
-    S <- colSums(Recruitment)*Mature
-    Rec <- a*S*exp(-b*S)#*exp(-Mature)
-    Recs <- rbind(Recs, Rec)
+  Recs <- matrix(0, nrow=1, ncol=1) #Blank matrix to add the recruits to
+  Recruitment <- as.matrix(colSums(Pop[,t,], dims=1)) 
+  for(A in 1:dim(Recruitment)[1]){
+    Mature <- 1/(1+(exp(-log(19)*((A-M95)/(M95-M50))))) #Number of mature individuals in each age class
+    S <- colSums(Recruitment)*Mature #Spawning stock
+    Rec <- a*S*exp(-b*S) #Number of recruits from that age class
+    Recs <- rbind(Recs, Rec) #Combine recruits from each age class into one dataframe
   }
-  R <- colSums(Recs)
-  Recruits <- as.matrix(Settlement_norm*R)
+  R <- colSums(Recs) #Add up the number of recruits produced from all age classes
+  Recruits <- as.matrix(Settlement_norm*R) #Distribute the recruits among the 143 sites
   
-  water$pop <- rowSums(Days[,t,])
+  # Plotting
+  water$pop <- rowSums(Pop[,t,])
   
   water <- water%>%
     mutate(Population = ifelse(pop < 1000, "<1000",
                                ifelse (pop>1000 & pop<5000, "1000-5000",
                                        ifelse (pop>5000 & pop<10000, "5000-10000",
-                                       ifelse (pop>10000 & pop<15000, "10000-15000",
-                                               ifelse(pop>15000 & pop<20000, "15000-20000",
-                                                   ifelse(pop>20000 & pop<25000, "20000-25000",
-                                                          ifelse(pop>25000 & pop<30000, "25000-30000", ">30000"
-                                               
-           ))))))))%>%
+                                               ifelse (pop>10000 & pop<15000, "10000-15000",
+                                                       ifelse(pop>15000 & pop<20000, "15000-20000",
+                                                              ifelse(pop>20000 & pop<25000, "20000-25000",
+                                                                     ifelse(pop>25000 & pop<30000, "25000-30000", ">30000"
+                                                                            
+                                                                     ))))))))%>%
     mutate(Population = factor(Population))
-    water$Population <- fct_relevel(water$Population, "<1000",  "1000-5000", "5000-10000", "10000-15000",
-                                    "15000-20000", "20000-25000", "25000-30000", ">30000")
-    
+  water$Population <- fct_relevel(water$Population, "<1000",  "1000-5000", "5000-10000", "10000-15000",
+                                  "15000-20000", "20000-25000", "25000-30000", ">30000")
+  
   print(map <- ggplot(water)+
-    geom_sf(aes(fill=Population))+
-      scale_fill_manual(name="Population", values= cols, drop=FALSE)+
-      theme_void())
+          geom_sf(aes(fill=Population))+
+          scale_fill_manual(name="Population", values= cols, drop=FALSE)+
+          theme_void())
   Sys.sleep(3)
-
+  
 }
 
-colours <- brewer.pal(10, "Paired")
-map <- ggplot()+
-  geom_sf(data=water, aes(fill=NA))+
-  geom_sf(data=ningaloo_habitat, aes(fill=SM_HAB_CLS))+
-  scale_fill_manual(name="Habitat", values=colours, drop=FALSE)+
-  theme_void()
+## Making the fish move south
+# Matrix that makes more southerly grid cells more preferable
+latlong <- points[,1:2]
+bearings <- matrix(NA, ncol=NCELL, nrow=NCELL)
 
+for (i in 1:NCELL){
+  b <- bearing(latlong[i,], latlong)
+  bearings[i, 1:NCELL] <- b
+}
+
+# We want all the bearings between 90-180 and -90 - -180 to be positive and everything else to be negative
+# These are the bearings that indicate a southerly movement
+bearings <- as.data.frame(bearings)%>%
+  mutate_all(~ ifelse(.<(-90), .*-1,
+                    ifelse(.>-90 & .<0, .*1,
+                           ifelse(.>0 & .<90, .*-1, .))))
+
+bearings <- as.matrix(bearings)
