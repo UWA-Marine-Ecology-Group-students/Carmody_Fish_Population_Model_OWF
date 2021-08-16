@@ -149,7 +149,7 @@ if(NECTAR == 1){#Nectar data loading
   
   
   Bathy <- raster("~/R/Poject-NESPD6-MBH-NationalRUM/Data_nectar/ausbath_09_v4/w001001.adf")
-  vrm <- raster("~/R/Poject-NESPD6-MBH-NationalRUM/Data_nectar/VRM.tif")
+    <- raster("~/R/Poject-NESPD6-MBH-NationalRUM/Data_nectar/VRM.tif")
   
 }
 
