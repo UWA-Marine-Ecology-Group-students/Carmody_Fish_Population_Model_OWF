@@ -55,20 +55,29 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
 
 ## Load spatial files for area your model covers
 setwd(sp_dir)
-wa_map <- st_read("WACoastline.shp")%>%
+wa_map <- st_read("Shark_Bay.shp")%>%
   st_transform(4283)%>%
-  st_make_valid
+  st_make_valid() 
 
 ningaloo_map <- st_crop(wa_map, xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
 plot(ningaloo_map$geometry)
+
+# sharkbay_map <- st_crop(wa_map, ymax=-23, ymin=-27.06433, xmax=114.7402 , xmin=112.6514)
+# plot(sharkbay_map$geometry)
 
 # Make grid cells for fish to live in
 grd <- st_make_grid(ningaloo_map, cellsize=0.1, square=FALSE)%>%
   st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21) #make sure extent of grid is the same as the polygon
 plot(grd, add=TRUE)
 
+# grd <- st_make_grid(sharkbay_map, cellsize=0.1, square=FALSE)%>%
+#   st_crop(ymax=-23.1, ymin=-27.06433, xmax=114.7403 , xmin=112.6514) #make sure extent of grid is the same as the polygon
+# plot(grd, add=T)
+
 water <- st_difference(grd, ningaloo_map)
-plot(water)
+# water <- st_difference(grd, sharkbay_map)
+
+plot(water, border="#8ec3caff")
 # turn water into a data frame for easier use
 water <- st_sf(water)
 

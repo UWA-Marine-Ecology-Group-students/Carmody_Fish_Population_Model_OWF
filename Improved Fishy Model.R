@@ -7,6 +7,8 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(mgcv)
+
 
 ## Functions
 # This returns the centre of the ploygon, but if it's on land it will create a new centroid
@@ -27,11 +29,12 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
 
 ## Create colours for the plot
 cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000",  "1000-5000", "5000-10000", "10000-15000",
-                             "15000-20000", "20000-25000", "25000-30000", ">30000"))
+levels_water <- data.frame(c("<1000",  "1000-1100", "1100-1200", "1200-1300",
+                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
 names(levels_water)[1] <- "Levels"
 levels_water$Levels <- as.factor(levels_water$Levels)
 names(cols) <- levels(levels_water$Levels)
+
 
 #### SET DIRECTORIES ####
 working.dir<-dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -42,6 +45,20 @@ cm_dir <- paste(working.dir, "Connectivity_Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial Data", sep="/")
 
 #### LOAD FILES ####
+
+## Data
+setwd(data_dir)
+boat_days <- read.csv("Boat_Days_Gascoyne.csv")
+
+boat_days <- boat_days%>%
+  mutate(Year = as.factor(Year)) %>% 
+  mutate(NumMonth = as.numeric(NumMonth)) %>% 
+  mutate(Month = as.factor(Month)) %>% 
+  mutate(Gascoyne_Boat_Days = as.numeric(Gascoyne_Boat_Days)) %>% 
+  mutate(Exmouth_Boat_Days = Gascoyne_Boat_Days*0.33) %>% 
+  mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
+
+## Spatial Data
 setwd(sp_dir)
 
 # Map of WA Coastline
@@ -56,7 +73,8 @@ MP <- st_read("WA_MPA_2018.shp")%>%
   st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
 
 NTZ <- MP%>%
-  filter(IUCN == "IA")
+  filter(IUCN == "IA") %>% 
+  dplyr::select(PA_ID, geometry)
 
 # Habitat Layers
 reef <- st_read("ReefHabitat.gpkg")%>%
@@ -87,6 +105,11 @@ pelagic <- st_read("PelagicHabitat.gpkg")%>%
 
 pelagic$type <- "pelagic"
 
+# Locations of the boat ramps
+BR <- st_read("Boat_Ramps.shp") %>% 
+  st_transform(4283)%>%
+  st_make_valid
+
 #### PARAMETER VALUES ####
 M <- 0.146 # Natural mortality rate, Marriot et al. 2011
 
@@ -96,16 +119,16 @@ b <- 0.0017
 M50 <- 2 # From Grandcourt et al. 2010
 M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
 
-#Fishing mortality parameters
-q <- 0.3 # Made this value up
-E <- 1 # Can get real value in days per year from Marriott et al. 2012
+#Fish movement parameters
+SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
+
+## Fishing mortality parameters
+E <- 25000/365 # This is in number of fishers out on the water per day, on average across a year for Ningaloo from 
+               # A 12-month survey of recreational fishing in the Gascoyne bioregion of Western Australia during 1998-99 Summner 2002
 A50 <- 4 # For L. miniatus from Williams et al. 2010
 A95 <- 6 # For L. miniatus from Williams et al. 2012
-
-Fishing <- E*q
-
-#Fish movement parameters
-SwimSpeed <- 1.0 # Swim 5km in a day - this is completely made up 
+q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
+#Biomass <- c(15, 0.55) # This is kg per 500m^2 (both inside and outside NTZ) from Comunity-Assisted Scientific Assessment and Management of WA MPAs, Ningaloo Reef Life Survey
 
 #### SPATIAL DATA ####
 
@@ -116,18 +139,45 @@ plot(ningaloo_map$geometry)
 
 # Make grid cells for fish to live in
 grd <- st_make_grid(ningaloo_map, cellsize=0.05, square=FALSE)%>%
-  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21) #make sure extent of grid is the same as the polygon
+  st_crop(xmin=112.5, xmax=114.2, ymin=-24, ymax=-21.1) #make sure extent of grid is the same as the polygon
 plot(grd, add=TRUE)
 
 water <- st_difference(grd, ningaloo_map)
 plot(water)
 
-# turn water into a data frame for easier use
-water <- st_sf(water)
+# Create a grid layer that is just for NTZs so we can adjust fishing mortality later
+NTZgrd <- st_make_grid(NTZ, cellsize=0.05, square=FALSE) %>% 
+  st_crop(xmin=112.5, xmax=114.2, ymin=-24, ymax=-21.1)
+NTZarea <- st_intersection(NTZgrd, NTZ) # Gives you where the grid and the NTZs overlap
+plot(NTZarea)
+
+# Change the water layer so that it excludes the NTZs because we want to be able to differentiate them
+NTZ <- st_union(NTZ)
+plot(NTZ)
+
+Fished_area <- st_difference(water, NTZ)
+plot(Fished_area)
+
+# turn areas into data frames for easier use
+Fished_area <- st_sf(Fished_area) %>% 
+  mutate(Fished = "Y") %>% 
+  rename("Spatial" = Fished_area)
+
+NTZarea <- st_sf(NTZarea) %>% 
+  mutate(Fished = "N") %>% 
+  rename("Spatial" = NTZarea)
+
+water <- rbind(Fished_area, NTZarea)
+plot(water, col=water$Fished)
 
 water <- water%>%
   mutate(ID=row_number())%>%
-  mutate(ID=factor(ID))
+  mutate(ID=factor(ID)) 
+
+## Check that the NTZs are where you expect them to be
+ggplot(water)+
+  geom_sf(aes(fill=Fished))+
+  theme_void()
 
 # Get centroids for the grid cells 
 centroids <- st_centroid_within_poly(water)
@@ -157,7 +207,7 @@ plot(water, add=T)
 
 # Calculate the percentage of each habitat type in each of the different cells 
 intersection <- st_intersection(habitat, water) #This gives you all the individual areas where there is overlap, the ID of the original grid cell and the habitat in each of the new little cells
-plot(intersection)
+plot(intersection$geom)
 
 intersection$area <- st_area(intersection) #gives you the area each of the small cells covers 
 water$area <- st_area(water) #gives you the area of each of the cells in the grid
@@ -256,7 +306,7 @@ for (r in 1:NCELL){
 
 #### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
 # First determine the utility of each of the sites 
-# This is very sensitive to changes in the values particularly for reef - if you make the coefficient too large it breaks the model...? Ask Matt about this -.-
+# This is very sensitive to changes in the values particularly for reef 
 
 a = 1
 b = 1
@@ -290,55 +340,272 @@ for (r in 1:NCELL){
 }
 rowSums(Pj)
 
-#
-cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000",  "1000-1100", "1100-1200", "1200-1300",
-                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
-names(levels_water)[1] <- "Levels"
-levels_water$Levels <- as.factor(levels_water$Levels)
-names(cols) <- levels(levels_water$Levels)
+#### SET UP FISHING SURFACE ####
+
+# Work out the number of boat days for the Exmouth region
+# For this we're using data from the whole of the Gascoyne and then splitting up the number of boat days in Exmouth compared
+# to Carnarvon/Shark Bay and then using visitor numbers to work out what percentage of the baot days were in Exmouth
+# LGA statistics for visitors to the biggest shires where people would go fishing in the Gascoyne indicate that trips to
+# Exmouth are about 33% of the visitation to the region so we'll allocate 33% of the Boat Days to Exmouth
+# We then need to create a model for hindcasting fishing effort back to something like the 1960s to get an estimate of what 
+# effort might have been like for the years where we don't have any data 
+
+
+# Plotting the data to see what it looks like
+Effort_Plot <- ggplot(boat_days)+
+  geom_point(aes(Month, Exmouth_Boat_Days))+
+  facet_wrap( ~ Year, strip.position = "bottom", scales = "free_x") +
+  facet_grid(~Year, switch = "x", scales = "free_x", space = "free_x") +
+  theme(panel.spacing = unit(0, "lines"), 
+        strip.background = element_blank(),
+        strip.placement = "outside")  
+
+
+
+
+# Work out the probability of visiting a cell from each boat ramp
+BR <- st_sf(BR)
+
+water <- water %>% 
+  mutate(DistBR = 0)
+
+DistBR <- as.data.frame(array(0, dim = c(NCELL,3))) # This will contain the distance from each boat ramp to every cell
+
+for(CELL in 1:NCELL){
+  
+  for(RAMP in 1:3){
+    x <- st_distance(centroids[CELL,1], BR[RAMP,3])
+    DistBR[CELL,RAMP] <- (x/1000) #to get the distance in km
+    
+  }
+}
+
+
+
+#### RUN MODEL ####
 
 # Fill the array with random numbers of fish for now
 # Need to change the loop so that rather than filling in a column it adds a new column each time 
 
 PopTotal <- array(0, dim = c(NCELL,100,10)) #This is our population
 for(d in 1:10){
-  PopTotal[,1,] <- matrix(floor(runif(NCELL, 1, 300)))
+  PopTotal[,1,] <- matrix(floor(runif(NCELL, 1, 2000)))
 }
 
 Movement <- NULL
 
-#### RUN MODEL ####
-# The time steps now represent 1 day (distance fish can swim in a day is 5km, included using the distance matrix)
-for(t in 2:11){
-   
+# The time steps now represent 1 month (need to make sure you change the distance your fish can swim to match the timestep)
+for(t in 2:12){
+
+  ### SUMMER 
+  if(t >=2 & t<4|t==12){
+    ## Movement
     for(A in 2:dim(PopTotal)[3]){
-      if(A==2){PopTotal[,t,A-1] <- matrix(floor(runif(NCELL, 1, 300)))}
+      if(A==2){PopTotal[,t,A-1] <- matrix(floor(runif(NCELL, 1, 2000)))}
       else{ }
       
       Pop <- matrix(PopTotal[ ,t-1,A-1]) #This gives you the fish in all the sites at timestep t-1 of age A-1
       Movers <- sum(Pop)
       Movement <- NULL
       Movement2 <- NULL
-    
-     for(s in 1:NCELL){
-      Pop2 <- as.matrix(Pj[s,] * Pop[s,1]) #This should give you the number of fish that move from site s to all the other sites
-      Pop2 <- t(Pop2)
-      Movement <- rbind(Movement, Pop2) #This should give you an array with 143 rows representing the fish that move from each site to all the other sites 
-     }
       
-    Movement2 <- as.matrix(colSums(Movement))
-    Moved <- sum(Movement2)
-    print(isTRUE(all.equal(Movers,Moved)))
-    if((isTRUE(all.equal(Movers,Moved))) == FALSE)
-    {print(Movers)
-      print(Moved)}
-    else{ }
-    
-    
-    PopTotal[ ,t,A] <- Movement2
-    
+      for(s in 1:NCELL){
+        Pop2 <- as.matrix(Pj[s,] * Pop[s,1]) #This should give you the number of fish that move from site s to all the other sites
+        Pop2 <- t(Pop2)
+        Movement <- rbind(Movement, Pop2) #This should give you an array with 143 rows representing the fish that move from each site to all the other sites 
+      }
+      
+      Movement2 <- as.matrix(colSums(Movement))
+      Moved <- sum(Movement2)
+      print(isTRUE(all.equal(Movers,Moved)))
+      if((isTRUE(all.equal(Movers,Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+      {print(Movers)
+        print(Moved)}
+      else{ }
+      
+      
+      PopTotal[ ,t,A] <- Movement2
+      
     }
+    
+    ## Natural Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      PopTotal[,t,A] <- PopTotal[,t,A]*exp(-M)
+    }
+    
+    ## Fishing Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
+      
+      for(CELL in 1:NCELL){
+        # If it's a NTZ then we don't have any fishing mortality in that cell
+        if(Fishing[CELL, 2]=="Y"){PopTotal[CELL,t,A] <- PopTotal[CELL,t,A]*exp(-sa*Fishing[CELL,1])}
+        else { }
+        
+      }
+  } 
+   
+
+  }
+  
+  ### AUTUMN
+  else if(t>=4 & t<=5){
+    ## Movement
+    for(A in 2:dim(PopTotal)[3]){
+      if(A==2){PopTotal[,t,A-1] <- matrix(floor(runif(NCELL, 1, 2000)))}
+      else{ }
+      
+      Pop <- matrix(PopTotal[ ,t-1,A-1]) #This gives you the fish in all the sites at timestep t-1 of age A-1
+      Movers <- sum(Pop)
+      Movement <- NULL
+      Movement2 <- NULL
+      
+      for(s in 1:NCELL){
+        Pop2 <- as.matrix(Pj[s,] * Pop[s,1]) #This should give you the number of fish that move from site s to all the other sites
+        Pop2 <- t(Pop2)
+        Movement <- rbind(Movement, Pop2) #This should give you an array with 143 rows representing the fish that move from each site to all the other sites 
+      }
+      
+      Movement2 <- as.matrix(colSums(Movement))
+      Moved <- sum(Movement2)
+      print(isTRUE(all.equal(Movers,Moved)))
+      if((isTRUE(all.equal(Movers,Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+      {print(Movers)
+        print(Moved)}
+      else{ }
+      
+      
+      PopTotal[ ,t,A] <- Movement2
+      
+    }
+    
+    ## Natural Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      PopTotal[,t,A] <- PopTotal[,t,A]*exp(-M)
+    }
+    
+    ## Fishing Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
+      
+      for(CELL in 1:NCELL){
+        # If it's a NTZ then we don't have any fishing mortality in that cell
+        if(Fishing[CELL, 2]=="Y"){PopTotal[CELL,t,A] <- PopTotal[CELL,t,A]*exp(-sa*Fishing[CELL,1])}
+        else { }
+        
+      }
+    } 
+  }
+  
+  ### WINTER
+  else if (t >=6 & t<=8){
+    ## Movement
+    for(A in 2:dim(PopTotal)[3]){
+      if(A==2){PopTotal[,t,A-1] <- matrix(floor(runif(NCELL, 1, 2000)))}
+      else{ }
+      
+      Pop <- matrix(PopTotal[ ,t-1,A-1]) #This gives you the fish in all the sites at timestep t-1 of age A-1
+      Movers <- sum(Pop)
+      Movement <- NULL
+      Movement2 <- NULL
+      
+      for(s in 1:NCELL){
+        Pop2 <- as.matrix(Pj[s,] * Pop[s,1]) #This should give you the number of fish that move from site s to all the other sites
+        Pop2 <- t(Pop2)
+        Movement <- rbind(Movement, Pop2) #This should give you an array with 143 rows representing the fish that move from each site to all the other sites 
+      }
+      
+      Movement2 <- as.matrix(colSums(Movement))
+      Moved <- sum(Movement2)
+      print(isTRUE(all.equal(Movers,Moved)))
+      if((isTRUE(all.equal(Movers,Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+      {print(Movers)
+        print(Moved)}
+      else{ }
+      
+      
+      PopTotal[ ,t,A] <- Movement2
+      
+    }
+    
+    ## Natural Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      PopTotal[,t,A] <- PopTotal[,t,A]*exp(-M)
+    }
+    
+    ## Fishing Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
+      
+      for(CELL in 1:NCELL){
+        # If it's a NTZ then we don't have any fishing mortality in that cell
+        if(Fishing[CELL, 2]=="Y"){PopTotal[CELL,t,A] <- PopTotal[CELL,t,A]*exp(-sa*Fishing[CELL,1])}
+        else { }
+        
+      }
+    } 
+  }
+  
+  ### SPRING
+  else if(t>=9 & t<=11){
+    ## Movement
+    for(A in 2:dim(PopTotal)[3]){
+      if(A==2){PopTotal[,t,A-1] <- matrix(floor(runif(NCELL, 1, 2000)))}
+      else{ }
+      
+      Pop <- matrix(PopTotal[ ,t-1,A-1]) #This gives you the fish in all the sites at timestep t-1 of age A-1
+      Movers <- sum(Pop)
+      Movement <- NULL
+      Movement2 <- NULL
+      
+      for(s in 1:NCELL){
+        Pop2 <- as.matrix(Pj[s,] * Pop[s,1]) #This should give you the number of fish that move from site s to all the other sites
+        Pop2 <- t(Pop2)
+        Movement <- rbind(Movement, Pop2) #This should give you an array with 143 rows representing the fish that move from each site to all the other sites 
+      }
+      
+      Movement2 <- as.matrix(colSums(Movement))
+      Moved <- sum(Movement2)
+      print(isTRUE(all.equal(Movers,Moved)))
+      if((isTRUE(all.equal(Movers,Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+      {print(Movers)
+        print(Moved)}
+      else{ }
+      
+      
+      PopTotal[ ,t,A] <- Movement2
+      
+    }
+    
+    ## Natural Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      PopTotal[,t,A] <- PopTotal[,t,A]*exp(-M)
+    }
+    
+    ## Fishing Mortality
+    for(A in 1:dim(PopTotal)[3]){
+      sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
+      
+      for(CELL in 1:NCELL){
+        # If it's a NTZ then we don't have any fishing mortality in that cell
+        if(Fishing[CELL, 2]=="Y"){PopTotal[CELL,t,A] <- PopTotal[CELL,t,A]*exp(-sa*Fishing[CELL,1])}
+        else { }
+        
+      }
+    } 
+  }
+  
+  # ## Recruitment
+  # Recs <- matrix(0, nrow=1, ncol=1) #Blank matrix to add the recruits to
+  # Recruitment <- as.matrix(colSums(Pop[,t,], dims=1)) 
+  # for(A in 1:dim(Recruitment)[1]){
+  #   Mature <- 1/(1+(exp(-log(19)*((A-M95)/(M95-M50))))) #Number of mature individuals in each age class
+  #   S <- colSums(Recruitment)*Mature #Spawning stock
+  #   Rec <- a*S*exp(-b*S) #Number of recruits from that age class
+  #   Recs <- rbind(Recs, Rec) #Combine recruits from each age class into one dataframe
+  # }
+  
+  
   print(t)
   water$pop <- rowSums(PopTotal[ ,t-1, ])
   
@@ -357,8 +624,9 @@ for(t in 2:11){
                                   "1300-1400", "1400-1500", "1500-1600", ">1600")
   
   print(map <- ggplot(water)+
-          geom_sf(aes(fill=Population))+
+          geom_sf(aes(fill=Population, color=Fished))+
           scale_fill_manual(name="Population", values= cols, drop=FALSE)+
+          scale_color_manual(name="Fished", values=c("white", "black"))+
           theme_void())
   Sys.sleep(3)
 }
@@ -451,6 +719,7 @@ per_reef <- water%>%
 
 ## Settlement
 Settlement <- matrix(runif(143, 1, 10),nrow=143) # Random for now
+
 # Need to normalise so that it sums to 1 so we're not adding or subtracting any fish anywhere
 Settlement_norm <- (Settlement[,1] = (Settlement[,1]/sum(Settlement[,1])))
 Settlement_norm <- as.matrix(Settlement_norm)
@@ -482,11 +751,15 @@ for(t in 2:5){
     #else if (d>=6) {Days[,t,d] <-  Movement[,,1] %*% Days[,t-1,d-1]}
     #else {Days[,t,d] <- Movement[,,1] %*% Days[,t-1,d-1]}
   }
+  
+  
   # Mortality
   for(A in 1:dim(Pop)[3]){
     sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50)))))
     Pop[,t,A] <- Pop[,t,A]*exp(-M)*exp(-sa*Fishing)
   }
+  
+  
   # Ricker recruitment model with maturation
   Recs <- matrix(0, nrow=1, ncol=1) #Blank matrix to add the recruits to
   Recruitment <- as.matrix(colSums(Pop[,t,], dims=1)) 
