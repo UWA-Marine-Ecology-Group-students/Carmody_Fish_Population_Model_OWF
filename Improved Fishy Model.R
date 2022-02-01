@@ -68,11 +68,32 @@ wa_map <- st_read("WACoastline.shp")%>%
 MP <- st_read("WA_MPA_2018.shp")%>%
   st_transform(4283)%>%
   st_make_valid%>%
-  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)
 
 NTZ <- MP%>%
   filter(IUCN == "IA") %>% 
-  dplyr::select(PA_ID, geometry)
+  filter(!COMMENTS == "Cloates Sanctuary Zone") %>% 
+  dplyr::select(PA_ID,COMMENTS, geometry) %>% 
+  filter(!COMMENTS %in% c("North Muiron Conservation Area","South Muiron Conservation Area",
+                          "Previously PA_ID WA_42756 in terrestrial CAPAD", "Conservation Area"))
+plot(NTZ)
+
+# Map of Commonwealth Marine Park
+AMP <- st_read("NTZ and Fished areas for status.shp") %>% 
+  st_transform(4283)%>%
+  st_make_valid%>%
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)
+plot(AMP)
+
+AMP_NTZ <- AMP %>% 
+  filter(ResName == "Ningaloo"|COMMENTS == "Cloates Sanctuary Zone") %>% 
+  dplyr::select(PA_ID, COMMENTS, geometry) %>% 
+  mutate(COMMENTS = ifelse(is.na(COMMENTS), "Comm Cloates", COMMENTS))
+plot(AMP_NTZ$geometry)
+
+NTZ <- rbind(NTZ, AMP_NTZ) 
+
+plot(NTZ$geometry)
 
 # Habitat Layers
 reef <- st_read("ReefHabitat.gpkg")%>%
@@ -109,7 +130,13 @@ BR <- st_read("Boat_Ramps.shp") %>%
   st_make_valid
 
 #### PARAMETER VALUES ####
-M <- 0.146 # Natural mortality rate, Marriot et al. 2011
+
+## Natural Mortality
+# We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
+yearly_surv=exp(-0.146)
+monthly_mort=1-(yearly_surv^(1/12))
+
+M <- monthly_mort # Natural mortality rate per month
 
 #Ricker recruitment model parameters (these are currently just made up values)
 a <- 7
@@ -130,12 +157,12 @@ q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 
 ## Create extent of area you want to cover 
 
-ningaloo_map <- st_crop(wa_map, xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+ningaloo_map <- st_crop(wa_map, xmin=112.5, xmax=114.7, ymin=-24, ymax=-21.1) #NEED TO CHANGE THIS TO BE WHOLE GULF DOWN TO CORAL BAY
 plot(ningaloo_map$geometry)
 
 # Make grid cells for fish to live in
 grd <- st_make_grid(ningaloo_map, cellsize=0.05, square=FALSE)%>%
-  st_crop(xmin=112.5, xmax=114.2, ymin=-24, ymax=-21.1) #make sure extent of grid is the same as the polygon
+  st_crop(xmin=112.5, xmax=114.65, ymin=-24, ymax=-21.1) #make sure extent of grid is the same as the polygon
 plot(grd, add=TRUE)
 
 water <- st_difference(grd, ningaloo_map)
@@ -144,39 +171,48 @@ plot(water)
 # Create a grid layer that is just for NTZs so we can adjust fishing mortality later
 NTZgrd <- st_make_grid(NTZ, cellsize=0.05, square=FALSE) %>% 
   st_crop(xmin=112.5, xmax=114.2, ymin=-24, ymax=-21.1)
-NTZarea <- st_intersection(NTZgrd, NTZ) # Gives you where the grid and the NTZs overlap
+NTZarea <- st_intersection(NTZ, NTZgrd) # Gives you just the hexagons in each NTZ with the comments
 plot(NTZarea)
 
 # Change the water layer so that it excludes the NTZs because we want to be able to differentiate them
 NTZ <- st_union(NTZ)
 plot(NTZ)
 
-Fished_area <- st_difference(water, NTZ)
+Fished_area <- st_difference(water, NTZ) 
 plot(Fished_area)
+
 
 # turn areas into data frames for easier use
 Fished_area <- st_sf(Fished_area) %>% 
   mutate(Fished = "Y") %>% 
-  rename("Spatial" = Fished_area)
+  rename(Spatial = "Fished_area") %>% 
+  mutate(PA_ID = NA) %>% 
+  mutate(COMMENTS = NA)
 
-NTZarea <- st_sf(NTZarea) %>% 
-  mutate(Fished = "N") %>% 
-  rename("Spatial" = NTZarea)
 
-water <- rbind(Fished_area, NTZarea)
+NTZ_area <- st_sf(NTZarea) %>% 
+  mutate(Fished = "N")
+
+names(NTZ_area)[names(NTZ_area) == 'geometry'] <- 'Spatial'
+st_geometry(NTZ_area) <- "Spatial"
+
+water <- rbind(Fished_area, NTZ_area)
 
 water <- water%>%
   mutate(ID=row_number())%>%
-  mutate(ID=factor(ID)) 
+  mutate(ID=factor(ID)) %>% 
+  dplyr::select(-PA_ID)
 
 ## Check that the NTZs are where you expect them to be
 ggplot(water)+
   geom_sf(aes(fill=Fished))+
   theme_void()
 
+## Snap all the nodes together to eliminate 
+
 # Get centroids for the grid cells 
 centroids <- st_centroid_within_poly(water)
-plot(centroids, cex=0.3 ,add=TRUE) #Something is wrong with where the centroids are now
+plot(centroids, cex=0.3) #Something is wrong with where the centroids are now
 
 points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the bottom left and then work their way their way right
   mutate(ID=row_number())
@@ -250,7 +286,6 @@ dist_matrix <- as.matrix(dist(points)) #This is just the linear distance  betwee
 
 ## Calculate the probability a fish moves to this site in a given time step using the swimming speed we set earlier 
 # This creates a dispersal kernel based on the negative exponential distribution
-# Need to put density dependence into the movement!
 
 pDist <- matrix(NA, ncol=NCELL, nrow=NCELL)
 
@@ -302,6 +337,7 @@ for (r in 1:NCELL){
 #### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
 # First determine the utility of each of the sites 
 # This is very sensitive to changes in the values particularly for reef 
+# PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
 a = 1
 b = 1
@@ -424,12 +460,12 @@ Full_Boat_Days <- boat_days[,1:4] %>%
   rbind(boat_days_hind) %>% 
   arrange(-Year)
 
-# Show this plot to Matt because things look hella janky and I'm not sure what we can do about it 
-MonthPlot <- Full_Boat_Days %>%
-  mutate(Unique = paste(Year, NumMonth, sep="_")) %>%
-  filter(Month %in% c("Jan","Jun")) %>%
-  ggplot() +
-  geom_point(aes(x=Unique, y=Gascoyne_Boat_Days))
+# # Show this plot to Matt because things look hella janky and I'm not sure what we can do about it 
+# MonthPlot <- Full_Boat_Days %>%
+#   mutate(Unique = paste(Year, NumMonth, sep="_")) %>%
+#   filter(Month %in% c("Jan","Jun")) %>%
+#   ggplot() +
+#   geom_point(aes(x=Unique, y=Gascoyne_Boat_Days))
 
 ## Next step is to allocate the effort to Exmouth and then to the specific boat ramps
 ## We're using tourism numbers to allocate to Exmouth - saying about 65% of the trips to the region are to Ningaloo
@@ -561,7 +597,17 @@ for(YEAR in 1:59){
 ## Add NTZs
 NoTake <- st_sf(water) %>% 
   st_drop_geometry() %>% 
-  dplyr::select(Fished, ID)
+  dplyr::select(Fished, ID, COMMENTS)
+
+# Creating new columns for each of our year groups when new NTZs were put in place (easier than coding it in the model)
+NoTake2 <- NoTake %>% 
+  rename(Fished60_87="Fished") %>% 
+  mutate(Fished87_05 = ifelse(str_detect(COMMENTS, c("Comm Cloates|Lighthouse Bay Sanctuary Zone| 
+                                                     Gnaraloo Bay Sanctuary Zone|Cape Farquhar Sanctuary Zone")), "Y", "N")) %>% 
+  mutate(Fished05_17 = ifelse(str_detect(COMMENTS, "Comm Cloates"), "Y", "N")) %>% 
+  mutate(Fished17_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
+  dplyr::select(ID, Fished60_87, Fished87_05, Fished05_17, Fished17_21) %>% 
+  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y"))
 
 
 #### RUN MODEL ####
@@ -579,6 +625,7 @@ PopTotal <- array(0, dim=c(NCELL, 12, 59)) # This is our total population, all a
 Movement <- NULL
 
 # The time steps now represent 1 month (need to make sure you change the distance your fish can swim to match the timestep)
+# NEED TO PUT IN NATURAL MORTALITY EACH MONTH AND ALSO THE FACT THAT THERE HASN'T ALWAYS BEEN NO TAKE ZONES
 
 for(YEAR in 2:59){
   
@@ -619,11 +666,35 @@ for(YEAR in 2:59){
         sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
         
         for(CELL in 1:NCELL){
-          # If it's a NTZ then we don't have any fishing mortality in that cell
-          if(NoTake[CELL, 1]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
-          else { }
-        }
-      } 
+          
+          # Up until 1987 when there were no sanctuaries
+          if(YEAR>0&YEAR<=26){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+          
+          # From 1987 to 2005 when the first sanctuaries were in place
+          else if(YEAR>=27&YEAR<=44){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 3]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          # From 2005 to 2017 when we had all the state sanctuaries but no commonwealth one
+          else if(YEAR>=45&YEAR<=57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 4]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          
+          # From 2017 onwards when we had all the sanctuaries 
+          else if(YEAR>57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 5]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+        } # End fishing mortality for each cell
+      } # End calculating selectivity for each age group
+      
+      # Natural mortality in each month
+      YearlyTotal[,MONTH,] <- YearlyTotal[,MONTH,]*(1-M)
+      
     } # SUMMER COMPLETED #
     
     ### AUTUMN
@@ -656,16 +727,41 @@ for(YEAR in 2:59){
           YearlyTotal[ ,MONTH,A-1] <- Movement2
           
         } #End bracket for movement in each month
+      ## Fishing Mortality
       for(A in 1:dim(YearlyTotal)[3]){
         sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
         
         for(CELL in 1:NCELL){
-          # If it's a NTZ then we don't have any fishing mortality in that cell
-          if(NoTake[CELL, 1]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
-          else { }
+          
+          # Up until 1987 when there were no sanctuaries
+          if(YEAR>0&YEAR<=26){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+          
+          # From 1987 to 2005 when the first sanctuaries were in place
+          else if(YEAR>=27&YEAR<=44){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 3]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          # From 2005 to 2017 when we had all the state sanctuaries but no commonwealth one
+          else if(YEAR>=45&YEAR<=57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 4]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          
+          # From 2017 onwards when we had all the sanctuaries 
+          else if(YEAR>57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 5]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
         }
-      }
-    } # AUTYMN COMPLETED #
+      } 
+      
+      # Natural mortality in each month
+      YearlyTotal[,MONTH,] <- YearlyTotal[,MONTH,]*(1-M)
+      
+    } # AUTUMN COMPLETED #
     
     ### WINTER
     else if (MONTH >=6 & MONTH<=8){
@@ -702,11 +798,35 @@ for(YEAR in 2:59){
         sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
         
         for(CELL in 1:NCELL){
-          # If it's a NTZ then we don't have any fishing mortality in that cell
-          if(NoTake[CELL, 1]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
-          else { }
+          
+          # Up until 1987 when there were no sanctuaries
+          if(YEAR>0&YEAR<=26){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+          
+          # From 1987 to 2005 when the first sanctuaries were in place
+          else if(YEAR>=27&YEAR<=44){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 3]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          # From 2005 to 2017 when we had all the state sanctuaries but no commonwealth one
+          else if(YEAR>=45&YEAR<=57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 4]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          
+          # From 2017 onwards when we had all the sanctuaries 
+          else if(YEAR>57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 5]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
         }
-      }
+      } 
+      
+      # Natural mortality in each month
+      YearlyTotal[,MONTH,] <- YearlyTotal[,MONTH,]*(1-M)
+      
     } # WINTER COMPLETED #
     
     ### SPRING
@@ -744,11 +864,35 @@ for(YEAR in 2:59){
         sa <- 1/(1+(exp(-log(19)*((A-A95/A95-A50))))) # This puts in size selectivity
         
         for(CELL in 1:NCELL){
-          # If it's a NTZ then we don't have any fishing mortality in that cell
-          if(NoTake[CELL, 1]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
-          else { }
+          
+          # Up until 1987 when there were no sanctuaries
+          if(YEAR>0&YEAR<=26){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+          
+          # From 1987 to 2005 when the first sanctuaries were in place
+          else if(YEAR>=27&YEAR<=44){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 3]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          # From 2005 to 2017 when we had all the state sanctuaries but no commonwealth one
+          else if(YEAR>=45&YEAR<=57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 4]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
+          
+          # From 2017 onwards when we had all the sanctuaries 
+          else if(YEAR>57){
+            # If it's a NTZ then we don't have any fishing mortality in that cell
+            if(NoTake[CELL, 5]=="Y"){YearlyTotal[CELL,MONTH,A] <- YearlyTotal[CELL,MONTH,A]*exp(-sa*Fishing[CELL,MONTH,YEAR])}
+            else { }  
+          }
         }
-      }
+      } 
+      
+      # Natural mortality in each month
+      YearlyTotal[,MONTH,] <- YearlyTotal[,MONTH,]*(1-M)
+      
     } # SPRING COMPLETED #
     
     # ## Recruitment
@@ -761,7 +905,6 @@ for(YEAR in 2:59){
     #   Recs <- rbind(Recs, Rec) #Combine recruits from each age class into one dataframe
     # }
     
-  # NATURAL MORTALITY HAS TO HAPPEN ONCE A YEAR
   PopTotal[ , , YEAR] <- rowSums(YearlyTotal)
     
   }
@@ -803,7 +946,6 @@ for(YEAR in 2:59){
 # Also move from the sargassum to the reefs as part of an ontogenic shift - need to have a different matrix for the one year old fish to make them move to the reef
 ## Will need to make sure when you put mortaility back in that you're subsetting the population between the ones that are in/outside a sanctuary zone and apply the correct mortality
 # this will have to be based on the intersection of our grid with a shape file of the sanctuary zones
-
 
 #### OLD THINGS THAT I'VE TRIED AND DON'T USE ANYMORE ####
 
