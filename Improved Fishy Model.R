@@ -63,6 +63,7 @@ setwd(sp_dir)
 wa_map <- st_read("WACoastline.shp")%>%
   st_transform(4283)%>%
   st_make_valid
+plot(wa_map$geometry, col="#eeeeeeff")
 
 # Map of State Marine Parks
 MP <- st_read("WA_MPA_2018.shp")%>%
@@ -99,21 +100,24 @@ plot(NTZ$geometry)
 reef <- st_read("ReefHabitat.gpkg")%>%
   st_transform(4283)%>%
   st_make_valid%>%
-  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)%>% 
+  dplyr::select(geom)
 
 reef$type <- "reef"
 
 lagoon <- st_read("LagoonHabitat.gpkg")%>%
   st_transform(4283)%>%
   st_make_valid%>%
-  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21) %>% 
+  dplyr::select(geom)
 
 lagoon$type <- "lagoon"
 
 rocky <- st_read("RockReefHabitat.gpkg")%>%
   st_transform(4283)%>%
   st_make_valid%>%
-  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)
+  st_crop(xmin=112.5, xmax=114.3, ymin=-24, ymax=-21)%>% 
+  dplyr::select(geom)
 
 rocky$type <- "rocky"
 
@@ -124,7 +128,7 @@ pelagic <- st_read("PelagicHabitat.gpkg")%>%
 
 pelagic$type <- "pelagic"
 
-# Locations of the boat ramps
+# Locations of the boat ramps - NEED TO FIX
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid
@@ -158,7 +162,8 @@ q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 ## Create extent of area you want to cover 
 
 ningaloo_map <- st_crop(wa_map, xmin=112.5, xmax=114.7, ymin=-24, ymax=-21.1) #NEED TO CHANGE THIS TO BE WHOLE GULF DOWN TO CORAL BAY
-plot(ningaloo_map$geometry)
+plot(ningaloo_map$geometry, col="#8ec3ca")
+plot(BR, add=T, col="black", bg="#edcfcc", pch=21, cex=3)
 
 # Make grid cells for fish to live in
 grd <- st_make_grid(ningaloo_map, cellsize=0.05, square=FALSE)%>%
@@ -166,20 +171,45 @@ grd <- st_make_grid(ningaloo_map, cellsize=0.05, square=FALSE)%>%
 plot(grd, add=TRUE)
 
 water <- st_difference(grd, ningaloo_map)
+plot(water, border="#8ec3ca")
+plot(BR$geometry)
+
+# Adjust the sizes of the grid cells so that the ones closer to the shore are smaller 
+GrdSmall <- st_make_grid(ningaloo_map, cellsize=0.025, square=FALSE)%>%
+  st_crop(xmin=112.5, xmax=114.65, ymin=-24, ymax=-21.1) #make sure extent of grid is the same as the polygon
+plot(GrdSmall)
+
+HabitatSmall <- rbind(reef, rocky, lagoon)
+HabitatSmall <- st_union(HabitatSmall) %>% 
+  st_make_valid()
+plot(HabitatSmall)
+
+SmallGrd <- st_intersection(GrdSmall, HabitatSmall)
+plot(SmallGrd)
+
+# Merge the small grid with the grid with larger cells
+BigGrd <- st_difference(water, HabitatSmall1)
+plot(BigGrd)
+plot(SmallGrd, add=T)
+
+BigGrd <- st_make_valid(BigGrd)
+
+water <- append(BigGrd, SmallGrd)
 plot(water)
 
 # Create a grid layer that is just for NTZs so we can adjust fishing mortality later
+# Need some way to deal with the expansion of sanctuary zones over time once you get Cresswell's map
 NTZgrd <- st_make_grid(NTZ, cellsize=0.05, square=FALSE) %>% 
   st_crop(xmin=112.5, xmax=114.2, ymin=-24, ymax=-21.1)
-NTZarea <- st_intersection(NTZ, NTZgrd) # Gives you just the hexagons in each NTZ with the comments
-plot(NTZarea)
+NTZarea <- st_intersection(NTZ, water) # Gives you just the hexagons in each NTZ with the comments
+plot(NTZarea$geometry)
 
 # Change the water layer so that it excludes the NTZs because we want to be able to differentiate them
 NTZ <- st_union(NTZ)
 plot(NTZ)
 
 Fished_area <- st_difference(water, NTZ) 
-plot(Fished_area)
+plot(Fished_area$Spatial)
 
 
 # turn areas into data frames for easier use
@@ -206,7 +236,8 @@ water <- water%>%
 ## Check that the NTZs are where you expect them to be
 ggplot(water)+
   geom_sf(aes(fill=Fished))+
-  theme_void()
+  theme_void()+
+  scale_fill_manual(values=c("#f3c1af", "#c8dfe3"))
 
 ## Snap all the nodes together to eliminate 
 
@@ -593,6 +624,8 @@ for(YEAR in 1:59){
   }
   Fishing[ , ,YEAR] <- Months 
 }
+
+Fishing <- Fishing*q
 
 ## Add NTZs
 NoTake <- st_sf(water) %>% 
