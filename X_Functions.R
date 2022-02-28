@@ -69,7 +69,12 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   {print(Juv.Movers)
     print(Juv.Moved)} else{ }
   
-  Population[ , Month, Age-1] <- Juv.Movement2 # End Juvenile Movement
+  if(Month==13){
+    eval.parent(substitute(Population[ , 12, Age-1] <- Juv.Movement2)) # Deals with issue of there not being a 13th column
+  } else {
+    eval.parent(substitute(Population[ , Month, Age-1] <- Juv.Movement2))} # End Juvenile Movement
+  
+  
   } else {  
     
     ## Adult Movement
@@ -91,7 +96,10 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
     {print(Movers)
       print(Moved)} else{ }
     
-    Population[ , Month, Age-1] <- Movement2
+    if(Month==13){
+      eval.parent(substitute(Population[ , 12, Age-1] <- Juv.Movement2)) # Deals with issue of there not being a 13th column
+    } else {
+      eval.parent(substitute(Population[ , Month, Age-1] <- Juv.Movement2))} # End Juvenile Movement
     
   } #End adult movement 
   

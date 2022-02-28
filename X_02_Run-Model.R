@@ -29,6 +29,14 @@ names(cols) <- levels(levels_water$Levels)
 setwd(working.dir)
 source("X_Functions.R")
 
+#### LOAD FILES ####
+setwd(sg_dir)
+movement <- readRDS("test_movement")
+juv_movement <- readRDS("test_juvmove")
+fishing <- readRDS("test_fishing")
+NoTake <- readRDS("test_NoTake")
+water <- readRDS("test_water")
+
 #### PARAMETER VALUES ####
 
 ## Natural Mortality
@@ -52,30 +60,6 @@ A50 <- 4 # For L. miniatus from Williams et al. 2010 # L. miniatus becomes vulne
 A95 <- 6 # For L. miniatus from Williams et al. 2012
 q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 
-#### SET UP SMALLER FISHING GRID FOR TESTS ####
-
-## Crop larger model to smaller area so there are less cells
-water.test <- water %>% 
-  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-23.2) %>% 
-  st_make_valid()
-plot(water.test$Spatial)
-
-NCELL <- nrow(water.test)
-
-## Turn the cell IDs into a seq. so that you can use this to select the relevant rows and columns from your matrices
-
-test.cells <- as.numeric(water.test$ID)
-
-movement.test <- movement[test.cells, test.cells]
-juv_movement.test <- juv_movement[test.cells, test.cells]
-
-## Filter out the cells from the No Take df that you want
-
-NoTake.test <- NoTake %>% 
-  dplyr::filter(ID %in% water.test$ID)
-
-rowSums(movement.test)
-
 #### RUN MODEL ####
 
 YearlyTotal <- array(0, dim = c(NCELL,12,8)) #This is our yearly population split by age category (every layer is an age group)
@@ -87,13 +71,13 @@ PopTotal <- array(0, dim=c(NCELL, 12, 59)) # This is our total population, all a
 
 for(YEAR in 2:2){
   
-  for(MONTH in 2:12){
+  for(MONTH in 2:13){
     
     ## Movement - this is where you'd change things to suit the months
     for(A in 2:dim(YearlyTotal)[3]){
       
-      movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement.test, 
-                    Juv.Move=juv_movement.test)
+      movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement, 
+                    Juv.Move=juv_movement)
 
     }  # End bracket for age classes
 
@@ -114,10 +98,10 @@ for(YEAR in 2:2){
     
   
   print(YEAR)
-  water.test$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
+  water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
   
-  water.map <- water.test%>%
-    mutate(Population = ifelse(pop < 1000, "<1000",
+  water.map <- water%>%
+    mutate(pop_level = ifelse(pop < 1000, "<1000",
                                ifelse (pop>1000 & pop<110, "1000-1100",
                                        ifelse (pop>1100 & pop<1200, "1100-1200",
                                                ifelse (pop>1200 & pop<1300, "1200-1300",
@@ -126,13 +110,13 @@ for(YEAR in 2:2){
                                                                      ifelse(pop>1500 & pop<1600, "1500-1600", ">1600"
                                                                             
                                                                      ))))))))%>%
-    mutate(Population = factor(Population))
+    mutate(pop_level = factor(pop_level))
   
-  water.map$Population <- fct_relevel(water.map$Population, "<1000",  "1000-1100", "1100-1200", "1200-1300",
+  water.map$pop_level <- fct_relevel(water.map$pop_level, "<1000",  "1000-1100", "1100-1200", "1200-1300",
                                   "1300-1400", "1400-1500", "1500-1600", ">1600")
   
-  print(map <- ggplot(water)+
-          geom_sf(aes(fill=Population, color=Fished))+
+  print(map <- ggplot(water.map)+
+          geom_sf(aes(fill=pop_level, color=Fished))+
           scale_fill_manual(name="Population", values= cols, drop=FALSE)+
           scale_color_manual(name="Fished", values=c("white", "black"))+
           theme_void())
