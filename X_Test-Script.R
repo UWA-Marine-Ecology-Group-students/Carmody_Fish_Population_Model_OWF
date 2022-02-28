@@ -5,6 +5,79 @@
 # Need to make a smaller grid at some point
 
 ###################################################
+
+
+#### SET DIRECTORIES ####
+working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
+
+data_dir <- paste(working.dir, "Data", sep="/")
+fig_dir <- paste(working.dir, "Figures", sep="/")
+m_dir <- paste(working.dir, "Matrices", sep="/")
+sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
+
+#### PRE-SETS ####
+
+## Create colours for the plot
+cols <- brewer.pal(8, "RdBu")
+levels_water <- data.frame(c("<1000", "1000-1100", "1100-1200", "1200-1300",
+                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
+names(levels_water)[1] <- "Levels"
+levels_water$Levels <- as.factor(levels_water$Levels)
+names(cols) <- levels(levels_water$Levels)
+
+## Read in functions
+setwd(working.dir)
+source("X_Functions.R")
+
+#### PARAMETER VALUES ####
+
+## Natural Mortality
+# We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
+yearly_surv=exp(-0.146)
+monthly_mort=1-(yearly_surv^(1/12))
+
+M <- monthly_mort # Natural mortality rate per month
+
+#Ricker recruitment model parameters (these are currently just made up values)
+a <- 7
+b <- 0.0017
+M50 <- 2 # From Grandcourt et al. 2010
+M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
+
+#Fish movement parameters
+SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
+
+## Fishing mortality parameters
+A50 <- 4 # For L. miniatus from Williams et al. 2010 # L. miniatus becomes vulnerable to fishing at about age two
+A95 <- 6 # For L. miniatus from Williams et al. 2012
+q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
+
+#### SET UP SMALLER FISHING GRID FOR TESTS ####
+
+## Crop larger model to smaller area so there are less cells
+water.test <- water %>% 
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-23.2) %>% 
+  st_make_valid()
+plot(water.test$Spatial)
+
+NCELL <- nrow(water.test)
+
+## Turn the cell IDs into a seq. so that you can use this to select the relevant rows and columns from your matrices
+
+test.cells <- as.numeric(water.test$ID)
+
+movement.test <- movement[test.cells, test.cells]
+juv_movement.test <- juv_movement[test.cells, test.cells]
+
+## Filter out the cells from the No Take df that you want
+
+NoTake.test <- NoTake %>% 
+  dplyr::filter(ID %in% water.test$ID)
+
+rowSums(movement.test)
+
+#### RUN MODEL ####
+
 YearlyTotal <- array(0, dim = c(NCELL,12,8)) #This is our yearly population split by age category (every layer is an age group)
 for(d in 1:8){
   YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 2000)))
@@ -19,8 +92,8 @@ for(YEAR in 2:2){
     ## Movement - this is where you'd change things to suit the months
     for(A in 2:dim(YearlyTotal)[3]){
       
-      movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement, 
-                    Juv.Move=juv_movement)
+      movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement.test, 
+                    Juv.Move=juv_movement.test)
 
     }  # End bracket for age classes
 
@@ -37,13 +110,13 @@ for(YEAR in 2:2){
     # }
     
     #PopTotal[ , , YEAR] <- rowSums(YearlyTotal) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
-     PopTotal[ , , YEAR] <- YearlyTotal[ , , 1] 
+     PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # This is just because we're looking at juveniles right now
     
   
   print(YEAR)
-  water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
+  water.test$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
   
-  water <- water%>%
+  water.map <- water.test%>%
     mutate(Population = ifelse(pop < 1000, "<1000",
                                ifelse (pop>1000 & pop<110, "1000-1100",
                                        ifelse (pop>1100 & pop<1200, "1100-1200",
@@ -55,7 +128,7 @@ for(YEAR in 2:2){
                                                                      ))))))))%>%
     mutate(Population = factor(Population))
   
-  water$Population <- fct_relevel(water$Population, "<1000",  "1000-1100", "1100-1200", "1200-1300",
+  water.map$Population <- fct_relevel(water.map$Population, "<1000",  "1000-1100", "1100-1200", "1200-1300",
                                   "1300-1400", "1400-1500", "1500-1600", ">1600")
   
   print(map <- ggplot(water)+
