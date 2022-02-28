@@ -1,1 +1,0 @@
-https://geoserver.imas.utas.edu.au/geoserver/wms?outputFormat=shape-zip&request=GetFeature&service=wfs&srsName=EPSG%3A4326&typeName=seamap%3ASeamapAus_WA_DPAW_marine_habitats&version=1.1.0
