@@ -34,14 +34,6 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
   return(centroid_in_poly)
 }
 
-## Create colours for the plot
-cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000", "1000-1100", "1100-1200", "1200-1300",
-                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
-names(levels_water)[1] <- "Levels"
-levels_water$Levels <- as.factor(levels_water$Levels)
-names(cols) <- levels(levels_water$Levels)
-
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -419,7 +411,7 @@ for (CELL in 1:NCELL){
 
 a = 1
 b = 0.8
-c = 3
+c = 1.5
 d = 0.6
 e = 0.01
 
