@@ -15,8 +15,6 @@ library(forcats)
 library(RColorBrewer)
 library(geosphere)
 
-
-
 ## Functions
 # This returns the centre of the ploygon, but if it's on land it will create a new centroid
 
@@ -45,17 +43,6 @@ sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
 #### LOAD FILES ####
-
-## Data
-setwd(data_dir)
-boat_days <- read.csv("Boat_Days_Gascoyne.csv")
-
-boat_days <- boat_days%>%
-  mutate(NumMonth = as.numeric(NumMonth)) %>% 
-  mutate(Month = as.factor(Month)) %>% 
-  mutate(Gascoyne_Boat_Days = as.numeric(Gascoyne_Boat_Days)) %>% 
-  mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
-
 ## Spatial Data
 setwd(sp_dir)
 
@@ -353,11 +340,11 @@ for (r in 1:NCELL){
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-a = 1
-b = 1
-c = 1
-d = 1
-e = 1
+a = 0.8
+b = 1.5
+c = 0.7
+d = 0.5
+e = 0.2
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -409,11 +396,11 @@ for (CELL in 1:NCELL){
 #### RECRUIT MOVEMENT ####
 ## Want the recruits to stay in the lagoon until they mature and move to the reef
 
-a = 1
-b = 0.8
-c = 1.5
-d = 0.6
-e = 0.01
+a = 0.1
+b = 0.01
+c = 0.09
+d = 0.05
+e = 0.001
 
 Recj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -448,6 +435,15 @@ saveRDS(water, file="test_water")
 saveRDS(ProbRec, file="test_juvmove")
 
 #### SET UP THE FISHING SURFACE - SAME AS SCRIPT 02 ####
+## Data
+setwd(data_dir)
+boat_days <- read.csv("Boat_Days_Gascoyne.csv")
+
+boat_days <- boat_days%>%
+  mutate(NumMonth = as.numeric(NumMonth)) %>% 
+  mutate(Month = as.factor(Month)) %>% 
+  mutate(Gascoyne_Boat_Days = as.numeric(Gascoyne_Boat_Days)) %>% 
+  mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
 
 ## Spatial Data
 setwd(sg_dir)
@@ -472,14 +468,14 @@ BR <- st_read("Boat_Ramps.shp") %>%
 
 ## Working out the fishing effort in the Gascoyne
 # Plotting the data to see what it looks like
-AverageYear <- boat_days %>% 
+TotalYear <- boat_days %>% 
   group_by(Year) %>% 
-  summarise(., Mean_Boat_Days=mean(Gascoyne_Boat_Days))
+  summarise(., Total_Boat_Days=sum(Gascoyne_Boat_Days))
 
-YearPlot <- ggplot(AverageYear) + 
-  geom_point(aes(x=Year, y=Mean_Boat_Days))
+YearPlot <- ggplot(TotalYear) + 
+  geom_point(aes(x=Year, y=Total_Boat_Days))
 
-YearModel <- lm(Gascoyne_Boat_Days~Year, data=boat_days)
+YearModel <- lm(Total_Boat_Days~Year, data=TotalYear)
 summary(YearModel)
 
 #### HINDCASTING ####
@@ -490,22 +486,22 @@ Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>%
 predictions <- predict(YearModel, newdata=Year2011_1990)
 
 Year2011_1990 <- Year2011_1990 %>% 
-  mutate(Mean_Boat_Days = predictions)
+  mutate(Total_Boat_Days = predictions)
 
-boat_days_hind <- rbind(AverageYear, Year2011_1990)
+boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 9872, length=30)
+effort <- seq(0, 118466, length=30)
 years <- seq(1960, 1989, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
   rename("Year" = years) %>% 
-  rename("Mean_Boat_Days" = effort)
+  rename("Total_Boat_Days" = effort)
 
 #### JOIN FISHING EFFORT ####
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
 YearPlot <- ggplot(boat_days_hind) + 
-  geom_point(aes(x=Year, y=Mean_Boat_Days))
+  geom_point(aes(x=Year, y=Total_Boat_Days))
 
 #### ALLOCATING MONLTHY EFFORT ####
 
@@ -545,9 +541,9 @@ boat_days_hind <- boat_days_hind %>%
   mutate(Gascoyne_Boat_Days = 0) %>% 
   left_join(., Month_Prop_Ave) %>% 
   group_by(Year) %>% 
-  mutate(Gascoyne_Boat_Days = Mean_Boat_Days*Ave_Month_Prop) %>% 
+  mutate(Gascoyne_Boat_Days = Total_Boat_Days*Ave_Month_Prop) %>% 
   ungroup() %>% 
-  dplyr::select(-c(Mean_Boat_Days))
+  dplyr::select(-c(Total_Boat_Days))
 
 check <- boat_days_hind %>% 
   group_by(Year) %>% 
@@ -559,7 +555,8 @@ Full_Boat_Days <- boat_days[,1:4] %>%
   rbind(boat_days_hind) %>% 
   arrange(-Year)
 
-# # Show this plot to Matt because things look hella janky and I'm not sure what we can do about it 
+
+# Plot and check that it looks right
 MonthPlot <- Full_Boat_Days %>%
   mutate(Unique = paste(Year, NumMonth, sep="_")) %>%
   filter(Month %in% c("Jun")) %>%
@@ -694,7 +691,7 @@ for(YEAR in 1:59){
   Fishing[ , ,YEAR] <- Months 
 }
 
-Fishing <- Fishing*q
+Fishing <- Fishing*q # multiply by catchability
 
 ## Add NTZs
 NoTake <- st_sf(water) %>% 
@@ -711,9 +708,25 @@ NoTake <- NoTake %>%
   dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
   mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y"))
 
+## Set the effort in the corresponding cells to be 0s in the years where the sanctuary zones are in place
+for(YEAR in 1:59){
+  for(CELL in 1:NCELL){
+   
+    if(Year>=27&Year<=44){
+      if(NTZ[CELL, 3]=="N"){Fishing[CELL, ,YEAR] <- 0}
+    }
+    else if(Year>=45&Year<=57){
+      if(NTZ[CELL, 4]=="N"){Fishing[CELL, ,YEAR] <- 0}
+    }
+    else if (Year>57) {
+      if(NTZ[CELL, 5]=="N"){Fishing[CELL, ,YEAR] <- 0}
+    } 
+  }
+}
+
 #### SAVE DATA ####
 setwd(sg_dir)
 
 saveRDS(Fishing, file="test_fishing")
-saveRDS(NoTake, file="test_NoTake")
+#saveRDS(NoTake, file="test_NoTake")
 

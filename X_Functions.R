@@ -14,44 +14,17 @@
 mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, Max.Cell, Month, Year, Population){
   
   sa <- 1/(1+(exp(-log(19)*((Age-mort.95/mort.95-mort.50))))) # This puts in size selectivity
-  
-  tot.survived <- array(0, dim=c(Max.Cell,12,30))
+
+  tot.survived <- NULL
 
 for(Cell in 1:Max.Cell){
-  
-  # Up until 1987 when there were no sanctuaries
-  if(Year>0&Year<=26){survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*(1-Nat.Mort)
-  tot.survived[Cell, Month-1, Age] <- survived}
-  
-  # From 1987 to 2005 when the first sanctuaries were in place
-  else if(Year>=27&Year<=44){
-    # If it's a NTZ then we don't have any fishing mortality in that cell
-    if(NTZ[Cell, 3]=="Y"){survived <- YearlyTotal[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*(1-Nat.Mort)
-    tot.survived[Cell, Month-1, Age] <- survived}
-    else { }  
-  }
-  
-  # From 2005 to 2017 when we had all the state sanctuaries but no commonwealth one
-  else if(Year>=45&Year<=57){
-    # If it's a NTZ then we don't have any fishing mortality in that cell
-    if(NTZ[Cell, 4]=="Y"){survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*(1-Nat.Mort)
-    tot.survived[Cell, Month-1, Age] <- survived}
-    else { }  
-  }
-  
-  # From 2017 onwards when we had all the sanctuaries 
-  else if(Year>57){
-    # If it's a NTZ then we don't have any fishing mortality in that cell
-    if(NTZ[Cell, 5]=="Y"){survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*(1-Nat.Mort)
-    tot.survived[Cell, Month-1, Age] <- survived}
-    else { }  
-  }
-  
-
-} # End fishing mortality for each cell
+    
+    survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*exp(-Nat.Mort)
+    tot.survived <- rbind(tot.survived, survived)
+    
+    } # End fishing mortality for each cell
   
   return(tot.survived)
-
 }
 
 #### Movement ####
@@ -60,7 +33,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   
   All.Movers <- NULL
   
-  if(Age==2 & Month==12){Population[, 12, Age-1] <- matrix(floor(runif(Max.Cell, 1, 2000)))
+  if(Age==2 & Month==12){Population[, 12, Age-1] <- matrix(floor(runif(Max.Cell, 1, 1000)))
   } else{ }
   
   ## Juvenile Movement
@@ -87,11 +60,6 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   All.Movers <- cbind(All.Movers, Juv.Movement2)
   
   return(All.Movers)
-  # 
-  # if(Month==13){
-  #   eval.parent(substitute(Population[ , 12, Age-1] <- Juv.Movement2)) # Deals with issue of there not being a 13th column
-  # } else {
-  #   eval.parent(substitute(Population[ , Month, Age-1] <- Juv.Movement2))} # End Juvenile Movement
   
   
   } else {  
@@ -118,17 +86,31 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
     All.Movers <- cbind(All.Movers, Movement2)
     
     return(All.Movers)
-    
-    # if(Month==13){
-    #   eval.parent(substitute(Population[ , 12, Age-1] <- Movement2)) # Deals with issue of there not being a 13th column
-    # } else {
-    #   eval.parent(substitute(Population[ , Month, Age-1] <- Movement2))} # End Juvenile Movement
-    # 
+
   } #End adult movement 
   
 }
 
+#### Plotting ####
 
+plotting.func <- function (area, n.breaks, colours) {
+  
+  water <- water%>%
+    mutate(pop = round(pop, digits=0)) %>% 
+    mutate(pop_level = cut_interval(pop, n=n.breaks)) 
+  
+  cols <- brewer.pal(n.breaks, colours)
+  
+  map <- ggplot(water)+
+    geom_sf(aes(fill=pop_level, color=Fished))+
+    scale_fill_manual(name="Population", values= cols, drop=FALSE)+
+    scale_color_manual(name="Fished", values=c("white", "black"))+
+    theme_void()
+  
+  return(map)
+}
+
+## NEED TO SET THE GROUPS TO BE THE SAME EVERY TIME SO THAT COlOURS CHANGE ON THE MAP PROPERLY
   
 
 

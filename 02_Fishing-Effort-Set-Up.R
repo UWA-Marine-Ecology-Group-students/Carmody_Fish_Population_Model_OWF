@@ -59,14 +59,14 @@ BR <- st_read("Boat_Ramps.shp") %>%
 
 ## Working out the fishing effort in the Gascoyne
 # Plotting the data to see what it looks like
-AverageYear <- boat_days %>% 
+TotalYear <- boat_days %>% 
   group_by(Year) %>% 
-  summarise(., Mean_Boat_Days=mean(Gascoyne_Boat_Days))
+  summarise(., Total_Boat_Days=sum(Gascoyne_Boat_Days))
 
-YearPlot <- ggplot(AverageYear) + 
-  geom_point(aes(x=Year, y=Mean_Boat_Days))
+YearPlot <- ggplot(TotalYear) + 
+  geom_point(aes(x=Year, y=Total_Boat_Days))
 
-YearModel <- lm(Gascoyne_Boat_Days~Year, data=boat_days)
+YearModel <- lm(Total_Boat_Days~Year, data=TotalYear)
 summary(YearModel)
 
 #### HINDCASTING ####
@@ -77,22 +77,22 @@ Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>%
 predictions <- predict(YearModel, newdata=Year2011_1990)
 
 Year2011_1990 <- Year2011_1990 %>% 
-  mutate(Mean_Boat_Days = predictions)
+  mutate(Total_Boat_Days = predictions)
 
-boat_days_hind <- rbind(AverageYear, Year2011_1990)
+boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 9872, length=30)
+effort <- seq(0, 118466, length=30)
 years <- seq(1960, 1989, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
   rename("Year" = years) %>% 
-  rename("Mean_Boat_Days" = effort)
+  rename("Total_Boat_Days" = effort)
 
 #### JOIN FISHING EFFORT ####
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
 YearPlot <- ggplot(boat_days_hind) + 
-  geom_point(aes(x=Year, y=Mean_Boat_Days))
+  geom_point(aes(x=Year, y=Total_Boat_Days))
 
 #### ALLOCATING MONLTHY EFFORT ####
 
@@ -132,9 +132,9 @@ boat_days_hind <- boat_days_hind %>%
   mutate(Gascoyne_Boat_Days = 0) %>% 
   left_join(., Month_Prop_Ave) %>% 
   group_by(Year) %>% 
-  mutate(Gascoyne_Boat_Days = Mean_Boat_Days*Ave_Month_Prop) %>% 
+  mutate(Gascoyne_Boat_Days = Total_Boat_Days*Ave_Month_Prop) %>% 
   ungroup() %>% 
-  dplyr::select(-c(Mean_Boat_Days))
+  dplyr::select(-c(Total_Boat_Days))
 
 check <- boat_days_hind %>% 
   group_by(Year) %>% 
@@ -146,7 +146,8 @@ Full_Boat_Days <- boat_days[,1:4] %>%
   rbind(boat_days_hind) %>% 
   arrange(-Year)
 
-# # Show this plot to Matt because things look hella janky and I'm not sure what we can do about it 
+
+# Plot and check that it looks right
 MonthPlot <- Full_Boat_Days %>%
   mutate(Unique = paste(Year, NumMonth, sep="_")) %>%
   filter(Month %in% c("Jun")) %>%
