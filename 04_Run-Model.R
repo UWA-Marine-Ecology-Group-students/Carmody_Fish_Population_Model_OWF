@@ -29,13 +29,10 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 
 #### PRE-SETS ####
 
-## Create colours for the plot
-cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000", "1000-1100", "1100-1200", "1200-1300",
-                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
-names(levels_water)[1] <- "Levels"
-levels_water$Levels <- as.factor(levels_water$Levels)
-names(cols) <- levels(levels_water$Levels)
+## Create colours for the plots
+pop.groups <- c(0,500,1000,5000,10000,20000,30000,40000,50000,60000,
+                70000,80000,90000,100000,200000,300000,400000,500000,600000)
+my.colours <- "RdBu"
 
 ## Read in functions
 setwd(working.dir)
@@ -122,28 +119,12 @@ for(YEAR in 2:59){
     
   }
   print(YEAR)
-  water$pop <- rowSums(PopTotal[ ,12,YEAR]) # We just want the population at the end of the year
+  water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
   
-  water <- water%>%
-    mutate(Population = ifelse(pop < 1000, "<1000",
-                               ifelse (pop>1000 & pop<110, "1000-1100",
-                                       ifelse (pop>1100 & pop<1200, "1100-1200",
-                                               ifelse (pop>1200 & pop<1300, "1200-1300",
-                                                       ifelse(pop>1300 & pop<1400, "1300-1400",
-                                                              ifelse(pop>1400 & pop<1500, "1400-1500",
-                                                                     ifelse(pop>1500 & pop<1600, "1500-1600", ">1600"
-                                                                            
-                                                                     ))))))))%>%
-    mutate(Population = factor(Population))
+  ## Plotting ##
+  map <- plotting.func(area=water, pop.breaks=pop.groups, colours="RdBu")
+  print(map)
   
-  water$Population <- fct_relevel(water$Population, "<1000",  "1000-1100", "1100-1200", "1200-1300",
-                                  "1300-1400", "1400-1500", "1500-1600", ">1600")
-  
-  print(map <- ggplot(water)+
-          geom_sf(aes(fill=Population, color=Fished))+
-          scale_fill_manual(name="Population", values= cols, drop=FALSE)+
-          scale_color_manual(name="Fished", values=c("white", "black"))+
-          theme_void())
   Sys.sleep(3)
 }
 

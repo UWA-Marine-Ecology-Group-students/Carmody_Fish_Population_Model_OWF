@@ -375,23 +375,34 @@ rowSums(Pj)
 #### RECRUITMENT MATRIX ####
 ## Want the recruits to be in the lagoons and then move out from there 
 dispersal <- lagoon_perc %>% 
-  dplyr::select(perc_habitat)
+  dplyr::select(perc_habitat, ID)
 dispersal$area <- as.vector(water$area)
 
-temp <- array(0, dim=c(NCELL, 1))
-recruitment <- array(0, dim=c(NCELL, 1))
+dispersal <- dispersal %>% 
+  filter(perc_habitat!=0)
 
-for (CELL in 1:NCELL){
+temp <- array(0, dim=c(NCELL, 1))
+recruitment <- array(0, dim=c(nrow(dispersal), 2))
+recruitment[ ,2] <- as.numeric(dispersal$ID) 
+
+for (CELL in 1:nrow(dispersal)){
   
-  for (cell in 1:NCELL){
-    temp[cell, 1] <- as.numeric((dispersal[cell,2]/dispersal[cell,1]))
+  for (cell in 1:nrow(dispersal)){
+    temp[cell, 1] <- as.numeric((dispersal[cell,3]/dispersal[cell,1]))    
   }
-  
-  temp[which(!is.finite(temp))] <- 0
+
   summed <- sum(temp)
   
   recruitment[CELL,1] <- as.numeric(temp[CELL,1]/summed)
 }
+
+recruitment <- as.data.frame(recruitment)
+colnames(recruitment)[colnames(recruitment)=="V2"] <- "ID"
+
+recruitment <- merge(recruitment, lagoon_perc, by="ID", all=T) %>% #check that cells with no lagoon habitat have 0 probability of recruitment
+  mutate_all(~replace(., is.na(.), 0)) #For cells where there was no lagoon habitat put probability of recruitment as 0
+  
+
 
 #### RECRUIT MOVEMENT ####
 ## Want the recruits to stay in the lagoon until they mature and move to the reef

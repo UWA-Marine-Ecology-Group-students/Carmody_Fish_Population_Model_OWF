@@ -91,30 +91,43 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   
 }
 
+#### Recruitment Function ####
+
+## Recruitment
+
+recruitment.func <- function(){
+  recs <- NULL #Blank matrix to add the recruits to
+  recruitment <- Population[ ,11,Age]
+  for(A in 1:dim(Population)[1]){
+    mature <- 1/(1+(exp(-log(19)*((Age-mat.95)/(mat.95-mat.50))))) #Proportion of mature individuals in each age class
+    S <- recruitment*mature #Spawning stock
+    rec <- S*0.76 #Number of recruits from that age class
+    recs <- rbind(recs, rec) #Combine recruits from each age class into one dataframe
+  }
+  
+  tot.recs <- sum(recs)
+}
+
+# Then get added to January Population 
 #### Plotting ####
 
-plotting.func <- function (area, n.breaks, colours) {
+plotting.func <- function (area, pop.breaks, pop.labels, colours) {
   
   water <- water%>%
     mutate(pop = round(pop, digits=0)) %>% 
-    mutate(pop_level = cut_interval(pop, n=n.breaks)) 
+    mutate(pop_level = cut(pop, pop.breaks)) 
   
-  cols <- brewer.pal(n.breaks, colours)
+  nb.cols <- length(pop.breaks)
+  mycols <- mycolors <- colorRampPalette(brewer.pal(8, "RdBu"))(nb.cols)
   
   map <- ggplot(water)+
     geom_sf(aes(fill=pop_level, color=Fished))+
-    scale_fill_manual(name="Population", values= cols, drop=FALSE)+
+    scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
     scale_color_manual(name="Fished", values=c("white", "black"))+
     theme_void()
   
   return(map)
 }
-
-## NEED TO SET THE GROUPS TO BE THE SAME EVERY TIME SO THAT COlOURS CHANGE ON THE MAP PROPERLY
-  
-
-
-
 
 
 

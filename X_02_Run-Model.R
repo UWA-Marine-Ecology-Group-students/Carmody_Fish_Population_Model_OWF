@@ -28,12 +28,9 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 #### PRE-SETS ####
 
 ## Create colours for the plot
-cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000", "1000-1100", "1100-1200", "1200-1300",
-                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
-names(levels_water)[1] <- "Levels"
-levels_water$Levels <- as.factor(levels_water$Levels)
-names(cols) <- levels(levels_water$Levels)
+pop.groups <- c(0,500,1000,5000,10000,20000,30000,40000,50000,60000,
+                70000,80000,90000,100000,200000,300000,400000,500000,600000)
+my.colours <- "RdBu"
 
 ## Read in functions
 setwd(working.dir)
@@ -108,16 +105,6 @@ for(YEAR in 30:40){
     } # End Mortality
   
   } #End bracket for months
-  
-    # ## Recruitment
-    # Recs <- matrix(0, nrow=1, ncol=1) #Blank matrix to add the recruits to
-    # Recruitment <- as.matrix(colSums(Pop[,t,], dims=1)) 
-    # for(A in 1:dim(Recruitment)[1]){
-    #   Mature <- 1/(1+(exp(-log(19)*((A-M95)/(M95-M50))))) #Number of mature individuals in each age class
-    #   S <- colSums(Recruitment)*Mature #Spawning stock
-    #   Rec <- a*S*exp(-b*S) #Number of recruits from that age class
-    #   Recs <- rbind(Recs, Rec) #Combine recruits from each age class into one dataframe
-    # }
     
     PopTotal[ , , YEAR] <- rowSums(YearlyTotal) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
     # PopTotal[ , , YEAR] <- YearlyTotal[ , , ]  # This is just because we're looking at juveniles right now
@@ -127,7 +114,7 @@ for(YEAR in 30:40){
   water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
   
   ## Plotting ##
-  map <- plotting.func(area=water, n.break=5, colours="RdBu")
+  map <- plotting.func(area=water, pop.breaks=pop.groups, colours="RdBu")
   print(map)
   
   Sys.sleep(3)
