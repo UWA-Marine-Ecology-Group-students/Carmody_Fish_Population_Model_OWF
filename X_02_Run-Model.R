@@ -40,6 +40,7 @@ source("X_Functions.R")
 setwd(sg_dir)
 movement <- readRDS("test_movement")
 juv_movement <- readRDS("test_juvmove")
+recruitment <- readRDS("recruitment")
 fishing <- readRDS("test_fishing")
 NoTake <- readRDS("test_NoTake")
 water <- readRDS("test_water")
@@ -72,14 +73,14 @@ NCELL <- nrow(water)
 #### RUN MODEL ####
 
 YearlyTotal <- array(0, dim = c(NCELL,12,8)) #This is our yearly population split by age category (every layer is an age group)
-# If you change age you have to change in the fish mortality function too
+# If you change age you have to change it in the fish mortality function too
 for(d in 1:8){
-  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 2000)))
+  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 20000)))
 }
 
 PopTotal <- array(0, dim=c(NCELL, 12, 59)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 
-for(YEAR in 30:40){
+for(YEAR in 1:59){
   
   for(MONTH in 2:13){
     
@@ -92,8 +93,7 @@ for(YEAR in 30:40){
       } else {
         YearlyTotal[ , MONTH, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
                                                  Juv.Move=juv_movement)
-      }
-      
+      } 
 
     }  # End bracket for movement
     
@@ -103,11 +103,17 @@ for(YEAR in 30:40){
                      Month=MONTH, Year=YEAR, Population=YearlyTotal)
       
     } # End Mortality
-  
+    
+    ## Recruitment
+    
+    if(MONTH==11){
+      YearlyTotal[,1,1] <- recruitment.func(Population=YearlyTotal, Age=A, mat.95=M95, mat.50=M50, settlement=recruitment, Max.Cell=NCELL)
+    } else { } 
+    # End Recruitment
   } #End bracket for months
     
-    PopTotal[ , , YEAR] <- rowSums(YearlyTotal) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
-    # PopTotal[ , , YEAR] <- YearlyTotal[ , , ]  # This is just because we're looking at juveniles right now
+     PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,4:8]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+    # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
     
   
   print(YEAR)

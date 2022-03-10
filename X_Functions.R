@@ -33,9 +33,6 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   
   All.Movers <- NULL
   
-  if(Age==2 & Month==12){Population[, 12, Age-1] <- matrix(floor(runif(Max.Cell, 1, 1000)))
-  } else{ }
-  
   ## Juvenile Movement
   if(Age<=4){
     
@@ -95,17 +92,37 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 
 ## Recruitment
 
-recruitment.func <- function(){
-  recs <- NULL #Blank matrix to add the recruits to
-  recruitment <- Population[ ,11,Age]
-  for(A in 1:dim(Population)[1]){
+  
+recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell){
+  adults <- Population[ ,1,Age]
+  tot.recs <- data.frame(matrix(0, nrow = Max.Cell, ncol = dim(Population)[3]))
+  
+  for(Age in 1:dim(Population)[3]){
+    recs <- NULL #Blank matrix to add the recruits to
     mature <- 1/(1+(exp(-log(19)*((Age-mat.95)/(mat.95-mat.50))))) #Proportion of mature individuals in each age class
-    S <- recruitment*mature #Spawning stock
-    rec <- S*0.76 #Number of recruits from that age class
-    recs <- rbind(recs, rec) #Combine recruits from each age class into one dataframe
+    for(Cell in 1:Max.Cell){
+      S <- adults[Cell]*mature #Spawning stock
+      rec <- S*0.76 #Number of recruits from that age class -  will need to put the SST thing in here
+      recs <- rbind(recs, rec) #Combine recruits from each age class into one dataframe
   }
   
-  tot.recs <- sum(recs)
+    tot.recs[ ,Age] <- recs
+  
+  }
+  
+  settle.recs <- tot.recs
+  
+  for(Age in 1:dim(Population)[3]){
+    
+    temp <- sum(settle.recs[,Age])
+    settle.recs[ ,Age] <- temp*settlement[,2]
+    
+  }
+  
+  settled <- rowSums(settle.recs)
+  return(settled)
+
+
 }
 
 # Then get added to January Population 

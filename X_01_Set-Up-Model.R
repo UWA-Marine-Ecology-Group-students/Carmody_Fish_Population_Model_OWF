@@ -167,6 +167,7 @@ plot(SmallGrd, add=T)
 BigGrd <- st_make_valid(BigGrd)
 
 water <- append(BigGrd, SmallGrd)
+water <- st_make_valid(water)
 plot(water)
 
 # Create a grid layer that is just for NTZs so we can adjust fishing mortality later
@@ -340,10 +341,10 @@ for (r in 1:NCELL){
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-a = 0.8
+a = 0.6
 b = 1.5
-c = 0.7
-d = 0.5
+c = 0.8
+d = 0.3
 e = 0.2
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
@@ -388,7 +389,7 @@ recruitment[ ,2] <- as.numeric(dispersal$ID)
 for (CELL in 1:nrow(dispersal)){
   
   for (cell in 1:nrow(dispersal)){
-    temp[cell, 1] <- as.numeric((dispersal[cell,3]/dispersal[cell,1]))    
+    temp[cell, 1] <- as.numeric((dispersal[cell,1]/dispersal[cell,3]))    
   }
 
   summed <- sum(temp)
@@ -444,6 +445,7 @@ setwd(sg_dir)
 saveRDS(Pj, file="test_movement")
 saveRDS(water, file="test_water")
 saveRDS(ProbRec, file="test_juvmove")
+saveRDS(recruitment, file="recruitment")
 
 #### SET UP THE FISHING SURFACE - SAME AS SCRIPT 02 ####
 ## Data
