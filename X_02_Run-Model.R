@@ -69,18 +69,26 @@ A95 <- 6 # For L. miniatus from Williams et al. 2012
 q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 
 NCELL <- nrow(water)
+Ages <- seq(4,8) #These are the ages you want to plot 
+Time <- seq(1,500) #This is how long you want the model to run for
+PlotTotal <- T #This is whether you want a line plot of the total or the map
+
+Pop.Groups <- seq(1,12)
 
 #### RUN MODEL ####
 
-YearlyTotal <- array(0, dim = c(NCELL,12,8)) #This is our yearly population split by age category (every layer is an age group)
+BurnIn = T #This is to swap the model between burn in and running the model properly
+Total <- array(NA, dim=c(length(Time),1))
+
+YearlyTotal <- array(0, dim = c(NCELL,12,30)) #This is our yearly population split by age category (every layer is an age group)
 # If you change age you have to change it in the fish mortality function too
 for(d in 1:8){
-  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 20000)))
+  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 50))) #50 is too few
 }
 
-PopTotal <- array(0, dim=c(NCELL, 12, 59)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 
-for(YEAR in 1:59){
+for(YEAR in 1:length(Time)){
   
   for(MONTH in 2:13){
     
@@ -107,12 +115,13 @@ for(YEAR in 1:59){
     ## Recruitment
     
     if(MONTH==11){
-      YearlyTotal[,1,1] <- recruitment.func(Population=YearlyTotal, Age=A, mat.95=M95, mat.50=M50, settlement=recruitment, Max.Cell=NCELL)
+      YearlyTotal[,1,1] <- recruitment.func(Population=YearlyTotal, Age=A, mat.95=M95, mat.50=M50, settlement=recruitment, 
+                                            Max.Cell=NCELL, relationship=0.76)
     } else { } 
     # End Recruitment
   } #End bracket for months
     
-     PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,4:8]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+     PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
     # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
     
   
@@ -120,8 +129,10 @@ for(YEAR in 1:59){
   water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
   
   ## Plotting ##
-  map <- plotting.func(area=water, pop.breaks=pop.groups, colours="RdBu")
-  print(map)
+  Total[YEAR,1] <- sum(water$pop)
+  
+  plots <- plotting.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
+  print(plots)
   
   Sys.sleep(3)
 }

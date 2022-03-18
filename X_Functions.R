@@ -13,11 +13,24 @@
 
 mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, Max.Cell, Month, Year, Population){
   
+  if(BurnIn){
+   
+    tot.survived <- NULL
+    
+    for(Cell in 1:Max.Cell){
+      
+      survived <- Population[Cell,Month-1,Age]*exp(-Nat.Mort)
+      tot.survived <- rbind(tot.survived, survived)
+      
+    }
+    return(tot.survived)
+    
+  }
   sa <- 1/(1+(exp(-log(19)*((Age-mort.95/mort.95-mort.50))))) # This puts in size selectivity
 
   tot.survived <- NULL
-
-for(Cell in 1:Max.Cell){
+  
+  for(Cell in 1:Max.Cell){
     
     survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*exp(-Nat.Mort)
     tot.survived <- rbind(tot.survived, survived)
@@ -49,10 +62,10 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   
   Juv.Movement2 <- as.matrix(colSums(Juv.Moving))
   Juv.Moved <- sum(Juv.Movement2)
-  print(isTRUE(all.equal(Juv.Movers, Juv.Moved)))
-  if((isTRUE(all.equal(Juv.Movers, Juv.Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
-  {print(Juv.Movers)
-    print(Juv.Moved)} else{ }
+  # print(isTRUE(all.equal(Juv.Movers, Juv.Moved)))
+  # if((isTRUE(all.equal(Juv.Movers, Juv.Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+  # {print(Juv.Movers)
+  #   print(Juv.Moved)} else{ } Can Put This Check Back in Periodically to Confirm model Functioning
   
   All.Movers <- cbind(All.Movers, Juv.Movement2)
   
@@ -93,7 +106,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 ## Recruitment
 
   
-recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell){
+recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, relationship){
   adults <- Population[ ,1,Age]
   tot.recs <- data.frame(matrix(0, nrow = Max.Cell, ncol = dim(Population)[3]))
   
@@ -102,7 +115,7 @@ recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Ce
     mature <- 1/(1+(exp(-log(19)*((Age-mat.95)/(mat.95-mat.50))))) #Proportion of mature individuals in each age class
     for(Cell in 1:Max.Cell){
       S <- adults[Cell]*mature #Spawning stock
-      rec <- S*0.76 #Number of recruits from that age class -  will need to put the SST thing in here
+      rec <- S*relationship #Number of recruits from that age class -  will need to put the SST thing in here
       recs <- rbind(recs, rec) #Combine recruits from each age class into one dataframe
   }
   
@@ -128,22 +141,37 @@ recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Ce
 # Then get added to January Population 
 #### Plotting ####
 
-plotting.func <- function (area, pop.breaks, pop.labels, colours) {
+plotting.func <- function (area, pop ,pop.breaks, pop.labels, colours) {
   
-  water <- water%>%
-    mutate(pop = round(pop, digits=0)) %>% 
-    mutate(pop_level = cut(pop, pop.breaks)) 
-  
-  nb.cols <- length(pop.breaks)
-  mycols <- mycolors <- colorRampPalette(brewer.pal(8, "RdBu"))(nb.cols)
-  
-  map <- ggplot(water)+
-    geom_sf(aes(fill=pop_level, color=Fished))+
-    scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-    scale_color_manual(name="Fished", values=c("white", "black"))+
-    theme_void()
-  
-  return(map)
+  if(PlotTotal){
+    
+    TimeSeries <- ggplot()+
+      geom_line(aes(x=1:nrow(Total), y=Total))+
+      xlab("Year")+
+      ylab("Total Population")+
+      theme_classic()
+    
+    return(TimeSeries)
+
+  } else {
+    
+    water <- water%>%
+      mutate(pop = round(pop, digits=0)) %>% 
+      mutate(pop_level = cut(pop, pop.breaks)) 
+    
+    nb.cols <- length(pop.breaks)
+    mycols <- mycolors <- colorRampPalette(brewer.pal(8, "RdBu"))(nb.cols)
+    
+    map <- ggplot(water)+
+      geom_sf(aes(fill=pop_level, color=Fished))+
+      scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
+      scale_color_manual(name="Fished", values=c("white", "black"))+
+      theme_void()
+    
+    return(map)
+    
+  }
+
 }
 
 
