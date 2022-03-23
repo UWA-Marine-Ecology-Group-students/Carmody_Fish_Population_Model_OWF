@@ -341,11 +341,11 @@ for (r in 1:NCELL){
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-a = 0.6
-b = 1.5
-c = 0.8
-d = 0.3
-e = 0.2
+a = 0.08
+b = 0.15
+c = 0.1
+d = 0.04
+e = 0.01
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
