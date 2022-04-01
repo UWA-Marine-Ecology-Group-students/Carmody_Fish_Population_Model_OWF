@@ -43,6 +43,7 @@ setwd(sg_dir)
 water <- readRDS("water")
 
 # Locations of the boat ramps
+setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid
@@ -180,7 +181,7 @@ BR_Trips <- data.frame(BoatRamp = c("Tantabiddi", "Bundegi", "ExmouthMar", "Cora
 
 BR_Trips <- BR_Trips %>% 
   mutate(Trip_per_Hr = as.numeric(unlist((Trips/Effort)))) %>% # Standardise the no. trips based on how much time you spent sampling
-  mutate(BR_Prop = Trip_per_Hr/sum(Trip_per_Hr)) %>% #Then work out the proportion of trips each house that leave from each boat ramp
+  mutate(BR_Prop = Trip_per_Hr/sum(Trip_per_Hr)) %>% #Then work out the proportion of trips each hour that leave from each boat ramp
   mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008, have 
 # allocated 10% of its boats to the other Exmouth Boat Ramps
 
@@ -243,7 +244,7 @@ BR_U <- BR_U %>% #make sure you give the columns good names so that you know wha
 
 for(RAMP in 1:4){
   
-  Tot <- sum(Cell_Vars$Area/Cell_Vars[,RAMP])
+  Tot <- sum((Cell_Vars$Area/Cell_Vars[,RAMP])/100)
   
   for(CELL in 1:NCELL){
     BR_U[CELL,RAMP] <- (Cell_Vars[CELL,RAMP]/Tot)
@@ -282,7 +283,7 @@ for(YEAR in 1:59){
   Fishing[ , ,YEAR] <- Months 
 }
 
-Fishing <- Fishing*q
+Fishing <- Fishing*q # multiply by catchability
 
 ## Add NTZs
 NoTake <- st_sf(water) %>% 

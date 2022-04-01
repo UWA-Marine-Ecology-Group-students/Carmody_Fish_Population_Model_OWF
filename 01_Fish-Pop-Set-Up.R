@@ -223,6 +223,8 @@ ggplot(water)+
 
 water <- st_make_valid(water)
 
+water <- water[-299, ]
+
 # Get centroids for the grid cells 
 centroids <- st_centroid_within_poly(water)
 plot(centroids, cex=0.3) 
@@ -354,11 +356,11 @@ for (r in 1:NCELL){
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-a = 1
-b = 1
-c = 1
-d = 1
-e = 1
+a = 0.08
+b = 0.15
+c = 0.1
+d = 0.04
+e = 0.01
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -389,11 +391,15 @@ rowSums(Pj)
 #### RECRUITMENT MATRIX ####
 ## Want the recruits to be in the lagoons and then move out from there 
 dispersal <- lagoon_perc %>% 
-  dplyr::select(perc_habitat)
+  dplyr::select(perc_habitat, ID)
 dispersal$area <- as.vector(water$area)
 
+dispersal <- dispersal %>% 
+  filter(perc_habitat!=0)
+
 temp <- array(0, dim=c(NCELL, 1))
-recruitment <- array(0, dim=c(NCELL, 1))
+recruitment <- array(0, dim=c(nrow(dispersal), 2))
+recruitment[ ,2] <- as.numeric(dispersal$ID) 
 
 for (CELL in 1:NCELL){
   
@@ -407,14 +413,20 @@ for (CELL in 1:NCELL){
   recruitment[CELL,1] <- as.numeric(temp[CELL,1]/summed)
 }
 
+recruitment <- as.data.frame(recruitment)
+colnames(recruitment)[colnames(recruitment)=="V2"] <- "ID"
+
+recruitment <- merge(recruitment, lagoon_perc, by="ID", all=T) %>% #check that cells with no lagoon habitat have 0 probability of recruitment
+  mutate_all(~replace(., is.na(.), 0)) #For cells where there was no lagoon habitat put probability of recruitment as 0
+
 #### RECRUIT MOVEMENT ####
 ## Want the recruits to stay in the lagoon until they mature and move to the reef
 
-a = 1
-b = 0.8
-c = 3
-d = 0.6
-e = 0.01
+a = 0.1
+b = 0.01
+c = 0.09
+d = 0.05
+e = 0.001
 
 Recj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -447,6 +459,7 @@ setwd(sg_dir)
 saveRDS(Pj, file="movement")
 saveRDS(water, file="water")
 saveRDS(ProbRec, file="juvmove")
+saveRDS(recruitment, file="recruitment")
 
 #### SST FOR RECRUITMENT ####
 

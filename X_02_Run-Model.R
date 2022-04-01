@@ -14,6 +14,9 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(Rcpp)
+library(RcppArmadillo)
+library(inline)
 
 
 #### SET DIRECTORIES ####
@@ -28,8 +31,7 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 #### PRE-SETS ####
 
 ## Create colours for the plot
-pop.groups <- c(0,500,1000,5000,10000,20000,30000,40000,50000,60000,
-                70000,80000,90000,100000,200000,300000,400000,500000,600000)
+pop.groups <- c(0,50,100,500,1000,2000,3000,4000,5000,6000)
 my.colours <- "RdBu"
 
 ## Read in functions
@@ -59,6 +61,7 @@ a <- 7
 b <- 0.0017
 M50 <- 2 # From Grandcourt et al. 2010
 M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
+relationship <- 0.76
 
 #Fish movement parameters
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
@@ -71,19 +74,19 @@ q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 NCELL <- nrow(water)
 Ages <- seq(4,8) #These are the ages you want to plot 
 Time <- seq(1,500) #This is how long you want the model to run for
-PlotTotal <- T #This is whether you want a line plot of the total or the map
+PlotTotal <- F #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
 
 #### RUN MODEL ####
 
-BurnIn = T #This is to swap the model between burn in and running the model properly
+BurnIn = F #This is to swap the model between burn in and running the model properly
 Total <- array(NA, dim=c(length(Time),1))
 
 YearlyTotal <- array(0, dim = c(NCELL,12,30)) #This is our yearly population split by age category (every layer is an age group)
 # If you change age you have to change it in the fish mortality function too
-for(d in 1:8){
-  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 50))) #50 is too few
+for(d in 1:dim(YearlyTotal)[3]){
+  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 100))) #50 is too few
 }
 
 PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
@@ -106,7 +109,11 @@ for(YEAR in 1:length(Time)){
     }  # End bracket for movement
     
     ## Fishing Mortality
+    
     for(A in 1:dim(YearlyTotal)[3]){
+      
+      #YearPop <- YearlyTotal[ , ,A]
+      
       YearlyTotal[ ,MONTH-1 ,A] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Cell=CELL, Max.Cell = NCELL,
                      Month=MONTH, Year=YEAR, Population=YearlyTotal)
       
