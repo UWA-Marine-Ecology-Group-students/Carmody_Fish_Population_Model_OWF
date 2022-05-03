@@ -18,7 +18,7 @@ mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, 
     tot.survived <- Population[, Month-1,Age]*exp(-Nat.Mort)
     
   }
-  sa <- 1/(1+(exp(-log(19)*((Age-mort.95/mort.95-mort.50))))) # This puts in size selectivity
+  sa <- 1/(1+(exp(-log(19)*((Age-mort.50/mort.95-mort.50))))) # This puts in size selectivity - GOT A50 IN WRONG PLACE, FIXED IT NOW
   
   tot.survived <- sapply(seq(Max.Cell), function(Cell) {
     survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*exp(-Nat.Mort)
@@ -84,7 +84,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 
 ## Recruitment
 
-recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, relationship){
+recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, relationship, RRa, RRb, Fcd){
   adults <- Population[ ,1,Age]
   tot.recs <- data.frame(matrix(0, nrow = Max.Cell, ncol = dim(Population)[3]))
   
@@ -93,8 +93,8 @@ recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Ce
     mature <- 1/(1+(exp(-log(19)*((Age-mat.95)/(mat.95-mat.50))))) #Proportion of mature individuals in each age class
     
     recs <- sapply(seq(Max.Cell), function(Cell){
-      S <- adults[Cell]*mature #Spawning stock
-      recs <- S*relationship #Number of recruits from that age class -  will need to put the SST thing in here
+      S <- adults[Cell]*mature*Fcd #Spawning stock
+      recs <- RRa*S*exp(1)^(-RRb*S) #Number of recruits from that age class -  will need to put the SST thing in here
     })
   
     recs

@@ -16,9 +16,7 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
-library(Rcpp)
-library(RcppArmadillo)
-library(inline)
+
 
 
 #### SET DIRECTORIES ####
@@ -64,6 +62,7 @@ a <- 7
 b <- 0.0017
 M50 <- 2 # From Grandcourt et al. 2010
 M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
+Fecundity <- 7000000
 
 #Fish movement parameters
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
@@ -100,13 +99,14 @@ YearlyTotal_test[ , , 1]
 YearlyTotal_test[ , 2, 1] <- movement.func(Age=2, Month=2, Population=YearlyTotal_test, Max.Cell=NCELL, Adult.Move= movement,
                                             Juv.Move=juv_movement)
 
-YearlyTotal_test[ , , 1] 
+sum(YearlyTotal_test[,1,1])
+sum(YearlyTotal_test[,2,1]) # should be equal
 
 #### Recruitment Function Test ####
 
 
 YearlyTotal_test[,2,1] <- recruitment.func(Population=YearlyTotal_test, Age=6, mat.95=M95, mat.50=M50, settlement=recruitment, #Normally month would be 1 but for this it's easier to set it at 2
-                                      Max.Cell=NCELL, relationship=0.76)
+                                      Max.Cell=NCELL, Fcd=Fecundity, RRa=a, RRb=b)
 
 YearlyTotal_test[ , , 1] 
 

@@ -8,8 +8,6 @@ library(forcats)
 library(RColorBrewer)
 library(geosphere)
 
-
-
 ## Functions
 # This returns the centre of the ploygon, but if it's on land it will create a new centroid
 
@@ -44,6 +42,8 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
+
+SwimSpeed <- 1
 
 #### LOAD FILES ####
 
@@ -251,22 +251,22 @@ habitat <- rbind(reef, lagoon, rocky, pelagic)
 plot(habitat$geom)
 plot(water, add=T)
 
+### Something wrong here - st_intersection is not working the same way it does in RStudio Desktop ####
 # Calculate the percentage of each habitat type in each of the different cells 
-intersection <- st_intersection(habitat, water) #This gives you all the individual areas where there is overlap, the ID of the original grid cell and the habitat in each of the new little cells
-plot(intersection$geom)
+intersection <- st_intersection(habitat, water) #This gives you all the individual areas where there is overlap, the ID of the original grid cell and the habitat in each of the new little cells=plot(intersection$geom)
 
 intersection <- st_make_valid(intersection)
 
-intersection$area <- st_area(intersection) #gives you the area each of the small cells covers 
-water$area <- st_area(water) #gives you the area of each of the cells in the grid
+intersection$hab_area <- st_area(intersection) #gives you the area each of the small cells covers 
+water$cell_area <- st_area(water) #gives you the area of each of the cells in the grid
 
 hab_perc <- merge(st_drop_geometry(intersection), st_drop_geometry(water), by.x="ID", by.y="ID")%>%
-  mutate(area.x = as.numeric(area.x))%>%
-  mutate(area.y = as.numeric(area.y))%>%
-  mutate(perc_habitat = ((area.x/area.y)*100)) # This tells you how much of each water grid cell is made up of the different habitat types 
+  mutate(hab_area = as.numeric(hab_area))%>%
+  mutate(cell_area = as.numeric(cell_area))%>%
+  mutate(perc_habitat = ((hab_area/cell_area)*100)) %>%  # This tells you how much of each water grid cell is made up of the different habitat types 
+  mutate(perc_habitat = ifelse(perc_habitat>100, 100, perc_habitat)) # The intersection has given a couple of places where the % is just over 100 so just round these back to 100
 
 # Create separate data frames for each habitat type and fill in for where cells don't have a certain habitat type
-
 pelagic_perc <- hab_perc%>%
   filter(type=="pelagic")%>%
   dplyr::select(ID, type, perc_habitat)%>%
@@ -351,7 +351,31 @@ for (r in 1:NCELL){
   }
 }
 
+### Save all the files you need to remake these matrices ###
+# setwd(sp_dir)
+# 
+# saveRDS(dist_matrix, file="dist_matrix")
+# saveRDS(pelagic_perc, file="pelagic_perc")
+# saveRDS(reef_perc, file="reef_perc")
+# saveRDS(lagoon_perc, file="lagoon_perc")
+# saveRDS(rocky_perc, file="rocky_perc")
+# 
+# saveRDS(pDist, file="pDist")
+# saveRDS(pPelagic, file="pPelagic")
+# saveRDS(pReef, file="pReef")
+# saveRDS(pLagoon, file="pLagoon")
+# saveRDS(pRocky, file="pRocky")
+
 #### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
+## Load files if need be ##
+# setwd(sp_dir)
+# 
+# pDist <- readRDS("pDist")
+# pPelagic <- readRDS("pPelagic")
+# pReef <- readRDS("pReef")
+# pLagoon <- readRDS("pLagoon")
+# pRocky <- readRDS("pRocky")
+
 # First determine the utility of each of the sites 
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
