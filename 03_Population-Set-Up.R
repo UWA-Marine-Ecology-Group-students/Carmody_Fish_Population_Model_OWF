@@ -233,6 +233,10 @@ saveRDS(Selectivity, file="selectivity")
 Maturity <- Fished.Pop.SetUp$Fish.Mat
 saveRDS(Maturity, file="maturity")
 
+## We need the weights for each age group as well
+
+Weight <- Life.History$Weight
+saveRDS(Weight, file="weight")
 
 
 

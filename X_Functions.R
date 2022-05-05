@@ -21,7 +21,7 @@ mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, 
   #sa <- 1/(1+(exp(-log(19)*((Age-mort.50/mort.95-mort.50))))) # This puts in size selectivity - GOT A50 IN WRONG PLACE, FIXED IT NOW
   
   tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-    survived <- Population[Cell,Month-1,Age]*exp(-Select[Age,1]*Effort[Cell,Month-1,Year])*exp(-Nat.Mort)
+    survived <- Population[Cell,Month-1,Age]*exp(-Select[((Age*12)+1),1]*Effort[Cell,Month-1,Year])*exp(-Nat.Mort) # Can't do selectivity like this - has to be specific for each month as it changes! 
     survived
   })
   
@@ -84,32 +84,20 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 
 ## Recruitment
 
-recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, relationship, RRa, RRb, Mature){
-  adults <- Population[ ,1,Age]
+recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, BHa, BHb, Mature, Weight, PF){
+  adults <- Population[ ,10, ]*PF # Gives us just females because they are the limiting factor for reproduction
   tot.recs <- data.frame(matrix(0, nrow = Max.Cell, ncol = dim(Population)[3]))
   
   tot.recs <- lapply(1:dim(Population)[3], function(Age){
-
-    #mature <- 1/(1+(exp(-log(19)*((Age-mat.50)/(mat.95-mat.50))))) # SHOULD BE ABLE TO SWAP THIS FOR THE MATURITY OBJECT SOMEWHERE
-    
-    recs <- sapply(seq(Max.Cell), function(Cell){
-      S <- adults[Cell]*mature[Age]*Fcd 
-      recs <- 
-    })
-  
-    recs
-  
-  }) %>% 
-    do.call(cbind, .)
-  
-  settle.recs <- tot.recs
-  
-  settle.recs <- sapply(1:dim(Population)[3], function(Age){
-    temp <- sum(settle.recs[,Age])
-    settle.recs[ ,Age] <- temp*settlement[,2]
+    SB <- adults[ , Age] * Mature[Age,1] * Weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
+    TotMatBio <- sum(SB) #Gives us total mature spawning biomass
+    recs <- (SB/BHa+BHb*SB) # This gives us males and females to go into the next generation
   })
+  tot.recs <- do.call(rbind, tot.recs)
+
+  settle.recs <- sum(tot.recs)
   
-  settled <- rowSums(settle.recs)
+  settled <- tot.recs*settlement[,2]
   return(settled)
 }
 
@@ -148,5 +136,4 @@ plotting.func <- function (area, pop ,pop.breaks, pop.labels, colours) {
   }
 
 }
-
 
