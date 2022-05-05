@@ -6,6 +6,8 @@
 
 ###################################################
 
+
+## NEED TO CHANGE THE INITIAL FISHING MORTALITY AT 1965 TO BE THE SAME AS THE EQLUILIBRIUM LEVEL ##
 library(tidyverse)
 library(dplyr)
 library(ggplot2)

@@ -11,17 +11,17 @@
 
 #### Mortality ####
 
-mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, Max.Cell, Month, Year, Population){
+mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, Max.Cell, Month, Year, Population, Select){
   
   if(BurnIn){
    
     tot.survived <- Population[, Month-1,Age]*exp(-Nat.Mort)
     
   }
-  sa <- 1/(1+(exp(-log(19)*((Age-mort.50/mort.95-mort.50))))) # This puts in size selectivity - GOT A50 IN WRONG PLACE, FIXED IT NOW
+  #sa <- 1/(1+(exp(-log(19)*((Age-mort.50/mort.95-mort.50))))) # This puts in size selectivity - GOT A50 IN WRONG PLACE, FIXED IT NOW
   
   tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-    survived <- Population[Cell,Month-1,Age]*exp(-sa*Effort[Cell,Month-1,Year])*exp(-Nat.Mort)
+    survived <- Population[Cell,Month-1,Age]*exp(-Select[Age,1]*Effort[Cell,Month-1,Year])*exp(-Nat.Mort)
     survived
   })
   
@@ -84,17 +84,17 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 
 ## Recruitment
 
-recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, relationship, RRa, RRb, Fcd){
+recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, relationship, RRa, RRb, Mature){
   adults <- Population[ ,1,Age]
   tot.recs <- data.frame(matrix(0, nrow = Max.Cell, ncol = dim(Population)[3]))
   
   tot.recs <- lapply(1:dim(Population)[3], function(Age){
 
-    mature <- 1/(1+(exp(-log(19)*((Age-mat.95)/(mat.95-mat.50))))) #Proportion of mature individuals in each age class
+    #mature <- 1/(1+(exp(-log(19)*((Age-mat.50)/(mat.95-mat.50))))) # SHOULD BE ABLE TO SWAP THIS FOR THE MATURITY OBJECT SOMEWHERE
     
     recs <- sapply(seq(Max.Cell), function(Cell){
-      S <- adults[Cell]*mature*Fcd #Spawning stock
-      recs <- RRa*S*exp(1)^(-RRb*S) #Number of recruits from that age class -  will need to put the SST thing in here
+      S <- adults[Cell]*mature[Age]*Fcd 
+      recs <- 
     })
   
     recs

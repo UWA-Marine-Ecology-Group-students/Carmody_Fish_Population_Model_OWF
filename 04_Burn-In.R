@@ -36,6 +36,7 @@ my.colours <- "RdBu"
 ## Read in functions
 setwd(working.dir)
 source("X_Functions.R")
+source("03_Population-Set-Up.R")
 
 #### LOAD FILES ####
 setwd(sg_dir)
@@ -45,6 +46,9 @@ recruitment <- readRDS("recruitment")
 fishing <- readRDS("Fishing")
 NoTake <- readRDS("NoTake")
 water <- readRDS("water")
+selectivity <- readRDS("selectivity")
+maturity <- readRDS("maturity")
+start.pop <- readRDS("Starting_Pop")
 
 #### PARAMETER VALUES ####
 
@@ -55,21 +59,17 @@ monthly_mort=1-(yearly_surv^(1/12))
 
 M <- monthly_mort # Natural mortality rate per month
 
-#Ricker recruitment model parameters (these are currently just made up values)
-a <- 7
-b <- 0.0017
-M50 <- 2 # From Grandcourt et al. 2010
-M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
-relationship <- 0.76
-Fecundity <- 7000000
+# Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
+alpha <- 0.3245958
+beta <- 0.0001910434
 
 #Fish movement parameters
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
 
 ## Fishing mortality parameters
-A50 <- 4 # For L. miniatus from Williams et al. 2010 # L. miniatus becomes vulnerable to fishing at about age two
-A95 <- 6 # For L. miniatus from Williams et al. 2012
-q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
+# A50 <- 4 # For L. miniatus from Williams et al. 2010 # L. miniatus becomes vulnerable to fishing at about age two
+# A95 <- 6 # For L. miniatus from Williams et al. 2012
+# q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 
 NCELL <- nrow(water)
 Ages <- seq(4,30) #These are the ages you want to plot 
@@ -115,7 +115,7 @@ for(YEAR in 1:length(Time)){
       #YearPop <- YearlyTotal[ , ,A]
       
       YearlyTotal[ ,MONTH-1, A] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Cell=CELL, Max.Cell = NCELL,
-                                                  Month=MONTH, Year=YEAR, Population=YearlyTotal)
+                                                  Month=MONTH, Year=YEAR, Select=Selectivity, Population=YearlyTotal)
       
     } # End Mortality
     

@@ -14,9 +14,6 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
-library(Rcpp)
-library(RcppArmadillo)
-library(inline)
 
 
 #### SET DIRECTORIES ####
@@ -51,10 +48,7 @@ water <- readRDS("test_water")
 
 ## Natural Mortality
 # We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
-yearly_surv=exp(-0.146)
-monthly_mort=1-(yearly_surv^(1/12))
-
-M <- monthly_mort # Natural mortality rate per month
+M <- 0.146
 
 #Ricker recruitment model parameters (these are currently just made up values)
 a <- 7
@@ -74,13 +68,16 @@ q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 NCELL <- nrow(water)
 Ages <- seq(4,8) #These are the ages you want to plot 
 Time <- seq(1,500) #This is how long you want the model to run for
-PlotTotal <- F #This is whether you want a line plot of the total or the map
+PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
 
+#### SET UP INITIAL POPULATION AND PARAMETERS ####
+
+
 #### RUN MODEL ####
 
-BurnIn = F #This is to swap the model between burn in and running the model properly
+BurnIn = T #This is to swap the model between burn in and running the model properly
 Total <- array(NA, dim=c(length(Time),1))
 
 YearlyTotal <- array(0, dim = c(NCELL,12,30)) #This is our yearly population split by age category (every layer is an age group)
