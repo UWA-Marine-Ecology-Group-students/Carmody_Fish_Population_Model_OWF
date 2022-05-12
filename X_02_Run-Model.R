@@ -39,95 +39,98 @@ source("X_Functions.R")
 setwd(sg_dir)
 movement <- readRDS("test_movement")
 juv_movement <- readRDS("test_juvmove")
-recruitment <- readRDS("recruitment")
+recruitment <- readRDS("test_recruitment")
 fishing <- readRDS("test_fishing")
 NoTake <- readRDS("test_NoTake")
 water <- readRDS("test_water")
+selectivity <- readRDS("selectivity")
+maturity <- readRDS("maturity")
+weight <- readRDS("weight")
+start.pop <- readRDS("Starting_Pop")
 
 #### PARAMETER VALUES ####
 
 ## Natural Mortality
 # We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
 M <- 0.146
+step <- 1/12 # We're doing a monthly timestep here
 
-#Ricker recruitment model parameters (these are currently just made up values)
-a <- 7
-b <- 0.0017
-M50 <- 2 # From Grandcourt et al. 2010
-M95 <- 5 # From Grandcourt et al. 2010 (technically M100)
-relationship <- 0.76
+# Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
+alpha <- 0.3245958
+beta <- 0.0001910434
 
 #Fish movement parameters
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
 
 ## Fishing mortality parameters
-A50 <- 4 # For L. miniatus from Williams et al. 2010 # L. miniatus becomes vulnerable to fishing at about age two
-A95 <- 6 # For L. miniatus from Williams et al. 2012
-q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
+# A50 <- 4 # For L. miniatus from Williams et al. 2010 # L. miniatus becomes vulnerable to fishing at about age two
+# A95 <- 6 # For L. miniatus from Williams et al. 2012
+# q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
 
 NCELL <- nrow(water)
-Ages <- seq(4,8) #These are the ages you want to plot 
-Time <- seq(1,500) #This is how long you want the model to run for
+Ages <- seq(1,30) #These are the ages you want to plot 
+Time <- seq(1,100) #This is how long you want the model to run for
 PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
 
-#### SET UP INITIAL POPULATION AND PARAMETERS ####
+#### SET UP INITIAL POPULATION ####
 
-
-#### RUN MODEL ####
-
-BurnIn = T #This is to swap the model between burn in and running the model properly
 Total <- array(NA, dim=c(length(Time),1))
 
 YearlyTotal <- array(0, dim = c(NCELL,12,30)) #This is our yearly population split by age category (every layer is an age group)
-# If you change age you have to change it in the fish mortality function too
-for(d in 1:dim(YearlyTotal)[3]){
-  YearlyTotal[,1,d] <- matrix(floor(runif(NCELL, 1, 100))) #50 is too few
+
+start.pop.year <- start.pop %>% 
+  slice(which(row_number() %% 12 == 1)) # Gives you the total in each age group at the end of the year
+
+for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with the fish in age group summing to the total we calculated above - beware the numbers change slightly due to rounding errors
+  for(N in 1:start.pop.year[d,1]){
+    cellID <- ceiling((runif(n=1, min = 0, max = 1))*NCELL)
+    YearlyTotal[cellID,1,d] <- YearlyTotal[cellID,1,d]+1
+  }
 }
 
 PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 
+#### RUN MODEL ####
+BurnIn = T #This is to swap the model between burn in and running the model properly
+
 for(YEAR in 1:length(Time)){
   
-  for(MONTH in 2:13){
+  for(MONTH in 1:12){
     
     ## Movement - this is where you'd change things to suit the months
     for(A in 2:dim(YearlyTotal)[3]){
       
-      if(MONTH==13){
-        YearlyTotal[ , 12, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
-                                                 Juv.Move=juv_movement)
-      } else {
-        YearlyTotal[ , MONTH, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
-                                                 Juv.Move=juv_movement)
-      } 
-
+      YearlyTotal[ , MONTH, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
+                                                  Juv.Move=juv_movement)
+      # } 
+      
     }  # End bracket for movement
     
-    ## Fishing Mortality
+    ## Mortality
     
     for(A in 1:dim(YearlyTotal)[3]){
       
-      #YearPop <- YearlyTotal[ , ,A]
-      
-      YearlyTotal[ ,MONTH-1 ,A] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Cell=CELL, Max.Cell = NCELL,
-                     Month=MONTH, Year=YEAR, Population=YearlyTotal)
+      if(MONTH!=12){
+        YearlyTotal[ ,MONTH+1, A] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Cell=CELL, Max.Cell = NCELL,
+                                                    Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+      } else {}
       
     } # End Mortality
     
     ## Recruitment
     
     if(MONTH==11){
-      YearlyTotal[,1,1] <- recruitment.func(Population=YearlyTotal, Age=A, mat.95=M95, mat.50=M50, settlement=recruitment, 
-                                            Max.Cell=NCELL, relationship=0.76)
+      YearlyTotal[ ,1,1] <- recruitment.func(Population=YearlyTotal, Age=A, mat.95=M95, mat.50=M50, settlement=recruitment, #Normally month would be 1 but for this it's easier to set it at 2
+                                             Max.Cell=NCELL, BHa=a, BHb=b, Mature=maturity, Weight=weight, PF=0.5)
     } else { } 
     # End Recruitment
   } #End bracket for months
-    
-     PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
-    # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
-    
+  
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+  # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
+  
   
   print(YEAR)
   water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
@@ -140,3 +143,5 @@ for(YEAR in 1:length(Time)){
   
   Sys.sleep(3)
 }
+
+

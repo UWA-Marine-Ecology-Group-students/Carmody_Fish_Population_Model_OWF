@@ -338,11 +338,10 @@ for (r in 1:NCELL){
 
 #### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
 # First determine the utility of each of the sites 
-# This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
 a = 0.08
-b = 0.15
+b = 0.3
 c = 0.1
 d = 0.04
 e = 0.01
@@ -445,7 +444,7 @@ setwd(sg_dir)
 saveRDS(Pj, file="test_movement")
 saveRDS(water, file="test_water")
 saveRDS(ProbRec, file="test_juvmove")
-saveRDS(recruitment, file="recruitment")
+saveRDS(recruitment, file="test_recruitment")
 
 #### SET UP THE FISHING SURFACE - SAME AS SCRIPT 02 ####
 ## Data

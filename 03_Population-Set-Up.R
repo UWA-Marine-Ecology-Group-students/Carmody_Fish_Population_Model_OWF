@@ -230,7 +230,8 @@ saveRDS(Selectivity, file="selectivity")
 
 ## Similarly we don't want to have to keep calculating maturity
 
-Maturity <- Fished.Pop.SetUp$Fish.Mat
+Maturity <- as.data.frame(Fished.Pop.SetUp$Fish.Mat) %>% 
+  slice(which(row_number() %% 12 == 1))
 saveRDS(Maturity, file="maturity")
 
 ## We need the weights for each age group as well
