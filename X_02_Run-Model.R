@@ -57,7 +57,7 @@ step <- 1/12 # We're doing a monthly timestep here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 alpha <- 0.3245958
-beta <- 0.0001910434
+beta <- 0.0001948756
 
 #Fish movement parameters
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
@@ -99,32 +99,37 @@ for(YEAR in 1:length(Time)){
   
   for(MONTH in 1:12){
     
-    ## Movement - this is where you'd change things to suit the months
-    for(A in 2:dim(YearlyTotal)[3]){
-      
-      YearlyTotal[ , MONTH, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
-                                                  Juv.Move=juv_movement)
-      # } 
-      
-    }  # End bracket for movement
+    # ## Movement - this is where you'd change things to suit the months
+    # for(A in 2:dim(YearlyTotal)[3]){
+    # 
+    #   YearlyTotal[ , MONTH, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
+    #                                               Juv.Move=juv_movement)
+    #   # }
+    # 
+    # }  # End bracket for movement
     
     ## Mortality
     
     for(A in 1:dim(YearlyTotal)[3]){
       
-      if(MONTH!=12){
-        YearlyTotal[ ,MONTH+1, A] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Cell=CELL, Max.Cell = NCELL,
-                                                    Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
-      } else {}
+        if(MONTH==12 & 2<=A & A<30){
+          YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Max.Cell = NCELL,
+                                                  Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+        } else if (MONTH!=12) {
+          YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Max.Cell = NCELL,
+                                                     Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+        } else { }
       
     } # End Mortality
     
     ## Recruitment
-    
-    if(MONTH==11){
-      YearlyTotal[ ,1,1] <- recruitment.func(Population=YearlyTotal, Age=A, mat.95=M95, mat.50=M50, settlement=recruitment, #Normally month would be 1 but for this it's easier to set it at 2
-                                             Max.Cell=NCELL, BHa=a, BHb=b, Mature=maturity, Weight=weight, PF=0.5)
-    } else { } 
+    if(MONTH==10){
+      Recruits <- recruitment.func(Population=YearlyTotal, mat.95=M95, mat.50=M50, settlement=recruitment, 
+                                             Max.Cell=NCELL, BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
+
+    YearlyTotal[ ,1,1] <- Recruits
+
+    } else { }
     # End Recruitment
   } #End bracket for months
   

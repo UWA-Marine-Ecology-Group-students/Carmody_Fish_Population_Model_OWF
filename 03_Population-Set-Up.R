@@ -49,8 +49,8 @@ h <- 0.76 # Steepness
 R0 <- 1 # Initial recruitment
 
 # Selectivity
-A50 <- 4 # For L. miniatus from Williams et al. 2010 
-A95 <- 6 # For L. miniatus from Williams et al. 2012
+A50 <- 0.7 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+A95 <- 1.4 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 
 # Maturity
 M50 <- 3.62 # From Marriott et al. 2011

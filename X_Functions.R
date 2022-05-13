@@ -11,34 +11,18 @@
 
 #### Mortality ####
 
-mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Cell, Max.Cell, Month, Year, Population, Select){
+mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Max.Cell, Month, Year, Population, Select){
   
   if(BurnIn){
-    if(Age==1 & Month==1){
-      tot.survived <- Population[ , 1, Age]*exp(-(Nat.Mort/12))
-    } else if(Month==1 & Age!=1) {
-      tot.survived <- Population[ , 12, Age-1]*exp(-(Nat.Mort/12))
-    } else {
-      tot.survived <- Population[ , Month, Age]*exp(-(Nat.Mort/12))
-    }
+    
+    tot.survived <- Population[ , Month, Age]*exp(-(Nat.Mort/12))
 
   } else {
-    if(Age==1&Month==1){
-      tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-        survived <- Population[Cell,1,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) # Can't do selectivity like this - has to be specific for each month as it changes! 
-        survived
-      })} else if (Month==1 & Age!=1){
-        tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-          survived <- Population[Cell,12,Age-1]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) # Can't do selectivity like this - has to be specific for each month as it changes! 
-          survived
-          })
-        } else {
-          tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-            survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month-1,Year])*exp(-(Nat.Mort/12)) # Can't do selectivity like this - has to be specific for each month as it changes! 
-            survived
-            })
-        }
-    }
+    tot.survived <- sapply(seq(Max.Cell), function(Cell) {
+      survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) # Can't do selectivity like this - has to be specific for each month as it changes! 
+      survived
+    })
+  }
   return(tot.survived)
 }
 
@@ -98,10 +82,10 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 
 ## Recruitment
 
-recruitment.func <- function(Population, Age, mat.95, mat.50, settlement, Max.Cell, BHa, BHb, Mature, Weight, PF){
-  adults <- Population[ ,10, ] * 0.5 %>% 
-    sum(.) # Gives us just females because they are the limiting factor for reproduction
-  tot.recs <- data.frame(matrix(0, nrow = Max.Cell, ncol = dim(Population)[3]))
+recruitment.func <- function(Population, mat.95, mat.50, settlement, Max.Cell, BHa, BHb, Mature, Weight, PF){
+  adults <- Population[ ,10, ] %>% 
+    colSums(.) # Gives us just females because they are the limiting factor for reproduction
+  adults <- adults * PF
   
   tot.recs <- lapply(1:dim(Population)[3], function(Age){
     SB <- adults[Age] * Mature[Age,1] * Weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
@@ -152,6 +136,23 @@ plotting.func <- function (area, pop ,pop.breaks, pop.labels, colours) {
 
 }
 
-tot.survived <- YearlyTotal[ , 1, 1]*exp(-(M/12))
+
+##### Testing #####
+adults <- YearlyTotal[ ,10, ] %>% 
+  colSums(.) # Gives us just females because they are the limiting factor for reproduction
+adults <- adults * 0.5
+tot.recs <- data.frame(matrix(0, nrow = NCELL, ncol = dim(YearlyTotal)[3]))
+
+tot.recs <- lapply(1:dim(YearlyTotal)[3], function(Age){
+  SB <- adults[Age] * maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
+  TotMatBio <- sum(SB) #Gives us total mature spawning biomass
+  recs <- (SB/alpha+beta*SB) # This gives us males and females to go into the next generation
+})
+tot.recs <- do.call(rbind, tot.recs)
+
+settle.recs <- sum(tot.recs)
+
+settled <- settle.recs*recruitment[,2]
+
 
 
