@@ -19,8 +19,7 @@ mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Max.Ce
 
   } else {
     tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-      survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) # Can't do selectivity like this - has to be specific for each month as it changes! 
-      survived
+      tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
     })
   }
   return(tot.survived)
@@ -39,19 +38,18 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   
   Juv.Pop2 <- sapply(seq(Max.Cell), function(Cell){
     Juv.Pop2 <- as.matrix(Juv.Move[Cell, ] * Juv.Pop[Cell,1]) #This should give you the number of fish that move from each cell to all the other sites
+    
   })
   
   Juv.Movement2 <- rowSums(Juv.Pop2)
-  # Juv.Moved <- sum(Juv.Movement2)
-  # print(isTRUE(all.equal(Juv.Movers, Juv.Moved)))
-  # if((isTRUE(all.equal(Juv.Movers, Juv.Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
-  # {print(Juv.Movers)
-  #   print(Juv.Moved)} else{ } Can Put This Check Back in Periodically to Confirm model Functioning
-  
+  Juv.Moved <- sum(Juv.Movement2)
+  # print(isTRUE(all.equal(Juv.Pop2, Juv.Moved)))
+  # if((isTRUE(all.equal(Juv.Pop2, Juv.Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+  # {print(Juv.Pop2)
+  #   print(Juv.Moved)} else{ } # Can Put This Check Back in Periodically to Confirm model Functioning
   All.Movers <- cbind(All.Movers, Juv.Movement2)
   
   return(All.Movers)
-  
   
   } else {  
     
@@ -59,15 +57,15 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
     Pop <- matrix(Population[ , Month, Age]) #This gives you the fish in all the sites at timestep t-1 of age A-1
     
     Pop2 <- sapply(seq(Max.Cell), function(Cell){
-      Pop2 <- as.matrix(Adult.Move[Cell, ] * Pop[Cell,1]) #This should give you the number of fish that move from site s to all the other sites
-    }
-    ) #End bracket for movement in each cell
+      Pop2 <- as.matrix(Adult.Move[Cell, ] * Pop[Cell,1]) #This should give you the number of fish that move from sites to all the other sites
+      
+    }) #End bracket for movement in each cell
     
     Movement2 <- rowSums(Pop2)
-    # Moved <- sum(Movement2)
-    # print(isTRUE(all.equal(Movers, Moved)))
-    # if((isTRUE(all.equal(Movers, Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
-    # {print(Movers)
+    Moved <- sum(Movement2)
+    # print(isTRUE(all.equal(Pop2, Moved)))
+    # if((isTRUE(all.equal(Pop2, Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
+    # {print(Pop2)
     #   print(Moved)} else{ }
     
     All.Movers <- cbind(All.Movers, Movement2)
@@ -137,22 +135,4 @@ plotting.func <- function (area, pop ,pop.breaks, pop.labels, colours) {
 }
 
 
-##### Testing #####
-adults <- YearlyTotal[ ,10, ] %>% 
-  colSums(.) # Gives us just females because they are the limiting factor for reproduction
-adults <- adults * 0.5
-tot.recs <- data.frame(matrix(0, nrow = NCELL, ncol = dim(YearlyTotal)[3]))
-
-tot.recs <- lapply(1:dim(YearlyTotal)[3], function(Age){
-  SB <- adults[Age] * maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
-  TotMatBio <- sum(SB) #Gives us total mature spawning biomass
-  recs <- (SB/alpha+beta*SB) # This gives us males and females to go into the next generation
-})
-tot.recs <- do.call(rbind, tot.recs)
-
-settle.recs <- sum(tot.recs)
-
-settled <- settle.recs*recruitment[,2]
-
-
-
+  

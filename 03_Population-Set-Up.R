@@ -61,7 +61,7 @@ SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up
 
 # Fishing parameters
 eq.init.fish <- 0.05
-q <- 0.5 # Apparently this is what lots of stock assessments set q to be...
+q <- 0.0005 # Apparently this is what lots of stock assessments set q to be...
 
 #### SET UP LIFE HISTORY VALUES FOR L. NEBULOSUS ####
 

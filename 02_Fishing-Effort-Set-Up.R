@@ -42,13 +42,16 @@ boat_days <- boat_days%>%
 ## Spatial Data
 setwd(sg_dir)
 
-water <- readRDS("water")
+water <- readRDS("test_water")
 
 # Locations of the boat ramps
 setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid
+
+# Parameter values
+q <- 0.0005
 
 #### SET UP FISHING SURFACE ####
 
@@ -243,15 +246,19 @@ BR_U <- BR_U %>% #make sure you give the columns good names so that you know wha
   rename("Tb_U" = V3) %>% 
   rename("CrB_U"=V4)
 
-
+Tot <- array(0, dim=c(NCELL, 4))
 for(RAMP in 1:4){
   
-  Tot <- sum((Cell_Vars$Area/Cell_Vars[,RAMP])/100)
-  
+  Tot[ ,RAMP] <- (Cell_Vars$Area/Cell_Vars[,RAMP])
+}
+Tot <- colSums(Tot)
+
+for(RAMP in 1:4){
   for(CELL in 1:NCELL){
-    BR_U[CELL,RAMP] <- (Cell_Vars[CELL,RAMP]/Tot)
-  } 
+    BR_U[CELL,RAMP] <- ((Cell_Vars[CELL,5]/Cell_Vars[CELL,RAMP])/Tot[RAMP])
+  }
 } 
+colSums(BR_U)
 
 # Now we have BR_U which has the "utilities" for each cells based on it's size and distance from BR  
 
@@ -277,7 +284,9 @@ for(YEAR in 1:59){
       
       temp <- as.matrix(temp) 
       
-      Ramps[ ,RAMP] <- BR_U[ ,RAMP] * temp[MONTH,RAMP]
+      for(CELL in 1:NCELL){
+        Ramps[CELL,RAMP] <- BR_U[CELL,RAMP] * temp[MONTH,RAMP]
+      }
     }
     
     Months[,MONTH] <-  rowSums(Ramps)
@@ -292,7 +301,7 @@ NoTake <- st_sf(water) %>%
   st_drop_geometry() %>% 
   dplyr::select(Fished, ID, COMMENTS)
 
-# Creating new columns for each of our year groups when new NTZs were put in place (easier than coding it in the model)
+# Creating new columns for each of our year groups when new NTZs were put in place
 NoTake <- NoTake %>% 
   rename(Fished60_87 = "Fished") %>% 
   mutate(Fished60_87 = "Y") %>% 
@@ -300,11 +309,51 @@ NoTake <- NoTake %>%
   mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
   mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
   dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
-  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y"))
+  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) 
+
+rownames(NoTake) <- seq(from = 1, to = 334)
+
+# Setting fishing effort to be 0 in cells and years where there are NTZs
+for(YEAR in 1:dim(Fishing)[3]){
+  if(YEAR >=27 & YEAR <= 45){
+    
+    temp <- NoTake %>% 
+      dplyr::select(Fished87_05) 
+    
+    for(CELL in 1:NCELL){
+      if(temp[CELL,1] %in% c("N")){
+        Fishing[CELL,1:12,YEAR] <- 0
+      } else { }
+    }
+    
+  } else if (YEAR>45 & YEAR<=53){
+    
+    temp <- NoTake %>% 
+      dplyr::select(Fished05_18)
+    
+    for(CELL in 1:NCELL){
+      if(temp[CELL,1] %in% ("N")){
+        Fishing[CELL,1:12 ,YEAR] <- 0
+        
+      }
+    }
+  } else if (YEAR >53){
+        
+        temp <- NoTake %>% 
+          dplyr::select(Fished18_21)
+        
+        for(CELL in 1:NCELL){
+          if(temp[CELL,1] %in% ("N")){
+            Fishing[CELL,1:12 ,YEAR] <- 0
+          }
+        }
+      }
+    }
+
 
 #### SAVE DATA ####
 setwd(sg_dir)
 
-saveRDS(Fishing, file="Fishing")
+saveRDS(Fishing, file="test_fishing")
 saveRDS(NoTake, file="NoTake")
 

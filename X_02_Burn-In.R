@@ -99,14 +99,14 @@ for(YEAR in 1:length(Time)){
   
   for(MONTH in 1:12){
     
-    # ## Movement - this is where you'd change things to suit the months
-    # for(A in 2:dim(YearlyTotal)[3]){
-    # 
-    #   YearlyTotal[ , MONTH, A-1] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
-    #                                               Juv.Move=juv_movement)
-    #   # }
-    # 
-    # }  # End bracket for movement
+    ## Movement - this is where you'd change things to suit the months
+    for(A in 1:dim(YearlyTotal)[3]){
+
+      YearlyTotal[ , MONTH, A] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
+                                                  Juv.Move=juv_movement)
+      # }
+
+    }  # End bracket for movement
     
     ## Mortality
     
@@ -133,8 +133,7 @@ for(YEAR in 1:length(Time)){
     # End Recruitment
   } #End bracket for months
   
-  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
-  # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the ages
   
   
   print(YEAR)
@@ -148,5 +147,11 @@ for(YEAR in 1:length(Time)){
   
   Sys.sleep(3)
 }
+
+## Save burn in population for use in the actual model
+setwd(sg_dir)
+saveRDS(YearlyTotal, file="BurnInPop")
+
+
 
 

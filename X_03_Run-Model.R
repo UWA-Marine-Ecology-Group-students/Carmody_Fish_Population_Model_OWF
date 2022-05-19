@@ -1,10 +1,8 @@
 ###################################################
 
-# Script just for running the full model 
-# Requires files that are made in the first script
-# Will run the full model with fishing
-# Make sure you reset things like NCELL if you've
-# used the test script
+# Uses a smaller grid
+# Script just for fiddling with the model and trying 
+# out new things
 
 ###################################################
 library(tidyverse)
@@ -36,62 +34,36 @@ my.colours <- "RdBu"
 ## Read in functions
 setwd(working.dir)
 source("X_Functions.R")
-source("03_Population-Set-Up.R")
 
 #### LOAD FILES ####
 setwd(sg_dir)
-movement <- readRDS("movement")
-juv_movement <- readRDS("juvmove")
-recruitment <- readRDS("recruitment")
-fishing <- readRDS("Fishing")
-NoTake <- readRDS("NoTake")
-water <- readRDS("water")
+movement <- readRDS("test_movement")
+juv_movement <- readRDS("test_juvmove")
+recruitment <- readRDS("test_recruitment")
+fishing <- readRDS("test_fishing")
+NoTake <- readRDS("test_NoTake")
+water <- readRDS("test_water")
 selectivity <- readRDS("selectivity")
 maturity <- readRDS("maturity")
 weight <- readRDS("weight")
-start.pop <- readRDS("Starting_Pop")
+YearlyTotal <- readRDS("BurnInPop")
 
 #### PARAMETER VALUES ####
 
-## Natural Mortality
-# We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
-M <- 0.146
-step <- 1/12 # We're doing a monthly timestep here
-
-# Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
-alpha <- 0.3245958
-beta <- 0.0001910434
-
-#Fish movement parameters
-SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
-
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
-Time <- seq(1,100) #This is how long you want the model to run for
+Time <- seq(1,59) #This is how long you want the model to run for
 PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
 
 #### SET UP INITIAL POPULATION ####
 
-Total <- array(NA, dim=c(length(Time),1))
-
-YearlyTotal <- array(0, dim = c(NCELL,12,30)) #This is our yearly population split by age category (every layer is an age group)
-
-start.pop.year <- start.pop %>% 
-  slice(which(row_number() %% 12 == 1)) # Gives you the total in each age group at the end of the year
-
-for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with the fish in age group summing to the total we caluclated above - beware the numbers change slightly due to rounding errors
-  for(N in 1:start.pop.year[d,1]){
-    cellID <- ceiling((runif(n=1, min = 0, max = 1))*NCELL)
-    YearlyTotal[cellID,1,d] <- YearlyTotal[cellID,1,d]+1
-  }
-}
-
 PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+Total <- array(NA, dim=c(length(Time),1)) # For plotting
 
 #### RUN MODEL ####
-BurnIn = T #This is to swap the model between burn in and running the model properly
+BurnIn = F #This is to swap the model between burn in and running the model properly
 
 for(YEAR in 1:length(Time)){
   
@@ -99,13 +71,13 @@ for(YEAR in 1:length(Time)){
     
     ## Movement - this is where you'd change things to suit the months
     for(A in 1:dim(YearlyTotal)[3]){
-      
+
       YearlyTotal[ , MONTH, A] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
-                                                Juv.Move=juv_movement)
+                                                  Juv.Move=juv_movement)
       # }
-      
+
     }  # End bracket for movement
-    
+
     ## Mortality
     
     for(A in 1:dim(YearlyTotal)[3]){
@@ -131,7 +103,8 @@ for(YEAR in 1:length(Time)){
     # End Recruitment
   } #End bracket for months
   
-  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the ages
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+  # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
   
   
   print(YEAR)
@@ -145,7 +118,3 @@ for(YEAR in 1:length(Time)){
   
   Sys.sleep(3)
 }
-
-## Save burn in population for use in the actual model
-setwd(sg_dir)
-saveRDS(YearlyTotal, file="BurnInPop")

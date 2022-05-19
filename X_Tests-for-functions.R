@@ -108,12 +108,12 @@ YearlyTotal_test[ , , 1]
 
 #### Movement Function Test ####
 
-YearlyTotal_test[ , 2, 1] <- movement.func(Age=2, Month=2, Population=YearlyTotal_test, Max.Cell=NCELL, Adult.Move= movement,
+Movers <- movement.func(Age=2, Month=1, Population=YearlyTotal_test, Max.Cell=NCELL, Adult.Move= movement,
                                             Juv.Move=juv_movement)
 
-sum(YearlyTotal_test[,1,1])
+sum(YearlyTotal_test[,1,2])
 sum(YearlyTotal_test[,2,1]) # should be equal
-
+sum(Movers)
 #### Recruitment Function Test ####
 
 
@@ -131,4 +131,36 @@ pop.breaks <- pop.groups
 
 
 
+##### Testing #####
+adults <- YearlyTotal[ ,10, ] %>% 
+  colSums(.) # Gives us just females because they are the limiting factor for reproduction
+adults <- adults * 0.5
+tot.recs <- data.frame(matrix(0, nrow = NCELL, ncol = dim(YearlyTotal)[3]))
 
+tot.recs <- lapply(1:dim(YearlyTotal)[3], function(Age){
+  SB <- adults[Age] * maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
+  TotMatBio <- sum(SB) #Gives us total mature spawning biomass
+  recs <- (SB/alpha+beta*SB) # This gives us males and females to go into the next generation
+})
+tot.recs <- do.call(rbind, tot.recs)
+
+settle.recs <- sum(tot.recs)
+
+settled <- settle.recs*recruitment[,2]
+
+
+
+Juv.Pop <- matrix(YearlyTotal[ , 1, 1]) # This gives you the fish in all the sites at time step Month-1 of age A-1
+
+Juv.Pop2 <- sapply(seq(NCELL), function(Cell){
+  Juv.Pop2 <- as.matrix(juv_movement[Cell, ] * Juv.Pop[Cell,1]) #This should give you the number of fish that move from each cell to all the other sites
+})
+
+Juv.Movement2 <- rowSums(Juv.Pop2)
+Juv.Moved <- sum(Juv.Movement2)
+
+
+All.Movers <- NULL
+All.Movers <- cbind(All.Movers, Juv.Movement2)
+
+sum(Juv.Pop)
