@@ -41,21 +41,27 @@ movement <- readRDS("test_movement")
 juv_movement <- readRDS("test_juvmove")
 recruitment <- readRDS("test_recruitment")
 fishing <- readRDS("test_fishing")
-NoTake <- readRDS("test_NoTake")
+NoTake <- readRDS("test_NoTakeList")
 water <- readRDS("test_water")
 selectivity <- readRDS("selectivity")
 maturity <- readRDS("maturity")
 weight <- readRDS("weight")
-YearlyTotal <- readRDS("BurnInPop")
+YearlyTotal <- readRDS("test_BurnInPop")
 
 #### PARAMETER VALUES ####
 
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
 Time <- seq(1,59) #This is how long you want the model to run for
-PlotTotal <- T #This is whether you want a line plot of the total or the map
+# PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
+
+#### SET UP LISTS TO HOLD THE PLOTS ####
+SpatialPlots <- list()
+LengthPlots <- list()
+AgePlots <- list()
+TimesPlotted <- 0
 
 #### SET UP INITIAL POPULATION ####
 
@@ -113,8 +119,18 @@ for(YEAR in 1:length(Time)){
   ## Plotting ##
   Total[YEAR,1] <- sum(water$pop)
   
-  plots <- plotting.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
-  print(plots)
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
+    TotalPlot <- total.plot.func(pop=Total)
+    print(TotalPlot)
+  } else { }
+  
+  if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
+    TimesPlotted <- TimesPlotted+1
+    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
+    AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+    #LengthPlots[[TimesPlotted]] <- length.plot.func()
+  } else { }
   
   Sys.sleep(3)
 }
+

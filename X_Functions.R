@@ -101,38 +101,69 @@ recruitment.func <- function(Population, mat.95, mat.50, settlement, Max.Cell, B
 # Then get added to January Population 
 #### Plotting ####
 
-plotting.func <- function (area, pop ,pop.breaks, pop.labels, colours) {
-  
-  if(PlotTotal){
-    
+total.plot.func <- function (pop) {
     TimeSeries <- ggplot()+
-      geom_line(aes(x=1:nrow(Total), y=Total))+
+      geom_line(aes(x=1:nrow(pop), y=pop))+
       xlab("Year")+
       ylab("Total Population")+
       theme_classic()
     
     return(TimeSeries)
-
-  } else {
-    
-    water <- water%>%
-      mutate(pop = round(pop, digits=0)) %>% 
-      mutate(pop_level = cut(pop, pop.breaks, include.lowest=T)) 
-    
-    nb.cols <- length(pop.breaks)
-    mycols <- mycolors <- colorRampPalette(brewer.pal(8, "RdBu"))(nb.cols)
-    
-    map <- ggplot(water)+
-      geom_sf(aes(fill=pop_level, color=Fished))+
-      scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-      scale_color_manual(name="Fished", values=c("white", "black"))+
-      theme_void()
-    
-    return(map)
-    
-  }
-
 }
 
+spatial.plot.func <- function (area, pop, pop.breaks, pop.labels, colours){
+  
+  water <- water%>%
+    mutate(pop = round(pop, digits=0)) %>% 
+    mutate(pop_level = cut(pop, pop.breaks, include.lowest=T)) 
+  
+  nb.cols <- length(pop.breaks)
+  mycols <- mycolors <- colorRampPalette(brewer.pal(8, "RdBu"))(nb.cols)
+  
+  map <- ggplot(water)+
+    geom_sf(aes(fill=pop_level, color=Fished))+
+    scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
+    scale_color_manual(name="Fished", values=c("white", "black"))+
+    theme_void()
+  
+  return(map)
+  
+}
+
+age.plot.func <- function (pop, NTZs){
+  
+  if(YEAR >=27 & YEAR <= 45){
+    NoTakeAges <- pop[c(NTZs[[1]]),12, ]
+    FishedAges <- pop[-c(NTZs[[1]]),12, ]
+    
+  } else if(YEAR>45 & YEAR<=53){
+    NoTakeAges <- pop[c(NTZs[[2]]),12, ]
+    FishedAges <- pop[-c(NTZs[[2]]),12, ]
+    
+  } else if (YEAR >53){
+    NoTakeAges <- pop[c(NTZs[[3]]),12, ]
+    FishedAges <- pop[-c(NTZs[[3]]),12, ]
+  }
+  
+  NoTakeAges <- as.data.frame(colSums(NoTakeAges)) %>% 
+    rename(Number = "colSums(NoTakeAges)") %>% 
+    mutate(Status = "NTZ") %>% 
+    mutate(Age = seq(1:30))
+    
+    
+  FishedAges <- as.data.frame(colSums(FishedAges)) %>% 
+    rename(Number = "colSums(FishedAges)") %>% 
+    mutate(Status = "Fished") %>% 
+    mutate(Age = seq(1:30))
+  
+  AllAges <- rbind(NoTakeAges, FishedAges)
+  
+hist.ages <- ggplot(AllAges)+
+  geom_bar(aes(y=Number, x=Age, fill=Status), position="dodge", stat="identity")+
+  theme_classic()
+
+return(hist.ages)
+   
+}
 
   

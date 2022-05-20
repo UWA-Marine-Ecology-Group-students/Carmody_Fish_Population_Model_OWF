@@ -41,7 +41,7 @@ movement <- readRDS("test_movement")
 juv_movement <- readRDS("test_juvmove")
 recruitment <- readRDS("test_recruitment")
 fishing <- readRDS("test_fishing")
-NoTake <- readRDS("test_NoTake")
+NoTake <- readRDS("test_NoTakeList")
 water <- readRDS("test_water")
 selectivity <- readRDS("selectivity")
 maturity <- readRDS("maturity")
@@ -142,15 +142,22 @@ for(YEAR in 1:length(Time)){
   ## Plotting ##
   Total[YEAR,1] <- sum(water$pop)
   
-  plots <- plotting.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
-  print(plots)
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
+    TotalPlot <- total.plot.func(pop=Total)
+    print(TotalPlot)
+  } else { }
   
-  Sys.sleep(3)
+  if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
+    TimesPlotted <- TimesPlotted+1
+    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu", Year=YEAR)
+    AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+    #LengthPlots[[TimesPlotted]] <- length.plot.func()
+  } else { }
 }
 
 ## Save burn in population for use in the actual model
 setwd(sg_dir)
-saveRDS(YearlyTotal, file="BurnInPop")
+saveRDS(YearlyTotal, file="test_BurnInPop")
 
 
 

@@ -42,7 +42,7 @@ boat_days <- boat_days%>%
 ## Spatial Data
 setwd(sg_dir)
 
-water <- readRDS("test_water")
+water <- readRDS("water")
 
 # Locations of the boat ramps
 setwd(sp_dir)
@@ -348,12 +348,32 @@ for(YEAR in 1:dim(Fishing)[3]){
           }
         }
       }
-    }
+}
 
+#### CONVERT NO-TAKE INTO NUMERIC VECTORS OF CELL IDS ####
+
+NoTake87_05 <- NoTake %>% 
+  filter(Fished87_05=="N") %>% 
+  dplyr::select(ID)
+
+NoTake05_18 <- NoTake %>% 
+  filter(Fished05_18=="N") %>% 
+  dplyr::select(ID)
+
+NoTake18_21 <- NoTake %>% 
+  filter(Fished18_21=="N") %>% 
+  dplyr::select(ID)
+
+NoTake2 <- list()
+
+NoTake2[[1]] <- as.numeric(NoTake87_05$ID)
+NoTake2[[2]] <- as.numeric(NoTake05_18$ID)
+NoTake2[[3]] <- as.numeric(NoTake18_21$ID)
 
 #### SAVE DATA ####
 setwd(sg_dir)
 
-saveRDS(Fishing, file="test_fishing")
+saveRDS(Fishing, file="fishing")
 saveRDS(NoTake, file="NoTake")
+saveRDS(NoTake2, file="NoTakeList")
 
