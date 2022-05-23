@@ -230,7 +230,7 @@ for(CELL in 1:NCELL){
 
 # Create a data frame with both the distances and the areas of the cells
 Cell_Vars <- DistBR %>% 
-  mutate(Area = as.vector((water$area)/1000)) %>% #Cells are now in km^2 but with no units
+  mutate(Area = as.vector((water$cell_area)/1000)) %>% #Cells are now in km^2 but with no units
   rename("Bd_BR"=V1) %>% 
   rename("ExM_BR" = V2) %>% 
   rename("Tb_BR" = V3) %>% 
@@ -309,9 +309,10 @@ NoTake <- NoTake %>%
   mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
   mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
   dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
-  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) 
+  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
+  mutate(ID = as.numeric(ID))
 
-rownames(NoTake) <- seq(from = 1, to = 334)
+rownames(NoTake) <- seq(from = 1, to = 1901)
 
 # Setting fishing effort to be 0 in cells and years where there are NTZs
 for(YEAR in 1:dim(Fishing)[3]){
@@ -354,14 +355,17 @@ for(YEAR in 1:dim(Fishing)[3]){
 
 NoTake87_05 <- NoTake %>% 
   filter(Fished87_05=="N") %>% 
+  mutate(ID = ID-1) %>%  # All of the cells are greater than 299 which is the one that I removed in an earlier script so they need to move back one position
   dplyr::select(ID)
-
+ 
 NoTake05_18 <- NoTake %>% 
   filter(Fished05_18=="N") %>% 
+  mutate(ID = ID-1) %>%
   dplyr::select(ID)
 
 NoTake18_21 <- NoTake %>% 
   filter(Fished18_21=="N") %>% 
+  mutate(ID = ID-1) %>%
   dplyr::select(ID)
 
 NoTake2 <- list()

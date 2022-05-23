@@ -64,7 +64,6 @@ AgePlots <- list()
 TimesPlotted <- 0
 
 #### SET UP INITIAL POPULATION ####
-## SOMETHING HAS GONE WEIRD WITH THE NUMBER OF CELLS IN NO TAKE - NEED TO FIX TO BE ABLE TO CHECK THAT THE HISTOGRAM PLOTS ARE WORKING!
 PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 Total <- array(NA, dim=c(length(Time),1)) # For plotting
 
@@ -133,4 +132,4 @@ for(YEAR in 1:length(Time)){
   
   Sys.sleep(3)
 }
-
+AgePlots[[6]]

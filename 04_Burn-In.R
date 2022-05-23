@@ -67,7 +67,7 @@ SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up
 
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
-Time <- seq(1,100) #This is how long you want the model to run for
+Time <- seq(1,50) #This is how long you want the model to run for
 PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
@@ -131,7 +131,7 @@ for(YEAR in 1:length(Time)){
     # End Recruitment
   } #End bracket for months
   
-  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the ages
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dims=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the ages
   
   
   print(YEAR)
