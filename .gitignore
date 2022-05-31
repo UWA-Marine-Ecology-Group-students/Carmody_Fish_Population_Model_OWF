@@ -1,3 +1,6 @@
+# Files to ignore
+/Output_Population
+
 # History files
 .Rhistory
 .Rapp.history

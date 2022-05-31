@@ -29,6 +29,20 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 
 #### LOAD FILES ####
 
+st_centroid_within_poly <- function (poly) { #returns true centroid if inside polygon otherwise makes a centroid inside the polygon
+  
+  # check if centroid is in polygon
+  centroid <- poly %>% st_centroid() 
+  in_poly <- st_within(centroid, poly, sparse = F)[[1]] 
+  
+  # if it is, return that centroid
+  if (in_poly) return(centroid) 
+  
+  # if not, calculate a point on the surface and return that
+  centroid_in_poly <- st_point_on_surface(poly) 
+  return(centroid_in_poly)
+}
+
 ## Data
 setwd(data_dir)
 boat_days <- read.csv("Boat_Days_Gascoyne.csv")
@@ -43,6 +57,7 @@ boat_days <- boat_days%>%
 setwd(sg_dir)
 
 water <- readRDS("water")
+NCELL <- nrow(water)
 
 # Locations of the boat ramps
 setwd(sp_dir)
@@ -216,6 +231,8 @@ BR <- st_sf(BR)
 water <- water %>% 
   mutate(DistBR = 0)
 
+centroids <- st_centroid_within_poly(water)
+
 # Working out distance from each BR to each cell
 DistBR <- as.data.frame(array(0, dim = c(NCELL,3))) # This will contain the distance from each boat ramp to every cell
 
@@ -230,7 +247,7 @@ for(CELL in 1:NCELL){
 
 # Create a data frame with both the distances and the areas of the cells
 Cell_Vars <- DistBR %>% 
-  mutate(Area = as.vector((water$cell_area)/1000)) %>% #Cells are now in km^2 but with no units
+  mutate(Area = as.vector((water$cell_area)/100000)) %>% #Cells are now in km^2 but with no units
   rename("Bd_BR"=V1) %>% 
   rename("ExM_BR" = V2) %>% 
   rename("Tb_BR" = V3) %>% 

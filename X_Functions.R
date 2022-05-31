@@ -143,6 +143,10 @@ age.plot.func <- function (pop, NTZs){
   } else if (YEAR >53){
     NoTakeAges <- pop[c(NTZs[[3]]),12, ]
     FishedAges <- pop[-c(NTZs[[3]]),12, ]
+    
+  } else if (YEAR<27){
+    NoTakeAges <- as.data.frame(array(0, dim=c(100, 30)))
+    FishedAges <- pop[ ,12, ]
   }
   
   NoTakeAges <- as.data.frame(colSums(NoTakeAges)) %>% 
@@ -156,14 +160,24 @@ age.plot.func <- function (pop, NTZs){
     mutate(Status = "Fished") %>% 
     mutate(Age = seq(1:30))
   
-  AllAges <- rbind(NoTakeAges, FishedAges)
+  AllAges <- rbind(NoTakeAges, FishedAges) %>% 
+    mutate(Age = as.factor(Age)) %>%
+    group_by(Status) %>% 
+    mutate(TotalZone=sum(Number)) %>% 
+    ungroup() %>% 
+    mutate(Proportion = (Number/TotalZone))
   
-hist.ages <- ggplot(AllAges)+
-  geom_bar(aes(y=Number, x=Age, fill=Status), position="dodge", stat="identity")+
+barplot.ages <- ggplot(AllAges)+
+  geom_bar(aes(y=Proportion, x=Age, fill=Status), position="dodge", stat="identity")+
   theme_classic()
 
-return(hist.ages)
+return(barplot.ages)
    
 }
 
+  
+  
+
+
+  
   

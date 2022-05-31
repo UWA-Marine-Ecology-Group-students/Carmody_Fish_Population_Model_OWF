@@ -109,7 +109,7 @@ for(YEAR in 1:length(Time)){
     # End Recruitment
   } #End bracket for months
   
-  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
   # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
   
   

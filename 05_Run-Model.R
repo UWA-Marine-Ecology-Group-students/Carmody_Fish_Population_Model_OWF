@@ -1,8 +1,9 @@
 ###################################################
 
-# Uses a smaller grid
-# Script just for fiddling with the model and trying 
-# out new things
+# Running the full model with whole area and fishing
+# Produces plots every five years
+# Get spatial plots as well as age based histograms
+# See script six for more complex plots
 
 ###################################################
 library(tidyverse)
@@ -24,12 +25,13 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
+pop_dir <-  paste(working.dir, "Output_Population", sep="/")
 
 #### PRE-SETS ####
 
 ## Create colours for the plot
-pop.groups <- c(0,50,100,500,1000,2000,3000,4000,5000,6000)
-my.colours <- "RdBu"
+pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130)
+my.colours <- "PuBu"
 
 ## Read in functions
 setwd(working.dir)
@@ -69,6 +71,7 @@ Total <- array(NA, dim=c(length(Time),1)) # For plotting
 
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
+setwd(pop_dir)
 
 for(YEAR in 1:length(Time)){
   
@@ -108,8 +111,7 @@ for(YEAR in 1:length(Time)){
     # End Recruitment
   } #End bracket for months
   
-  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages]) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
-  # PopTotal[ , , YEAR] <- YearlyTotal[ , , 1]  # To look at specific parts of the matrix for the plot
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
   
   
   print(YEAR)
@@ -130,6 +132,8 @@ for(YEAR in 1:length(Time)){
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
   
+  filename <- paste("YearlyTotal", YEAR, sep=".")
+  saveRDS(YearlyTotal, file=filename)
+  
   Sys.sleep(3)
 }
-AgePlots[[6]]

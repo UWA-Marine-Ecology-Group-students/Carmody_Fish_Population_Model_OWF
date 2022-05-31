@@ -30,9 +30,9 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 step <- 1/12 # We're doing a monthly timestep here
 
 ## Von Bertalanffy Parameters
-Linf <- 595.5
-k <- 0.254
-t0 <- -0.244
+Linf <- 664 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+k <- 0.241 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+t0 <- -0.375 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 
 ## Weight-Length Relationship
 WLa <- 0.000028
