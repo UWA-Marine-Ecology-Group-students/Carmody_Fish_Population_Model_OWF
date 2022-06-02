@@ -52,6 +52,10 @@ R0 <- 1 # Initial recruitment
 A50 <- 0.7 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 A95 <- 1.4 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 
+PRM <- 0.25 # Post release mortality for our retention function
+R50 <- 405
+R95 <- 410
+
 # Maturity
 M50 <- 3.62 # From Marriott et al. 2011
 M95 <- 5.97 # From Marriott et al. 2011
@@ -124,10 +128,11 @@ Fished.Pop.SetUp <- as.data.frame(array(1, dim=c(361, 5))) %>%
   rename(Fish.Surv = "V4") %>% 
   rename(Fish.Mat = "V5")
 
-## Selectivity for each age group
+## Selectivity for each age group - This is for the equilibrium population
 
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
   mutate(Age = Life.History$Age) %>% 
+  mutate(Length = Life.History$Length) %>% 
   mutate(Selectivity = 1/(1+(exp(-log(19)*((Age-A50)/(A95-A50))))))
 
 ## Next calculate fishing mortality 
@@ -216,6 +221,24 @@ Starting.Pop.For.Model <- Starting.Pop.For.Model %>%
 ## At the end of the year the spawning stock biomass of all females will be calculated to generate recruitment for the next year
 ## Alpha and Beta need to be recorded for use in the next step of the model
 
+#### SELECTIVITY-RETENTION FOR THE FISHING IN THE MODEL ####
+## Retention for each age group
+# This is for when you actually run the model you don't use this for setting up the initial population
+# Trying to account for the fact that fish that are below the legal size limit are likely to be thrown back and so won't necessarily die
+
+Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
+  mutate(Retention = ifelse(Length<R50, 0, ifelse(Length > R50 & Length <R95, 0.5, ifelse(Length>R95, 0.95, 0)))) 
+
+## Landings and discards
+# This gives us the proportion of fish that are kept and the proportion that are thrown back
+Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
+  mutate(Landings = Selectivity*Retention) %>% 
+  mutate(Discards = Selectivity*(1-Landings))
+
+## Selectivity-Retention Values Including post-release mortality
+Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
+  mutate(SelRet = Landings+(PRM*Discards))
+
 
 #### SAVING FILES ####
 
@@ -228,6 +251,9 @@ saveRDS(Starting.Pop.For.Model, file="Starting_Pop")
 Selectivity <- Fished.Pop.SetUp$Selectivity
 saveRDS(Selectivity, file="selectivity")
 
+SelRet <-  Fished.Pop.SetUp$SelRet
+saveRDS(SelRet, file="selret")
+
 ## Similarly we don't want to have to keep calculating maturity
 
 Maturity <- as.data.frame(Fished.Pop.SetUp$Fish.Mat) %>% 
@@ -238,8 +264,6 @@ saveRDS(Maturity, file="maturity")
 
 Weight <- Life.History$Weight
 saveRDS(Weight, file="weight")
-
-
 
 
 

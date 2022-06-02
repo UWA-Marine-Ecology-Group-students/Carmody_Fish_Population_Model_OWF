@@ -18,6 +18,7 @@ mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Max.Ce
     tot.survived <- Population[ , Month, Age]*exp(-(Nat.Mort/12))
 
   } else {
+    # We need a new parameter which is landings and discards and pots-release mortality which we substitute in for selectivity here
     tot.survived <- sapply(seq(Max.Cell), function(Cell) {
       tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
     })
