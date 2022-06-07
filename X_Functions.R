@@ -11,7 +11,7 @@
 
 #### Mortality ####
 
-mortality.func <- function (Age, mort.50, mort.95, Nat.Mort, NTZ, Effort, Max.Cell, Month, Year, Population, Select){
+mortality.func <- function (Age, Nat.Mort, Effort, Max.Cell, Month, Year, Population, Select){
   
   if(BurnIn){
     
@@ -81,7 +81,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
 
 ## Recruitment
 
-recruitment.func <- function(Population, mat.95, mat.50, settlement, Max.Cell, BHa, BHb, Mature, Weight, PF){
+recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature, Weight, PF){
   adults <- Population[ ,10, ] %>% 
     colSums(.) # Gives us just females because they are the limiting factor for reproduction
   adults <- adults * PF
@@ -137,11 +137,11 @@ age.plot.func <- function (pop, NTZs){
     NoTakeAges <- pop[c(NTZs[[1]]),12, ]
     FishedAges <- pop[-c(NTZs[[1]]),12, ]
     
-  } else if(YEAR>45 & YEAR<=53){
+  } else if(YEAR>45 & YEAR<=57){
     NoTakeAges <- pop[c(NTZs[[2]]),12, ]
     FishedAges <- pop[-c(NTZs[[2]]),12, ]
     
-  } else if (YEAR >53){
+  } else if (YEAR >57){
     NoTakeAges <- pop[c(NTZs[[3]]),12, ]
     FishedAges <- pop[-c(NTZs[[3]]),12, ]
     

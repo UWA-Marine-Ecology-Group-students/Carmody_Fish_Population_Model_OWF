@@ -51,6 +51,14 @@ weight <- readRDS("weight")
 YearlyTotal <- readRDS("BurnInPop")
 
 #### PARAMETER VALUES ####
+## Natural Mortality
+# We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
+M <- 0.146
+step <- 1/12 # We're doing a monthly timestep here
+
+# Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
+alpha <- 0.3245958
+beta <- 0.0001910434
 
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
@@ -82,7 +90,6 @@ for(YEAR in 1:length(Time)){
       
       YearlyTotal[ , MONTH, A] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
                                                 Juv.Move=juv_movement)
-      # }
       
     }  # End bracket for movement
     
@@ -91,19 +98,19 @@ for(YEAR in 1:length(Time)){
     for(A in 1:dim(YearlyTotal)[3]){
       
       if(MONTH==12 & 2<=A & A<30){
-        YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Max.Cell = NCELL,
-                                                Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+        YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                                Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
       } else if (MONTH!=12) {
-        YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Max.Cell = NCELL,
-                                                   Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+        YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                                   Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
       } else { }
       
     } # End Mortality
     
     ## Recruitment
     if(MONTH==10){
-      Recruits <- recruitment.func(Population=YearlyTotal, mat.95=M95, mat.50=M50, settlement=recruitment, 
-                                   Max.Cell=NCELL, BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
+      Recruits <- recruitment.func(Population=YearlyTotal, settlement=recruitment, Max.Cell=NCELL, 
+                                   BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
       
       YearlyTotal[ ,1,1] <- Recruits
       

@@ -17,6 +17,7 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(abind)
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -223,6 +224,47 @@ for(Y in 1:708){
 check <- Exmouth_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
 
+#### CONVERT NO-TAKE INTO NUMERIC VECTORS OF CELL IDS ####
+
+# Creating new columns for each of our year groups when new NTZs were put in place
+
+NoTake <- st_sf(water) %>% 
+  st_drop_geometry() %>% 
+  dplyr::select(Fished, ID, COMMENTS)
+
+NoTake <- NoTake %>% 
+  rename(Fished60_87 = "Fished") %>% 
+  mutate(Fished60_87 = "Y") %>% 
+  mutate(Fished87_05 = ifelse(str_detect(COMMENTS, c("Old")), "N", "Y")) %>% 
+  mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
+  mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
+  dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
+  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
+  mutate(ID = as.numeric(ID))
+
+rownames(NoTake) <- seq(from = 1, to = 1901)
+
+NoTake87_05 <- NoTake %>% 
+  filter(Fished87_05=="N") %>% 
+  mutate(ID = ID-1) %>%  # All of the cells are greater than 299 which is the one that I removed in an earlier script so they need to move back one position
+  dplyr::select(ID)
+
+NoTake05_18 <- NoTake %>% 
+  filter(Fished05_18=="N") %>% 
+  mutate(ID = ID-1) %>%
+  dplyr::select(ID)
+
+NoTake18_21 <- NoTake %>% 
+  filter(Fished18_21=="N") %>% 
+  mutate(ID = ID-1) %>%
+  dplyr::select(ID)
+
+NoTake2 <- list()
+
+NoTake2[[1]] <- as.numeric(NoTake87_05$ID)
+NoTake2[[2]] <- as.numeric(NoTake05_18$ID)
+NoTake2[[3]] <- as.numeric(NoTake18_21$ID)
+
 #### ALLOCATING EFFORT TO CELLS ####
 
 ## Work out the probability of visiting a cell from each boat ramp based on distance and size
@@ -255,27 +297,113 @@ Cell_Vars <- DistBR %>%
 
 ## Now need to create a separate fishing surface for each month of each year based on distance to boat ramp, size of each
 ## cell and multiply that by the effort in the cell to spatially allocate the effort across the area
-BR_U <- as.data.frame(matrix(0, nrow=NCELL, ncol=4)) #Set up data frame to hold utilities of cells
+## But we need to account for the fact that there will be sanctuary zones going in and the effort that would have gone in there will get allocated somewhere else
+## Will then need to put the rows/columns back in as 0s 
+NCELL_6086 <- NCELL
+NCELL_8705 <- NCELL-length(NoTake[[1]])
+NCELL_0517 <- NCELL-length(NoTake[[2]])
+NCELL_1819 <- NCELL-length(NoTake[[3]])
 
-BR_U <- BR_U %>% #make sure you give the columns good names so that you know what they are
+Cell_Vars_6086 <- Cell_Vars
+Cell_Vars_8705 <- Cell_Vars[-c(NoTake[[1]]), ]
+Cell_Vars_0517 <- Cell_Vars[-c(NoTake[[2]]), ]
+Cell_Vars_1819 <- Cell_Vars[-c(NoTake[[3]]), ]
+
+
+## 1960-1987 
+BR_U_6086 <- as.data.frame(matrix(0, nrow=NCELL_6086, ncol=4)) #Set up data frame to hold utilities of cells
+
+BR_U_6086 <- BR_U_6086 %>% #make sure you give the columns good names so that you know what they are
   rename("Bd_U"=V1) %>% 
   rename("ExM_U" = V2) %>% 
   rename("Tb_U" = V3) %>% 
   rename("CrB_U"=V4)
 
-Tot <- array(0, dim=c(NCELL, 4))
+Tot <- array(0, dim=c(NCELL_6086, 4))
 for(RAMP in 1:4){
   
-  Tot[ ,RAMP] <- (Cell_Vars$Area/Cell_Vars[,RAMP])
+  Tot[ ,RAMP] <- (Cell_Vars_6086$Area/Cell_Vars_6086[,RAMP])
 }
 Tot <- colSums(Tot)
 
 for(RAMP in 1:4){
-  for(CELL in 1:NCELL){
-    BR_U[CELL,RAMP] <- ((Cell_Vars[CELL,5]/Cell_Vars[CELL,RAMP])/Tot[RAMP])
+  for(CELL in 1:NCELL_6086){
+    BR_U_6086[CELL,RAMP] <- ((Cell_Vars_6086[CELL,5]/Cell_Vars_6086[CELL,RAMP])/Tot[RAMP])
   }
 } 
-colSums(BR_U)
+colSums(BR_U_6086)
+
+## 1987-2005
+
+BR_U_8705 <- as.data.frame(matrix(0, nrow=NCELL_8705, ncol=4)) #Set up data frame to hold utilities of cells
+
+BR_U_8705 <- BR_U_8705%>% #make sure you give the columns good names so that you know what they are
+  rename("Bd_U"=V1) %>% 
+  rename("ExM_U" = V2) %>% 
+  rename("Tb_U" = V3) %>% 
+  rename("CrB_U"=V4)
+
+Tot <- array(0, dim=c(NCELL_8705, 4))
+for(RAMP in 1:4){
+  
+  Tot[ ,RAMP] <- (Cell_Vars_8705$Area/Cell_Vars_8705[,RAMP])
+}
+Tot <- colSums(Tot)
+
+for(RAMP in 1:4){
+  for(CELL in 1:NCELL_8705){
+    BR_U_8705[CELL,RAMP] <- ((Cell_Vars_8705[CELL,5]/Cell_Vars_8705[CELL,RAMP])/Tot[RAMP])
+  }
+} 
+colSums(BR_U_8705)
+
+## 2005-2017
+
+BR_U_0517 <- as.data.frame(matrix(0, nrow=NCELL_0517, ncol=4)) #Set up data frame to hold utilities of cells
+
+BR_U_0517 <- BR_U_0517%>% #make sure you give the columns good names so that you know what they are
+  rename("Bd_U"=V1) %>% 
+  rename("ExM_U" = V2) %>% 
+  rename("Tb_U" = V3) %>% 
+  rename("CrB_U"=V4)
+
+Tot <- array(0, dim=c(NCELL_0517, 4))
+for(RAMP in 1:4){
+  
+  Tot[ ,RAMP] <- (Cell_Vars_0517$Area/Cell_Vars_0517[,RAMP])
+}
+Tot <- colSums(Tot)
+
+for(RAMP in 1:4){
+  for(CELL in 1:NCELL_0517){
+    BR_U_0517[CELL,RAMP] <- ((Cell_Vars_0517[CELL,5]/Cell_Vars_0517[CELL,RAMP])/Tot[RAMP])
+  }
+} 
+colSums(BR_U_0517)
+
+## 2017-2019
+
+BR_U_1819 <- as.data.frame(matrix(0, nrow=NCELL_1819, ncol=4)) #Set up data frame to hold utilities of cells
+
+BR_U_1819 <- BR_U_1819 %>% #make sure you give the columns good names so that you know what they are
+  rename("Bd_U"=V1) %>% 
+  rename("ExM_U" = V2) %>% 
+  rename("Tb_U" = V3) %>% 
+  rename("CrB_U"=V4)
+
+Tot <- array(0, dim=c(NCELL_1819, 4))
+for(RAMP in 1:4){
+  
+  Tot[ ,RAMP] <- (Cell_Vars_1819$Area/Cell_Vars_1819[,RAMP])
+}
+Tot <- colSums(Tot)
+
+for(RAMP in 1:4){
+  for(CELL in 1:NCELL_1819){
+    BR_U_1819[CELL,RAMP] <- ((Cell_Vars_1819[CELL,5]/Cell_Vars_1819[CELL,RAMP])/Tot[RAMP])
+  }
+} 
+colSums(BR_U_1819)
 
 # Now we have BR_U which has the "utilities" for each cells based on it's size and distance from BR  
 
@@ -284,12 +412,13 @@ BR_Trips <- Exmouth_Boat_Days %>% # This is just the trips from each boat ramp
   mutate(NumYear = rep(59:1, each=12)) %>% #This is to turn the years into a count for the loop
   dplyr::select(NumYear, NumMonth, Bd_BR, ExM_BR, Tb_BR, CrB_BR)  
 
-
-Fishing <- array(0, dim=c(NCELL, 12, 59)) #This array has a row for every cell, a column for every month, and a layer for every year
+# 1960-1986
+Fishing_6086 <- array(0, dim=c(NCELL_6086, 12, 26)) #This array has a row for every cell, a column for every month, and a layer for every year
 Months <- array(0, dim=c(NCELL, 12))
 Ramps <- array(0, dim=c(NCELL, 4))
+layer <- 1
 
-for(YEAR in 1:59){
+for(YEAR in 1:26){
   
   for(MONTH in 1:12){
     
@@ -301,95 +430,131 @@ for(YEAR in 1:59){
       
       temp <- as.matrix(temp) 
       
-      for(CELL in 1:NCELL){
-        Ramps[CELL,RAMP] <- BR_U[CELL,RAMP] * temp[MONTH,RAMP]
+      for(CELL in 1:NCELL_6086){
+        Ramps[CELL,RAMP] <- BR_U_6086[CELL,RAMP] * temp[MONTH,RAMP]
       }
     }
     
     Months[,MONTH] <-  rowSums(Ramps)
   }
-  Fishing[ , ,YEAR] <- Months 
+  Fishing_6086[ , ,layer] <- Months 
+  layer <- layer+1
 }
+
+# 1987-2005
+Fishing_8705 <- array(0, dim=c(NCELL_8705, 12,18)) #This array has a row for every cell, a column for every month, and a layer for every year
+Months <- array(0, dim=c(NCELL_8705, 12))
+Ramps <- array(0, dim=c(NCELL_8705, 4))
+layer <- 1
+
+for(YEAR in 27:44){
+  
+  for(MONTH in 1:12){
+    
+    for(RAMP in 1:4){
+      
+      temp <- BR_Trips %>% 
+        filter(NumYear==YEAR) %>% 
+        dplyr::select(-c(NumYear, NumMonth))
+      
+      temp <- as.matrix(temp) 
+      
+      for(CELL in 1:NCELL_8705){
+        Ramps[CELL,RAMP] <- BR_U_8705[CELL,RAMP] * temp[MONTH,RAMP]
+      }
+    }
+    
+    Months[,MONTH] <-  rowSums(Ramps)
+  }
+  Fishing_8705[ , ,layer] <- Months 
+  layer <- layer+1
+}
+
+# 2005-2017
+Fishing_0517 <- array(0, dim=c(NCELL_0517, 12,12)) #This array has a row for every cell, a column for every month, and a layer for every year
+Months <- array(0, dim=c(NCELL_0517, 12))
+Ramps <- array(0, dim=c(NCELL_0517, 4))
+layer <- 1
+
+for(YEAR in 45:56){
+  
+  for(MONTH in 1:12){
+    
+    for(RAMP in 1:4){
+      
+      temp <- BR_Trips %>% 
+        filter(NumYear==YEAR) %>% 
+        dplyr::select(-c(NumYear, NumMonth))
+      
+      temp <- as.matrix(temp) 
+      
+      for(CELL in 1:NCELL_0517){
+        Ramps[CELL,RAMP] <- BR_U_0517[CELL,RAMP] * temp[MONTH,RAMP]
+      }
+    }
+    
+    Months[,MONTH] <-  rowSums(Ramps)
+  }
+  Fishing_0517[ , ,layer] <- Months 
+  layer <- layer+1
+}
+
+# 2017-2019
+Fishing_1819 <- array(0, dim=c(NCELL_1819, 12, 3)) #This array has a row for every cell, a column for every month, and a layer for every year
+Months <- array(0, dim=c(NCELL_1819, 12))
+Ramps <- array(0, dim=c(NCELL_1819, 4))
+layer <- 1
+
+for(YEAR in 57:59){
+  
+  for(MONTH in 1:12){
+    
+    for(RAMP in 1:4){
+      
+      temp <- BR_Trips %>% 
+        filter(NumYear==YEAR) %>% 
+        dplyr::select(-c(NumYear, NumMonth))
+      
+      temp <- as.matrix(temp) 
+      
+      for(CELL in 1:NCELL_1819){
+        Ramps[CELL,RAMP] <- BR_U_1819[CELL,RAMP] * temp[MONTH,RAMP]
+      }
+    }
+    
+    Months[,MONTH] <-  rowSums(Ramps)
+  }
+  Fishing_1819[ , ,layer] <- Months 
+  layer <- layer+1
+}
+
+## Add cells in the NTZs back in 
+# Have to do this by adding in rows in to the matrix in the correct places the correct places but just give them 0
+
+# 1987-2005
+NTCells <- NoTake[[1]]
+Fishing_8705_2 <- array(0, dim=c(NCELL,12,18))
+
+Fishing_8705_2[-NTCells,,] <- Fishing_8705
+
+# 2005-2017
+NTCells <- NoTake[[2]]
+Fishing_0517_2 <- array(0, dim=c(NCELL,12,12))
+
+Fishing_0517_2[-NTCells,,] <- Fishing_0517
+
+# 2017-2019
+NTCells <- NoTake[[3]]
+Fishing_1819_2 <- array(0, dim=c(NCELL,12,3))
+
+Fishing_1819_2[-NTCells,,] <- Fishing_1819
+
+## Put it all back together and calculate fishing effort
+Fishing <- abind(Fishing_6086, Fishing_8705_2, along=3)
+Fishing <- abind(Fishing, Fishing_0517_2, along=3)
+Fishing <- abind(Fishing, Fishing_1819_2, along=3)
 
 Fishing <- Fishing*q # multiply by catchability
-
-## Add NTZs
-NoTake <- st_sf(water) %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(Fished, ID, COMMENTS)
-
-# Creating new columns for each of our year groups when new NTZs were put in place
-NoTake <- NoTake %>% 
-  rename(Fished60_87 = "Fished") %>% 
-  mutate(Fished60_87 = "Y") %>% 
-  mutate(Fished87_05 = ifelse(str_detect(COMMENTS, c("Old")), "N", "Y")) %>% 
-  mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
-  mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
-  dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
-  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
-  mutate(ID = as.numeric(ID))
-
-rownames(NoTake) <- seq(from = 1, to = 1901)
-
-# Setting fishing effort to be 0 in cells and years where there are NTZs
-for(YEAR in 1:dim(Fishing)[3]){
-  if(YEAR >=27 & YEAR <= 45){
-    
-    temp <- NoTake %>% 
-      dplyr::select(Fished87_05) 
-    
-    for(CELL in 1:NCELL){
-      if(temp[CELL,1] %in% c("N")){
-        Fishing[CELL,1:12,YEAR] <- 0
-      } else { }
-    }
-    
-  } else if (YEAR>45 & YEAR<=53){
-    
-    temp <- NoTake %>% 
-      dplyr::select(Fished05_18)
-    
-    for(CELL in 1:NCELL){
-      if(temp[CELL,1] %in% ("N")){
-        Fishing[CELL,1:12 ,YEAR] <- 0
-        
-      }
-    }
-  } else if (YEAR >53){
-        
-        temp <- NoTake %>% 
-          dplyr::select(Fished18_21)
-        
-        for(CELL in 1:NCELL){
-          if(temp[CELL,1] %in% ("N")){
-            Fishing[CELL,1:12 ,YEAR] <- 0
-          }
-        }
-      }
-}
-
-#### CONVERT NO-TAKE INTO NUMERIC VECTORS OF CELL IDS ####
-
-NoTake87_05 <- NoTake %>% 
-  filter(Fished87_05=="N") %>% 
-  mutate(ID = ID-1) %>%  # All of the cells are greater than 299 which is the one that I removed in an earlier script so they need to move back one position
-  dplyr::select(ID)
- 
-NoTake05_18 <- NoTake %>% 
-  filter(Fished05_18=="N") %>% 
-  mutate(ID = ID-1) %>%
-  dplyr::select(ID)
-
-NoTake18_21 <- NoTake %>% 
-  filter(Fished18_21=="N") %>% 
-  mutate(ID = ID-1) %>%
-  dplyr::select(ID)
-
-NoTake2 <- list()
-
-NoTake2[[1]] <- as.numeric(NoTake87_05$ID)
-NoTake2[[2]] <- as.numeric(NoTake05_18$ID)
-NoTake2[[3]] <- as.numeric(NoTake18_21$ID)
 
 #### SAVE DATA ####
 setwd(sg_dir)

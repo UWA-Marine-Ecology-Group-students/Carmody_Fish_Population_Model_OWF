@@ -102,7 +102,6 @@ for(YEAR in 1:length(Time)){
       
       YearlyTotal[ , MONTH, A] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
                                                 Juv.Move=juv_movement)
-      # }
       
     }  # End bracket for movement
     
@@ -111,19 +110,19 @@ for(YEAR in 1:length(Time)){
     for(A in 1:dim(YearlyTotal)[3]){
       
       if(MONTH==12 & 2<=A & A<30){
-        YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Max.Cell = NCELL,
-                                                Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+        YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                                Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
       } else if (MONTH!=12) {
-        YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, mort.50=A50, mort.95=A95, Nat.Mort=M, NTZ=NoTake, Effort=fishing, Max.Cell = NCELL,
-                                                   Month=MONTH, Select=Selectivity, Population=YearlyTotal, Year=YEAR)
+        YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                                   Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
       } else { }
       
     } # End Mortality
     
     ## Recruitment
     if(MONTH==10){
-      Recruits <- recruitment.func(Population=YearlyTotal, mat.95=M95, mat.50=M50, settlement=recruitment, 
-                                   Max.Cell=NCELL, BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
+      Recruits <- recruitment.func(Population=YearlyTotal, settlement=recruitment, Max.Cell=NCELL, 
+                                   BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
       
       YearlyTotal[ ,1,1] <- Recruits
       
@@ -131,7 +130,7 @@ for(YEAR in 1:length(Time)){
     # End Recruitment
   } #End bracket for months
   
-  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dims=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the ages
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
   
   
   print(YEAR)
@@ -140,8 +139,20 @@ for(YEAR in 1:length(Time)){
   ## Plotting ##
   Total[YEAR,1] <- sum(water$pop)
   
-  plots <- plotting.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
-  print(plots)
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
+    TotalPlot <- total.plot.func(pop=Total)
+    print(TotalPlot)
+  } else { }
+  
+  if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
+    TimesPlotted <- TimesPlotted+1
+    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
+    AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+    #LengthPlots[[TimesPlotted]] <- length.plot.func()
+  } else { }
+  
+  filename <- paste("YearlyTotal", YEAR, sep=".")
+  saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(3)
 }
