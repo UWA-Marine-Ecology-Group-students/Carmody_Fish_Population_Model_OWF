@@ -67,7 +67,7 @@ BR <- st_read("Boat_Ramps.shp") %>%
   st_make_valid
 
 # Parameter values
-q <- 0.0005
+q <- 0.005
 
 #### SET UP FISHING SURFACE ####
 
@@ -259,11 +259,11 @@ NoTake18_21 <- NoTake %>%
   mutate(ID = ID-1) %>%
   dplyr::select(ID)
 
-NoTake2 <- list()
+NoTake <- list()
 
-NoTake2[[1]] <- as.numeric(NoTake87_05$ID)
-NoTake2[[2]] <- as.numeric(NoTake05_18$ID)
-NoTake2[[3]] <- as.numeric(NoTake18_21$ID)
+NoTake[[1]] <- as.numeric(NoTake87_05$ID)
+NoTake[[2]] <- as.numeric(NoTake05_18$ID)
+NoTake[[3]] <- as.numeric(NoTake18_21$ID)
 
 #### ALLOCATING EFFORT TO CELLS ####
 
@@ -560,6 +560,6 @@ Fishing <- Fishing*q # multiply by catchability
 setwd(sg_dir)
 
 saveRDS(Fishing, file="fishing")
-saveRDS(NoTake, file="NoTake")
-saveRDS(NoTake2, file="NoTakeList")
+#saveRDS(NoTake, file="NoTake")
+saveRDS(NoTake, file="NoTakeList")
 

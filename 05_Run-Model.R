@@ -52,9 +52,9 @@ YearlyTotal <- readRDS("BurnInPop")
 
 #### PARAMETER VALUES ####
 ## Natural Mortality
-# We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
+# We have instantaneous mortality from Marriott et al 2011 and we need to convert that into monthly mortality
 M <- 0.146
-step <- 1/12 # We're doing a monthly timestep here
+step <- 1/12 # We're doing a monthly time step here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 alpha <- 0.3245958
@@ -101,8 +101,9 @@ for(YEAR in 1:length(Time)){
         YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
                                                 Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
       } else if (MONTH!=12) {
-        YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+        YearlyTotal[ ,MONTH+1, A] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
                                                    Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+      
       } else { }
       
     } # End Mortality
@@ -126,15 +127,18 @@ for(YEAR in 1:length(Time)){
   
   ## Plotting ##
   Total[YEAR,1] <- sum(water$pop)
+  print(Total[YEAR,1])
   
   if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
+    Total <- as.data.frame(Total)
+    Total$Year <- seq(1960, 2018, by=1)
     TotalPlot <- total.plot.func(pop=Total)
     print(TotalPlot)
   } else { }
   
   if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
     TimesPlotted <- TimesPlotted+1
-    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
+    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
     AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
@@ -144,3 +148,4 @@ for(YEAR in 1:length(Time)){
   
   Sys.sleep(3)
 }
+

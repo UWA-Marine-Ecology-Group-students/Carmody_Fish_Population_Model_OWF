@@ -100,21 +100,21 @@ Year59.F <- Year59[-c(NoTake[[3]]),12, ] %>%
 
 NoTakeAges <- as.data.frame(cbind(Year5.NT, Year10.NT, Year15.NT, Year20.NT, Year25.NT, Year30.NT, Year35.NT, Year40.NT, Year45.NT, Year50.NT, Year55.NT, Year59.NT)) %>% 
   mutate(Status = "NTZ") %>% 
-  mutate(Age = seq(1:30)) %>% 
-colnames(NoTakeAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2019", "Status", "Age")
+  mutate(Age = seq(1:30))
+colnames(NoTakeAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age")
 
 
 FishedAges <- as.data.frame(cbind(Year5.F, Year10.F, Year15.F, Year20.F, Year25.F, Year30.F, Year35.F, Year40.F, Year45.F, Year50.F, Year55.F, Year59.F)) %>% 
   mutate(Status = "Fished") %>% 
   mutate(Age = seq(1:30))
-colnames(FishedAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2019", "Status", "Age")
+colnames(FishedAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age")
 
 WholePop <- rbind(NoTakeAges, FishedAges) %>%  
   pivot_longer(cols=-c(Age, Status), names_to="Year", values_to="Number") %>% 
   mutate(Year = as.factor(Year))
 
 WholePop <- WholePop %>% 
-  mutate(Year = fct_relevel(Year, c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2019"))) %>% 
+  mutate(Year = fct_relevel(Year, c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018"))) %>% 
   mutate(Status = as.factor(Status))
   
 NoRecruits <- WholePop %>% 
@@ -123,10 +123,23 @@ NoRecruits <- WholePop %>%
 
 #### RIDGELINE PLOTS WITHOUT RECRUITS ####
 
+ridge.norec.whole <- NoRecruits %>% 
+  group_by(Age, Year) %>% 
+  mutate(Tot.Num = sum(Number)) %>% 
+  ungroup() %>% 
+  ggplot(., aes(x=Age, y=Year, height=Tot.Num, fill=Tot.Num)) +
+  geom_ridgeline_gradient(scale=0.04) +
+  scale_fill_distiller(palette="PuBu", name="Number") +
+  theme_classic()+
+  geom_hline(yintercept=5.6, linetype="dashed", color="seagreen")+
+  geom_hline(yintercept=9, colour="seagreen")+
+  geom_hline(yintercept=11.5, linetype="dashed", colour="seagreen")
+
 ridge.norec.F <- NoRecruits %>% 
   filter(Status=="Fished") %>% 
-  ggplot(., aes(x=Age, y=Year, height=Number)) +
-  geom_ridgeline(scale=0.045) +
+  ggplot(., aes(x=Age, y=Year, height=Number, fill=Number)) +
+  geom_ridgeline_gradient(scale=0.04) +
+  scale_fill_distiller(palette="PuBu") +
   theme_classic()+
   geom_hline(yintercept=5.6, linetype="dashed", color="seagreen")+
   geom_hline(yintercept=9, colour="seagreen")+
@@ -134,8 +147,9 @@ ridge.norec.F <- NoRecruits %>%
   
 ridge.norec.NTZ <- NoRecruits %>% 
   filter(Status=="NTZ") %>% 
-  ggplot(., aes(x=Age, y=Year, height=Number)) +
-  geom_ridgeline(scale=0.45) +
+  ggplot(., aes(x=Age, y=Year, height=Number, fill=Number)) +
+  geom_ridgeline_gradient(scale=0.45) +
+  scale_fill_distiller(palette="PuBu") +
   theme_classic()+
   geom_hline(yintercept=5.6, linetype="dashed", color="seagreen")+
   geom_hline(yintercept=9, colour="seagreen")+
@@ -190,13 +204,59 @@ line.biglegal <- WholePop %>%
   geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
 
 
+#### RIDGELINE PLOTS - RELATIVE ####
+
+WholePop.Rel <- WholePop %>% 
+  group_by(Year, Status) %>% 
+  mutate(RelNum = (Number/sum(Number))*100) %>% 
+  ungroup()
+
+ridge.norec.whole <- WholePop.Rel %>% 
+  filter(Age!=1) %>% 
+  mutate_at(vars(RelNum), ~replace(., is.nan(.), 0)) %>% 
+  group_by(Age, Year) %>% 
+  mutate(Tot.Num = sum(RelNum)) %>% 
+  ungroup() %>% 
+  filter(Tot.Num!=0) %>% 
+  ggplot(., aes(x=Age, y=Year, height=Tot.Num, fill=Tot.Num)) +
+  geom_ridgeline_gradient(scale=0.09) +
+  scale_fill_distiller(palette="PuBu", name="Number") +
+  theme_classic()+
+  geom_hline(yintercept=5.6, linetype="dashed", color="seagreen")+
+  geom_hline(yintercept=9, colour="seagreen")+
+  geom_hline(yintercept=11.5, linetype="dashed", colour="seagreen")
 
 
+ridge.norec.fished <- WholePop.Rel %>% 
+  filter(Age!=1) %>% 
+  filter(Status=="Fished") %>% 
+  mutate_at(vars(RelNum), ~replace(., is.nan(.), 0)) %>% 
+  group_by(Age, Year) %>% 
+  mutate(Tot.Num = sum(RelNum)) %>% 
+  ungroup() %>% 
+  filter(Tot.Num!=0) %>% 
+  ggplot(., aes(x=Age, y=Year, height=Tot.Num, fill=Tot.Num)) +
+  geom_ridgeline_gradient(scale=0.09) +
+  scale_fill_distiller(palette="PuBu", name="Number") +
+  theme_classic()+
+  geom_hline(yintercept=5.6, linetype="dashed", color="seagreen")+
+  geom_hline(yintercept=9, colour="seagreen")+
+  geom_hline(yintercept=11.5, linetype="dashed", colour="seagreen")
 
-
-
-
-
+ridge.norec.NT <- WholePop.Rel %>% 
+  filter(Age!=1) %>% 
+  filter(Status=="NTZ") %>% 
+  mutate_at(vars(RelNum), ~replace(., is.nan(.), 0)) %>% 
+  group_by(Age, Year) %>% 
+  mutate(Tot.Num = sum(RelNum)) %>% 
+  ungroup() %>% 
+  ggplot(., aes(x=Age, y=Year, height=Tot.Num, fill=Tot.Num)) +
+  geom_ridgeline_gradient(scale=0.09) +
+  scale_fill_distiller(palette="PuBu", name="Number") +
+  theme_classic()+
+  geom_hline(yintercept=5.6, linetype="dashed", color="seagreen")+
+  geom_hline(yintercept=9, colour="seagreen")+
+  geom_hline(yintercept=11.5, linetype="dashed", colour="seagreen")
 
 
 

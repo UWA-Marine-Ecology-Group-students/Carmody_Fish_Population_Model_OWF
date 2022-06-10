@@ -13,18 +13,33 @@
 
 mortality.func <- function (Age, Nat.Mort, Effort, Max.Cell, Month, Year, Population, Select){
   
-  if(BurnIn){
+  if(BurnIn==T){
     
     tot.survived <- Population[ , Month, Age]*exp(-(Nat.Mort/12))
-
-  } else {
-    # We need a new parameter which is landings and discards and pots-release mortality which we substitute in for selectivity here
+    
+    return(tot.survived)
+    
+  } else if (BurnIn==F & YEAR<=31){
     tot.survived <- sapply(seq(Max.Cell), function(Cell) {
-      tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1)]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
+      tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1),1]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
     })
+    return(tot.survived)
+    
+  } else if (BurnIn==F & YEAR>31 & YEAR <=35){
+      tot.survived <- sapply(seq(Max.Cell), function(Cell) {
+        tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1),2]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
+      })
+      return(tot.survived)
+      
+    } else if (BurnIn==F & Year > 35) {
+      tot.survived <- sapply(seq(Max.Cell), function(Cell) {
+        tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1),3]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
+      })
+      return(tot.survived)
+      
+    } else {print("Failed")}
   }
-  return(tot.survived)
-}
+
 
 #### Movement ####
 
@@ -103,8 +118,9 @@ recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature,
 #### Plotting ####
 
 total.plot.func <- function (pop) {
-    TimeSeries <- ggplot()+
-      geom_line(aes(x=1:nrow(pop), y=pop))+
+  TimeSeries <- ggplot(pop)+
+      geom_line(aes(x=Year, y=Total))+
+      scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
       xlab("Year")+
       ylab("Total Population")+
       theme_classic()

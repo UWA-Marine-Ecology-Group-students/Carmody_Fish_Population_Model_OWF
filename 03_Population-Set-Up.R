@@ -53,8 +53,12 @@ A50 <- 0.7 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article
 A95 <- 1.4 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 
 PRM <- 0.25 # Post release mortality for our retention function
-R50 <- 405
-R95 <- 410
+
+# 270 in 1913 to 1961 from Fisheries Act Amendment
+# 202mm in 1961 - From the Fisheries Act Amendment
+# 280mm in 1991 https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1054&context=fr_fmp
+# Was 410mm in 1995 https://www.mediastatements.wa.gov.au/Pages/Court/1995/04/Revised-bag-and-size-limits-for-recreational-fishing-announced.aspx
+
 
 # Maturity
 M50 <- 3.62 # From Marriott et al. 2011
@@ -64,7 +68,7 @@ M95 <- 5.97 # From Marriott et al. 2011
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
 
 # Fishing parameters
-eq.init.fish <- 0.05
+eq.init.fish <- 0.025
 q <- 0.0005 # Apparently this is what lots of stock assessments set q to be...
 
 #### SET UP LIFE HISTORY VALUES FOR L. NEBULOSUS ####
@@ -227,18 +231,26 @@ Starting.Pop.For.Model <- Starting.Pop.For.Model %>%
 # Trying to account for the fact that fish that are below the legal size limit are likely to be thrown back and so won't necessarily die
 
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
-  mutate(Retention = ifelse(Length<R50, 0, ifelse(Length > R50 & Length <R95, 0.5, ifelse(Length>R95, 0.95, 0)))) 
+  mutate(Retention6091 = ifelse(Length<=200, 0, ifelse(Length > 200 & Length < 202, 0.5, ifelse(Length>=202, 0.95, 0)))) %>% 
+  mutate(Retention9195 = ifelse(Length<=275, 0, ifelse(Length > 275 & Length < 280, 0.5, ifelse(Length>=280, 0.95, 0)))) %>% 
+  mutate(Retention95 = ifelse(Length<=405, 0, ifelse(Length > 405 & Length < 410, 0.5, ifelse(Length>=410, 0.95, 0))))
 
 ## Landings and discards
 # This gives us the proportion of fish that are kept and the proportion that are thrown back
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
-  mutate(Landings = Selectivity*Retention) %>% 
-  mutate(Discards = Selectivity*(1-Landings))
+  mutate(Landings6091 = Selectivity*Retention6091) %>% 
+  mutate(Discards6091 = Selectivity*(1-Landings6091)) %>% 
+  mutate(Landings9195 = Selectivity*Retention9195) %>% 
+  mutate(Discards9195 = Selectivity*(1-Landings9195)) %>% 
+  mutate(Landings95 = Selectivity*Retention95) %>% 
+  mutate(Discards95 = Selectivity*(1-Landings95)) 
+  
 
 ## Selectivity-Retention Values Including post-release mortality
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
-  mutate(SelRet = Landings+(PRM*Discards))
-
+  mutate(SelRet6091 = Landings6091+(PRM*Discards6091)) %>% 
+  mutate(SelRet9195 = Landings9195+(PRM*Discards9195)) %>% 
+  mutate(SelRet95 = Landings95+(PRM*Discards95))
 
 #### SAVING FILES ####
 
@@ -251,7 +263,7 @@ saveRDS(Starting.Pop.For.Model, file="Starting_Pop")
 Selectivity <- Fished.Pop.SetUp$Selectivity
 saveRDS(Selectivity, file="selectivity")
 
-SelRet <-  Fished.Pop.SetUp$SelRet
+SelRet <-  Fished.Pop.SetUp[,18:20]
 saveRDS(SelRet, file="selret")
 
 ## Similarly we don't want to have to keep calculating maturity
