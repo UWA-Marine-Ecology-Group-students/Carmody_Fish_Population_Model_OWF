@@ -114,7 +114,9 @@ Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>%
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
 YearPlot <- ggplot(boat_days_hind) + 
-  geom_point(aes(x=Year, y=Total_Boat_Days))
+  geom_line(aes(x=Year, y=Total_Boat_Days))+ 
+  theme_classic()+
+  ylab("Total Boat Days")
 
 #### ALLOCATING MONLTHY EFFORT ####
 

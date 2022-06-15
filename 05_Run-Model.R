@@ -26,29 +26,36 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 pop_dir <-  paste(working.dir, "Output_Population", sep="/")
+sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### PRE-SETS ####
 
 ## Create colours for the plot
-pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130)
+pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150)
 my.colours <- "PuBu"
 
-## Read in functions
-setwd(working.dir)
-source("X_Functions.R")
-
 #### LOAD FILES ####
+
+## Normal Model Files
 setwd(sg_dir)
 movement <- readRDS("movement")
 juv_movement <- readRDS("juvmove")
 recruitment <- readRDS("recruitment")
-fishing <- readRDS("fishing")
+#fishing <- readRDS("fishing")
 NoTake <- readRDS("NoTakeList")
 water <- readRDS("water")
 selectivity <- readRDS("selret")
 maturity <- readRDS("maturity")
 weight <- readRDS("weight")
 YearlyTotal <- readRDS("BurnInPop")
+
+## Simulation Files
+setwd(sim_dir)
+fishing <- readRDS("sim01_fishing")
+
+## Read in functions
+setwd(working.dir)
+source("X_Functions.R")
 
 #### PARAMETER VALUES ####
 ## Natural Mortality
@@ -130,9 +137,10 @@ for(YEAR in 1:length(Time)){
   print(Total[YEAR,1])
   
   if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
-    Total <- as.data.frame(Total)
-    Total$Year <- seq(1960, 2018, by=1)
-    TotalPlot <- total.plot.func(pop=Total)
+    TotalPop <- as.data.frame(Total) %>% 
+      rename(Tot.Pop="V1")
+    TotalPop$Year <- seq(1960, 2018, by=1)
+    TotalPlot <- total.plot.func(pop=TotalPop)
     print(TotalPlot)
   } else { }
   
@@ -143,7 +151,7 @@ for(YEAR in 1:length(Time)){
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
   
-  filename <- paste("YearlyTotal", YEAR, sep=".")
+  filename <- paste("sim01_YearlyTotal", YEAR, sep=".")
   saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(3)

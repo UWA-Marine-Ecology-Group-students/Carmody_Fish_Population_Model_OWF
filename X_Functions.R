@@ -37,7 +37,7 @@ mortality.func <- function (Age, Nat.Mort, Effort, Max.Cell, Month, Year, Popula
       })
       return(tot.survived)
       
-    } else {print("Failed")}
+    } else { }
   }
 
 
@@ -119,7 +119,7 @@ recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature,
 
 total.plot.func <- function (pop) {
   TimeSeries <- ggplot(pop)+
-      geom_line(aes(x=Year, y=Total))+
+      geom_line(aes(x=Year, y=Tot.Pop)) +
       scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
       xlab("Year")+
       ylab("Total Population")+
@@ -135,7 +135,7 @@ spatial.plot.func <- function (area, pop, pop.breaks, pop.labels, colours){
     mutate(pop_level = cut(pop, pop.breaks, include.lowest=T)) 
   
   nb.cols <- length(pop.breaks)
-  mycols <- mycolors <- colorRampPalette(brewer.pal(8, "RdBu"))(nb.cols)
+  mycols <- colorRampPalette(rev(brewer.pal(8, colours)))(nb.cols)
   
   map <- ggplot(water)+
     geom_sf(aes(fill=pop_level, color=Fished))+
