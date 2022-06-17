@@ -48,7 +48,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   All.Movers <- NULL
   
   ## Juvenile Movement
-  if(Age<=4){
+  if(Age<=1){
     
   Juv.Pop <- matrix(Population[ , Month, Age]) # This gives you the fish in all the sites at time step Month-1 of age A-1
   

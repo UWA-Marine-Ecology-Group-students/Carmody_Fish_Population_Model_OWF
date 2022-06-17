@@ -113,6 +113,11 @@ NTZ <- st_make_valid(NTZ)
 
 plot(NTZ$geometry)
 
+# Buffer to restrict the amount of water
+buffer_85m <- st_read("85m_Buffer_Layer.shp")%>%
+  st_transform(4283)%>%
+  st_make_valid
+
 # Habitat Layers
 reef <- st_read("ReefHabitat.gpkg")%>%
   st_transform(4283)%>%
@@ -225,6 +230,24 @@ water <- st_make_valid(water)
 
 water <- water[-299, ]
 
+## Remove cells that are greater than a certain depth
+buffer_85m2 <- st_crop(buffer_85m, xmin=112.5, xmax=114.65, ymin=-24, ymax=-21.1)
+
+buffer_85m2 <- st_union(buffer_85m2) %>% 
+  st_make_valid()
+
+plot(water$Spatial)
+plot(buffer_85m2, add=T)
+
+buffered <- st_intersection(water, buffer_85m2)
+plot(buffered)
+
+buffered <- st_make_valid(buffered)
+
+water <- buffered %>% 
+  mutate(ID=row_number())%>%
+  mutate(ID=factor(ID))
+
 # Get centroids for the grid cells 
 centroids <- st_centroid_within_poly(water)
 plot(centroids, cex=0.3) 
@@ -251,7 +274,6 @@ habitat <- rbind(reef, lagoon, rocky, pelagic)
 plot(habitat$geom)
 plot(water, add=T)
 
-### Something wrong here - st_intersection is not working the same way it does in RStudio Desktop ####
 # Calculate the percentage of each habitat type in each of the different cells 
 intersection <- st_intersection(habitat, water) #This gives you all the individual areas where there is overlap, the ID of the original grid cell and the habitat in each of the new little cells=plot(intersection$geom)
 
@@ -352,19 +374,19 @@ for (r in 1:NCELL){
 }
 
 ### Save all the files you need to remake these matrices ###
-# setwd(sp_dir)
-# 
-# saveRDS(dist_matrix, file="dist_matrix")
-# saveRDS(pelagic_perc, file="pelagic_perc")
-# saveRDS(reef_perc, file="reef_perc")
-# saveRDS(lagoon_perc, file="lagoon_perc")
-# saveRDS(rocky_perc, file="rocky_perc")
-# 
-# saveRDS(pDist, file="pDist")
-# saveRDS(pPelagic, file="pPelagic")
-# saveRDS(pReef, file="pReef")
-# saveRDS(pLagoon, file="pLagoon")
-# saveRDS(pRocky, file="pRocky")
+setwd(sp_dir)
+
+saveRDS(dist_matrix, file="dist_matrix")
+saveRDS(pelagic_perc, file="pelagic_perc")
+saveRDS(reef_perc, file="reef_perc")
+saveRDS(lagoon_perc, file="lagoon_perc")
+saveRDS(rocky_perc, file="rocky_perc")
+
+saveRDS(pDist, file="pDist")
+saveRDS(pPelagic, file="pPelagic")
+saveRDS(pReef, file="pReef")
+saveRDS(pLagoon, file="pLagoon")
+saveRDS(pRocky, file="pRocky")
 
 #### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
 ## Load files if need be ##

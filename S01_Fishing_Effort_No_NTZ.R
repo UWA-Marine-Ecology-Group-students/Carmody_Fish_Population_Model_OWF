@@ -1,6 +1,7 @@
 ###################################################
 
-# Script for setting up the fishing surface 
+# Script for setting up the fishing surface for
+# simulation 1, with no sanctuary zones
 # Requires files that are made in the first script
 # Also requires fishing effort data
 

@@ -134,6 +134,21 @@ NoRecruits <- WholePop %>%
   filter(Age!=1) #%>% 
   #mutate(Number = Number/1000) # Ridgeline doesn't like big numbers so we just make all the numbers smaller 
 
+#### CALCULATE TOTAL AREA OF FISHED AND NO-TAKE ####
+AreaFished <- water %>% 
+  mutate(cell_area = as.numeric(cell_area)) %>% 
+  mutate(Fished=as.factor(Fished)) %>% 
+  filter(Fished=="Y") 
+
+AreaFished <- (sum(AreaFished$cell_area))/100000
+
+AreaNT <- water %>% 
+  mutate(cell_area = as.numeric(cell_area)) %>% 
+  mutate(Fished=as.factor(Fished)) %>% 
+  filter(Fished=="N") 
+
+AreaNT <- (sum(AreaNT$cell_area))/100000
+
 #### RIDGELINE PLOTS WITHOUT RECRUITS ####
 
 ridge.norec.whole <- NoRecruits %>% 
@@ -614,7 +629,8 @@ AllFished <- rbind(FishedAges, sFishedAges)
 
 ScenarioWholePop <- rbind(AllNoTake, AllFished) %>%  
   pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
-  mutate(Year = as.factor(Year))
+  mutate(Year = as.factor(Year)) %>% 
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT))
 
 ScenarioNoRecruits <- ScenarioWholePop %>% 
   filter(Age!=1) 
@@ -624,18 +640,20 @@ line.recruits <- ScenarioWholePop %>%
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Number, group=interaction(Status,Scenario), colour=NTGroup, shape=interaction(Status, Scenario)))+
+  ggplot(., aes(x=Year, y=NumKM2, group=interaction(Status,Scenario), colour=NTGroup, shape=interaction(Status, Scenario)))+
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
   geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
   geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") +
+  scale_shape_manual(values= c(16,1,15,0))+
+  ylab("No. Fish per"~km^2)
 
 line.sublegal <- ScenarioWholePop %>% 
   filter(Age>1 & Age <=4) %>% 
   group_by(Scenario, Year, Status) %>% 
-  mutate(Total = sum(Number)) %>% 
+  mutate(Total = sum(NumKM2)) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
@@ -645,12 +663,14 @@ line.sublegal <- ScenarioWholePop %>%
   theme_classic()+
   geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
   geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") +
+  scale_shape_manual(values= c(16,1,15,0))+
+  ylab("No. Fish per"~km^2)
 
 line.legal <- ScenarioWholePop %>% 
   filter(Age>4 & Age <=10) %>% 
   group_by(Scenario, Year, Status) %>% 
-  mutate(Total = sum(Number)) %>% 
+  mutate(Total = sum(NumKM2)) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
@@ -660,12 +680,14 @@ line.legal <- ScenarioWholePop %>%
   theme_classic()+
   geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
   geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen")+
+  scale_shape_manual(values= c(16,1,15,0))+
+  ylab("No. Fish per"~km^2)
 
 line.biglegal <- ScenarioWholePop %>% 
   filter(Age>10) %>% 
   group_by(Scenario, Year, Status) %>% 
-  mutate(Total = sum(Number)) %>% 
+  mutate(Total = sum(NumKM2)) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
@@ -675,7 +697,9 @@ line.biglegal <- ScenarioWholePop %>%
   theme_classic()+
   geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
   geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen")+
+  scale_shape_manual(values= c(16,1,15,0))+
+  ylab("No. Fish per"~km^2)
 
 
 

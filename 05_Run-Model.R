@@ -39,9 +39,9 @@ my.colours <- "PuBu"
 ## Normal Model Files
 setwd(sg_dir)
 movement <- readRDS("movement")
-juv_movement <- readRDS("juvmove")
+juv_movement <- readRDS("juvmove") 
 recruitment <- readRDS("recruitment")
-#fishing <- readRDS("fishing")
+fishing <- readRDS("fishing")
 NoTake <- readRDS("NoTakeList")
 water <- readRDS("water")
 selectivity <- readRDS("selret")
@@ -50,8 +50,8 @@ weight <- readRDS("weight")
 YearlyTotal <- readRDS("BurnInPop")
 
 ## Simulation Files
-setwd(sim_dir)
-fishing <- readRDS("sim01_fishing")
+# setwd(sim_dir)
+# fishing <- readRDS("sim01_fishing")
 
 ## Read in functions
 setwd(working.dir)
