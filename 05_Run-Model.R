@@ -22,7 +22,6 @@ working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directo
 
 data_dir <- paste(working.dir, "Data", sep="/")
 fig_dir <- paste(working.dir, "Figures", sep="/")
-m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 pop_dir <-  paste(working.dir, "Output_Population", sep="/")
@@ -151,7 +150,7 @@ for(YEAR in 1:length(Time)){
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
   
-  filename <- paste("sim01_YearlyTotal", YEAR, sep=".")
+  filename <- paste("YearlyTotal", YEAR, sep=".")
   saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(3)

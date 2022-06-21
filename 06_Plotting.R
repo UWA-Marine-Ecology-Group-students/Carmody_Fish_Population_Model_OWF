@@ -16,6 +16,9 @@ library(RColorBrewer)
 library(geosphere)
 library(forcats)
 library(ggridges)
+library(grid)
+library(gridExtra)
+library(gtable)
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -123,7 +126,7 @@ FishedAges <- as.data.frame(cbind(Year5.F, Year10.F, Year15.F, Year20.F, Year25.
 colnames(FishedAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
 
 WholePop <- rbind(NoTakeAges, FishedAges) %>%  
-  pivot_longer(cols=-c(Age, Status), names_to="Year", values_to="Number") %>% 
+  pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
   mutate(Year = as.factor(Year))
 
 WholePop <- WholePop %>% 
@@ -131,8 +134,7 @@ WholePop <- WholePop %>%
   mutate(Status = as.factor(Status)) 
   
 NoRecruits <- WholePop %>% 
-  filter(Age!=1) #%>% 
-  #mutate(Number = Number/1000) # Ridgeline doesn't like big numbers so we just make all the numbers smaller 
+  filter(Age!=1) 
 
 #### CALCULATE TOTAL AREA OF FISHED AND NO-TAKE ####
 AreaFished <- water %>% 
@@ -400,7 +402,7 @@ sYear59.F <- sYear59[-c(NoTake[[3]]),12, ] %>%
   colSums(.)
 
 
-#### CREATE POP TOTAL ####
+#### CREATE POP TOTAL FOR SIMULATION ####
 
 sNoTakeAges <- as.data.frame(cbind(sYear5.NT, sYear10.NT, sYear15.NT, sYear20.NT, sYear25.NT, sYear30.NT, sYear35.NT, sYear40.NT, sYear45.NT, sYear50.NT, sYear55.NT, sYear59.NT)) %>% 
   mutate(Status = "NTZ") %>% 
@@ -418,7 +420,7 @@ sFishedAges <- as.data.frame(cbind(sYear5.F, sYear10.F, sYear15.F, sYear20.F, sY
 colnames(sFishedAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
 
 sWholePop <- rbind(sNoTakeAges, sFishedAges) %>%  
-  pivot_longer(cols=-c(Age, Status), names_to="Year", values_to="Number") %>% 
+  pivot_longer(cols=-c(Age, Status,Scenario), names_to="Year", values_to="Number") %>% 
   mutate(Year = as.factor(Year))
 
 sWholePop <- sWholePop %>% 
@@ -583,45 +585,6 @@ F_SB_Plot <- F_SB %>%
   xlab("Total Spawning Biomass")+
   ylab("Yearly Fishing Effort")
 
-## Total Plot Comaprison
-
-TotalPop <- array(0, dim=c(59,2))
-TotalPop <- as.data.frame(TotalPop)
-TotalPop <- TotalPop %>% 
-  rename(Year="V1") %>% 
-  mutate(Year=seq(1960,2018,1)) %>% 
-  rename(Tot.Pop="V2")
-
-numYear <- seq(1,59,1)
-
-for(Y in 1:59){
-  
-  year <- readRDS(paste0("YearlyTotal.", numYear[Y]))
-  year <- rowSums(year[,,1:30], dim=2)
-  year <- sum(year[,12])
-  
-  TotalPop[Y,2] <- year
-  
-}
-
-TotalPop <- TotalPop %>% 
-  mutate(sTot.Pop = Total) %>% 
-  rename(Normal = "Tot.Pop") %>% 
-  rename(Simulation = "sTot.Pop") %>% 
-  pivot_longer(cols=-c(Year), names_to="Scenario", values_to="Total.Population")
-
-TimeSeries <- TotalPop %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "With NTZs", ifelse(Scenario %in% ("Simulation") & Year>1985, "Without NTZs", 0)))) %>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  mutate(ColourGroup = fct_relevel(ColourGroup, c("Pre 1987", "With NTZs", "Without NTZs"))) %>% 
-  ggplot()+
-  geom_line(aes(x=Year, y=Total.Population, group=Scenario, colour=ColourGroup)) +
-  scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
-  scale_colour_manual("Scenario",values=c( "gray11", "seagreen", "steelblue"))+
-  xlab("Year")+
-  ylab("Total Population")+
-  theme_classic()
-
 #### PUT PLOTS TOGETHER ####
 
 AllNoTake <- rbind(NoTakeAges, sNoTakeAges) 
@@ -644,11 +607,16 @@ line.recruits <- ScenarioWholePop %>%
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") +
-  scale_shape_manual(values= c(16,1,15,0))+
-  ylab("No. Fish per"~km^2)
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
+                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
+                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab(NULL)+
+  xlab(NULL)+
+  ggplot2::annotate("text", x=1.3, y=1.1, label="(a) Recruits", size = 3, fontface=2)
 
 line.sublegal <- ScenarioWholePop %>% 
   filter(Age>1 & Age <=4) %>% 
@@ -661,11 +629,16 @@ line.sublegal <- ScenarioWholePop %>%
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") +
-  scale_shape_manual(values= c(16,1,15,0))+
-  ylab("No. Fish per"~km^2)
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
+                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
+                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab(NULL)+
+  xlab(NULL)+
+  ggplot2::annotate("text", x=1.4, y=0.3, label="(b) Sub-legal", size = 3, fontface=2)
 
 line.legal <- ScenarioWholePop %>% 
   filter(Age>4 & Age <=10) %>% 
@@ -678,11 +651,16 @@ line.legal <- ScenarioWholePop %>%
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen")+
-  scale_shape_manual(values= c(16,1,15,0))+
-  ylab("No. Fish per"~km^2)
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
+                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
+                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab(NULL)+
+  xlab(NULL)+
+  ggplot2::annotate("text", x=1.1, y=0.32, label="(c) Legal", size = 3, fontface=2)
 
 line.biglegal <- ScenarioWholePop %>% 
   filter(Age>10) %>% 
@@ -695,16 +673,92 @@ line.biglegal <- ScenarioWholePop %>%
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen")+
-  scale_shape_manual(values= c(16,1,15,0))+
-  ylab("No. Fish per"~km^2)
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
+                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
+                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab(NULL)+
+  xlab(NULL)+
+  ggplot2::annotate("text", x=1.5, y=0.22, label="(d) Large Legal", size = 3, fontface=2)
 
+## Put the plots together 
+#Put together as one plot
+x.label <- textGrob("Year", gp=gpar(fontsize=14))
+y.label <- textGrob("No. Fish per"~km^2, gp=gpar(fontsize=14), rot=90)
+legend <- gtable_filter(ggplotGrob(line.biglegal), "guide-box")
 
+LinePlotsxGroup <-grid.arrange(arrangeGrob(line.recruits + theme(legend.position="none"),
+                                           line.sublegal + theme(legend.position="none"),
+                                           line.legal + theme(legend.position="none"),
+                                           line.biglegal + theme(legend.position="none"),
+                                           nrow = 2,
+                                           left = y.label,
+                                           bottom = x.label), 
+                                legend, 
+                                widths=unit.c(unit(1, "npc") - legend$width, legend$width), 
+                                nrow=1)
 
+## Line Plot of Whole Population
+TotalPop <- array(0, dim=c(59,2))
+TotalPop <- as.data.frame(TotalPop)
+TotalPop <- TotalPop %>% 
+  rename(Year="V1") %>% 
+  mutate(Year=seq(1960,2018,1)) %>% 
+  rename(Tot.Pop="V2")
 
+numYear <- seq(1,59,1)
 
+for(Y in 1:59){
+  
+  year <- readRDS(paste0("YearlyTotal.", numYear[Y]))
+  year <- rowSums(year[,,1:30], dim=2)
+  year <- sum(year[,12])
+  
+  TotalPop[Y,2] <- year
+  
+}
 
+sTotalPop <- array(0, dim=c(59,2))
+sTotalPop <- as.data.frame(sTotalPop)
+sTotalPop <- sTotalPop %>% 
+  rename(Year="V1") %>% 
+  mutate(Year=seq(1960,2018,1)) %>% 
+  rename(sTot.Pop="V2")
 
+numYear <- seq(1,59,1)
+
+for(Y in 1:59){
+  
+  year <- readRDS(paste0("sim01_YearlyTotal.", numYear[Y]))
+  year <- rowSums(year[,,1:30], dim=2)
+  year <- sum(year[,12])
+  
+  sTotalPop[Y,2] <- year
+  
+}
+
+TotalPop <- TotalPop %>% 
+  mutate(sTot.Pop = sTotalPop$sTot.Pop) %>% 
+  rename(Normal = "Tot.Pop") %>% 
+  rename(Simulation = "sTot.Pop") %>% 
+  pivot_longer(cols=-c(Year), names_to="Scenario", values_to="Total.Population")
+
+TimeSeries <- TotalPop %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "With NTZs", ifelse(Scenario %in% ("Simulation") & Year>1985, "Without NTZs", 0)))) %>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+  mutate(ColourGroup = fct_relevel(ColourGroup, c("Pre 1987", "With NTZs", "Without NTZs"))) %>% 
+  ggplot()+
+  geom_line(aes(x=Year, y=Total.Population, group=Scenario, colour=ColourGroup)) +
+  scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
+  scale_colour_manual("Scenario",values=c( "gray20",  "#7ac0c2", "#487088"), labels=c("Pre 1987", 
+                                                                                        "With NTZs in place",
+                                                                                        "Without NTZs in place"))+
+  xlab("Year")+
+  ylab("Total Population")+
+  geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  theme_classic()
 
