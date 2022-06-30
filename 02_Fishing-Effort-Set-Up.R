@@ -46,12 +46,14 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
 
 ## Data
 setwd(data_dir)
-boat_days <- read.csv("Boat_Days_Gascoyne.csv")
+boat_days <- read.csv("Boat_Days_Ningaloo.csv")
 
 boat_days <- boat_days%>%
-  mutate(NumMonth = as.numeric(NumMonth)) %>% 
-  mutate(Month = as.factor(Month)) %>% 
-  mutate(Gascoyne_Boat_Days = as.numeric(Gascoyne_Boat_Days)) %>% 
+  mutate(NumMonth = as.numeric(NumMonth)) %>%
+  mutate(Month = as.factor(Month)) %>%
+  mutate(Survey_Year = as.character(Survey_Year)) %>% 
+  mutate(Boat_Days_State = as.numeric(Boat_Days_State)) %>%
+  mutate(Boat_Days_Commonwealth = as.numeric(Boat_Days_Commonwealth)) %>%
   mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
 
 ## Spatial Data
@@ -66,32 +68,164 @@ BR <- st_read("Boat_Ramps.shp") %>%
   st_transform(4283)%>%
   st_make_valid
 
-# Parameter values
-q <- 0.005
+#### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
-#### SET UP FISHING SURFACE ####
+# Work out the number of boat days for the Ningaloo region split by state and commonwealth
+# We have estimates for just this area from Claire Smallwood but not for all years 
+# We have calculated proportions for each month based on the Gascoyne data 
+# So we are going to interpolate the months we are missing 
 
-# Work out the number of boat days for the Exmouth region
-# For this we're using data from the whole of the Gascoyne and then splitting up the number of boat days in Exmouth compared
-# to Carnarvon/Shark Bay and then using visitor numbers to work out what percentage of the baot days were in Exmouth
-# LGA statistics for visitors to the biggest shires where people would go fishing in the Gascoyne indicate that trips to
-# Exmouth are about 33% of the visitation to the region so we'll allocate 33% of the Boat Days to Exmouth
-# We then need to create a model for hindcasting fishing effort back to something like the 1960s to get an estimate of what 
-# effort might have been like for the years where we don't have any data 
+## Interpolate the values for state and commonwealth separately
+# January
+boat_days_jan <- boat_days %>% 
+  filter(NumMonth==1)
 
-## Working out the fishing effort in the Gascoyne
-# Plotting the data to see what it looks like
-TotalYear <- boat_days %>% 
-  group_by(Year) %>% 
-  summarise(., Total_Boat_Days=sum(Gascoyne_Boat_Days))
+inter_jan_state <- approx(boat_days_jan$Year, boat_days_jan$Boat_Days_State, xout=c(2013,2015,2017)) %>% 
+  unlist()
+inter_jan_comm <- approx(boat_days_jan$Year, boat_days_jan$Boat_Days_Commonwealth, xout=c(2013,2015,2017)) %>% 
+  unlist()
 
-YearPlot <- ggplot(TotalYear) + 
-  geom_point(aes(x=Year, y=Total_Boat_Days))
+# February
+boat_days_feb <- boat_days %>% 
+  filter(NumMonth==2)
+
+inter_feb_state <- approx(boat_days_feb$Year, boat_days_feb$Boat_Days_State, xout=c(2013,2015,2017)) %>% 
+  unlist()
+inter_feb_comm <- approx(boat_days_feb$Year, boat_days_feb$Boat_Days_Commonwealth, xout=c(2013,2015,2017)) %>% 
+  unlist()
+
+# March
+boat_days_mar <- boat_days %>% 
+  filter(NumMonth==3)
+
+inter_mar_state <- approx(boat_days_mar$Year, boat_days_mar$Boat_Days_State, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+inter_mar_comm <- approx(boat_days_mar$Year, boat_days_mar$Boat_Days_Commonwealth, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+
+# April
+boat_days_apr <- boat_days %>% 
+  filter(NumMonth==4)
+
+inter_apr_state <- approx(boat_days_apr$Year, boat_days_apr$Boat_Days_State, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+inter_apr_comm <- approx(boat_days_apr$Year, boat_days_apr$Boat_Days_Commonwealth, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+
+# May
+boat_days_may <- boat_days %>% 
+  filter(NumMonth==5)
+
+inter_may_state <- approx(boat_days_may$Year, boat_days_may$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_may_comm <- approx(boat_days_may$Year, boat_days_may$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# June
+boat_days_jun <- boat_days %>% 
+  filter(NumMonth==6)
+
+inter_jun_state <- approx(boat_days_jun$Year, boat_days_jun$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_jun_comm <- approx(boat_days_jun$Year, boat_days_jun$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# July
+boat_days_jul <- boat_days %>% 
+  filter(NumMonth==7)
+
+inter_jul_state <- approx(boat_days_jul$Year, boat_days_jul$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_jul_comm <- approx(boat_days_jul$Year, boat_days_jul$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# August
+boat_days_aug <- boat_days %>% 
+  filter(NumMonth==8)
+
+inter_aug_state <- approx(boat_days_aug$Year, boat_days_aug$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_aug_comm <- approx(boat_days_aug$Year, boat_days_aug$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# September
+boat_days_sep <- boat_days %>% 
+  filter(NumMonth==9)
+
+inter_sep_state <- approx(boat_days_sep$Year, boat_days_sep$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_sep_comm <- approx(boat_days_sep$Year, boat_days_sep$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+# October
+boat_days_oct <- boat_days %>% 
+  filter(NumMonth==10)
+
+inter_oct_state <- approx(boat_days_oct$Year, boat_days_oct$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_oct_comm <- approx(boat_days_oct$Year, boat_days_oct$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+# November
+boat_days_nov <- boat_days %>% 
+  filter(NumMonth==11)
+
+inter_nov_state <- approx(boat_days_nov$Year, boat_days_nov$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_nov_comm <- approx(boat_days_nov$Year, boat_days_nov$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+# December
+boat_days_dec <- boat_days %>% 
+  filter(NumMonth==12)
+
+inter_dec_state <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_dec_comm <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+## Add these values in to the data frame where we are missing the values
+boat_days[c(25,49,73), 4] <- inter_jan_state[4:6]
+boat_days[c(25,49,73), 5] <- inter_jan_comm[4:6]
+
+boat_days[c(26,50,74),4] <- inter_feb_state[4:6]
+boat_days[c(26,50,74),5] <- inter_feb_comm[4:6]
+
+boat_days[c(15,27,51,75),4] <- inter_mar_state[5:8]
+boat_days[c(15,27,51,75),5] <- inter_mar_comm[5:8]
+
+boat_days[c(16,28,52,76),4] <- inter_apr_state[5:8]
+boat_days[c(16,28,52,76),5] <- inter_apr_comm[5:8]
+
+boat_days[c(17,41,53,77),4] <- inter_may_state[5:8]
+boat_days[c(17,41,53,77),5] <- inter_may_comm[5:8]
+
+boat_days[c(18,42,54,78),4] <- inter_jun_state[5:8]
+boat_days[c(18,42,54,78),5] <- inter_jun_comm[5:8]
+
+boat_days[c(19,43,55,79),4] <- inter_jul_state[5:8]
+boat_days[c(19,43,55,79),5] <- inter_jul_comm[5:8]
+
+boat_days[c(20,44,56,80),4] <- inter_aug_state[5:8]
+boat_days[c(20,44,56,80),5] <- inter_aug_comm[5:8]
+
+boat_days[c(21,45,69),4] <- inter_sep_state[4:6]
+boat_days[c(21,45,69),5] <- inter_sep_comm[4:6]
+
+boat_days[c(22,46,70),4] <- inter_oct_state[4:6]
+boat_days[c(22,46,70),5] <- inter_oct_comm[4:6]
+
+boat_days[c(23,47,71),4] <- inter_nov_state[4:6]
+boat_days[c(23,47,71),5] <- inter_nov_comm[4:6]
+
+boat_days[c(24,48,72),4] <- inter_dec_state[4:6]
+boat_days[c(24,48,72),5] <- inter_dec_comm[4:6]
+
+#### HINDCASTING ####
 
 YearModel <- lm(Total_Boat_Days~Year, data=TotalYear)
 summary(YearModel)
 
-#### HINDCASTING ####
 Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>% 
   mutate(V1=seq(1990, 2010, by=1)) %>% 
   rename("Year"=V1)
@@ -556,7 +690,11 @@ Fishing <- abind(Fishing_6086, Fishing_8705_2, along=3)
 Fishing <- abind(Fishing, Fishing_0517_2, along=3)
 Fishing <- abind(Fishing, Fishing_1819_2, along=3)
 
-Fishing <- Fishing*q # multiply by catchability
+#### Determining catchability ####
+## Have estimated an increase in recreational efficiency of 30% from 1990 when colour sounders become more commonplace (GPS was 2002) according to Marriott et al. 2011
+
+
+
 
 #### SAVE DATA ####
 setwd(sg_dir)
