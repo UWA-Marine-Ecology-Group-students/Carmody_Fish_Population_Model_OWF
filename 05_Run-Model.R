@@ -10,12 +10,9 @@ library(tidyverse)
 library(dplyr)
 library(ggplot2)
 library(sf)
-library(raster)
-library(stringr)
 library(forcats)
 library(RColorBrewer)
-library(geosphere)
-
+library(MQMF)
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -82,6 +79,9 @@ TimesPlotted <- 0
 #### SET UP INITIAL POPULATION ####
 PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 Total <- array(NA, dim=c(length(Time),1)) # For plotting
+bio.catch <- array(0, dim=c(NCELL, length(Ages)))
+monthly.catch <- array(0, dim=c(length(Ages), 12))
+yearly.catch <- array(0, dim=(c(length(Time), 3)))
 
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
@@ -104,13 +104,29 @@ for(YEAR in 1:length(Time)){
     for(A in 1:dim(YearlyTotal)[3]){
       
       if(MONTH==12 & 2<=A & A<30){
-        YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
                                                 Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+      
+        YearlyTotal[ ,1, A+1] <- survived.catch[[1]]
+       
+         # Calculate catch
+        n.catch <- survived.catch[[2]]
+        
+        bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
+        
       } else if (MONTH!=12) {
-        YearlyTotal[ ,MONTH+1, A] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
-                                                   Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        
+        YearlyTotal[ ,MONTH+1, A] <- survived.catch[[1]]
+        
+        # Calculate catch
+        n.catch <- survived.catch[[2]] # Fish caught in each cell of one age in one month
+        
+        bio.catch[,A] <- n.catch * weight[(A*12)+1]
       
       } else { }
+      
       
     } # End Mortality
     
@@ -123,10 +139,14 @@ for(YEAR in 1:length(Time)){
       
     } else { }
     # End Recruitment
+    
+    monthly.catch[1:30,MONTH] <- colSums(bio.catch)
+    
   } #End bracket for months
   
   PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
   
+  yearly.catch[YEAR,3] <- sum(monthly.catch)
   
   print(YEAR)
   water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
