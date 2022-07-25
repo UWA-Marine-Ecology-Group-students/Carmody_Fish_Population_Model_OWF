@@ -257,8 +257,144 @@ points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the b
 
 NCELL <- nrow(points) #Set the number of cells in the model
 
-## Add habitat data and assign it to the grid cells e.g. % cover 
-## Can then put a coefficient on the different types of habitat to change how the fish move (i.e. they move towards reef)
+
+#### CREATE THE DISTANCE MATRIX ####
+## This method allows us to create a distance matrix that takes into account the land and forces the fish to swim around
+
+## Convert the points in the centroids of the ploygon to a spatial points file
+points$ID <- as.integer(points$ID)
+points2 <- st_as_sf(points, coords = c("X", "Y"))
+points2 <- st_cast(st_geometry(points2), "POINT")
+
+## Figure out which six points are the closest - won't all have six close ones but can start from there
+dist.mat <- st_distance(points2) # Great Circle distance since in lat/lon
+# Number within 1.5km: Subtract 1 to exclude the point itself
+num.5km <- apply(dist.mat, 1, function(x) {
+  sum(x < 0.05) - 1
+})
+rm(num.3000)
+
+nn.dist <- apply(dist.mat, 1, function(x) {
+  return(sort(x, partial = 2)[2])
+})
+
+closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[2] })
+second.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[3] })
+third.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[4] })
+fourth.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[5] })
+fifth.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[6] })
+sixth.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[7] })
+
+neighbours <- water %>% 
+  dplyr::select(ID) %>% 
+  mutate(`closest` = closest) %>% 
+  mutate(second = second.closest) %>% 
+  mutate(third = third.closest) %>% 
+  mutate(fourth = fourth.closest) %>% 
+  mutate(fifth = fifth.closest) %>% 
+  mutate(sixth = sixth.closest)
+
+closest <- as.data.frame(closest) %>%
+  rename(ID = "closest") %>% 
+  inner_join(., points, by="ID") %>% 
+  st_as_sf(., coords = c("X", "Y")) 
+closest <- st_cast(st_geometry(closest), "POINT") 
+
+second.closest <- as.data.frame(second.closest) %>%
+  rename(ID = "second.closest") %>% 
+  inner_join(., points, by="ID") %>% 
+  st_as_sf(., coords = c("X", "Y"))
+second.closest <- st_cast(st_geometry(second.closest), "POINT")
+
+third.closest <- as.data.frame(third.closest) %>%
+  rename(ID = "third.closest") %>% 
+  inner_join(., points, by="ID") %>% 
+  st_as_sf(., coords = c("X", "Y"))
+third.closest <- st_cast(st_geometry(third.closest), "POINT")
+
+fourth.closest <- as.data.frame(fourth.closest) %>%
+  rename(ID = "fourth.closest") %>% 
+  inner_join(., points, by="ID") %>% 
+  st_as_sf(., coords = c("X", "Y"))
+fourth.closest <- st_cast(st_geometry(fourth.closest), "POINT")
+
+fifth.closest <- as.data.frame(fifth.closest) %>%
+  rename(ID = "fifth.closest") %>% 
+  inner_join(., points, by="ID") %>%  
+  st_as_sf(., coords = c("X", "Y"))
+fifth.closest <- st_cast(st_geometry(fifth.closest), "POINT")
+
+sixth.closest <- as.data.frame(sixth.closest) %>%
+  rename(ID = "sixth.closest") %>% 
+  inner_join(., points, by="ID") %>% 
+  st_as_sf(., coords = c("X", "Y"))
+sixth.closest <- st_cast(st_geometry(sixth.closest), "POINT")
+
+### CONNECT THE POINTS TO THEIR NEIGHBOURS TO FORM A NETWORK ###
+n <- nrow(points)
+
+# Closest
+linestrings.closest <- lapply(X = 1:n, FUN = function(x) {
+  pair <- st_combine(c(points2[x], closest[x]))
+  line <- st_cast(pair, "LINESTRING")
+  return(line)
+})
+multilinestring.closest <- st_multilinestring(do.call("rbind", linestrings.closest))
+
+# Second closest
+linestrings.second <- lapply(X = 1:n, FUN = function(x) {
+  pair <- st_combine(c(points2[x], second.closest[x]))
+  line <- st_cast(pair, "LINESTRING")
+  return(line)
+})
+multilinestring.second <- st_multilinestring(do.call("rbind", linestrings.second))
+
+# Third closest
+linestrings.third <- lapply(X = 1:n, FUN = function(x) {
+  pair <- st_combine(c(points2[x], third.closest[x]))
+  line <- st_cast(pair, "LINESTRING")
+  return(line)
+})
+multilinestring.third<- st_multilinestring(do.call("rbind", linestrings.third))
+
+# Fourth closest
+linestrings.fourth <- lapply(X = 1:n, FUN = function(x) {
+  pair <- st_combine(c(points2[x], fourth.closest[x]))
+  line <- st_cast(pair, "LINESTRING")
+  return(line)
+})
+multilinestring.fourth <- st_multilinestring(do.call("rbind", linestrings.fourth))
+
+# Fifth closest
+linestrings.fifth <- lapply(X = 1:n, FUN = function(x) {
+  pair <- st_combine(c(points2[x], fifth.closest[x]))
+  line <- st_cast(pair, "LINESTRING")
+  return(line)
+})
+multilinestring.fifth <- st_multilinestring(do.call("rbind", linestrings.fifth))
+
+# Sixth closest
+linestrings.sixth <- lapply(X = 1:n, FUN = function(x) {
+  pair <- st_combine(c(points2[x], sixth.closest[x]))
+  line <- st_cast(pair, "LINESTRING")
+  return(line)
+})
+multilinestring.sixth <- st_multilinestring(do.call("rbind", linestrings.sixth))
+
+connected <- st_combine(c(multilinestring.closest, multilinestring.second, multilinestring.third, multilinestring.fourth, multilinestring.fifth, multilinestring.sixth))
+connected <- st_cast(connected, "LINESTRING") # Needs to be a line string rather than multiline for the next step
+
+### SET UP THE SF NETWORK AND CREATE A DISTANCE MATRIX ###
+network <- as_sfnetwork(connected, directed = FALSE) %>%
+  activate("edges") %>%
+  mutate(weight = edge_length())
+
+## Calculate the distances from each point to every other point on the network
+net <- activate(network, "nodes")
+cost_matrix < st_network_cost(net)
+dim(cost_matrix) # Check that the dimensions match up to how many points you think you should have in the network
+
+#### ADD HABITAT TO THE ENVIRONMENT ####
 
 # Join all the habitat together
 reef <- reef%>%
@@ -317,63 +453,8 @@ lagoon_perc <- hab_perc%>%
   complete(ID = 1:NCELL, fill = list(perc_habitat=0))%>%
   mutate(type = replace_na("lagoon"))
 
-#### CREATE MATRIX OF CONNVECTIVITY FOR FISH MOVEMENT ####
-## Calculate a distance matrix between the cells 
-# To make them go round the land, create visibility graph (grass function), then distance between nodes, then pick the
-# shortest path
-dist_matrix <- as.matrix(dist(points)) #This is just the linear distance  between the centroids of the grid cells
 
-## Calculate the probability a fish moves to this site in a given time step using the swimming speed we set earlier 
-# This creates a dispersal kernel based on the negative exponential distribution
-
-pDist <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for(r in 1:NCELL){
-  for(c in 1:NCELL){
-    p <- exp(-dist_matrix[r,c]/SwimSpeed)
-    pDist[r,c] <- p
-  }
-}
-
-## Calculate the difference in habitat types between each of the cells i.e. will there be an increase in reef % if you go from site 1 to site 2
-
-pPelagic <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    p <- as.numeric((pelagic_perc[c,3]) - (pelagic_perc[r,3]))
-    pPelagic[r,c] <- p
-  }
-}
-
-pReef <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    p <- as.numeric((reef_perc[c,3]) - (reef_perc[r,3]))
-    pReef[r,c] <- p
-  }
-}
-
-pLagoon <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    p <- as.numeric((lagoon_perc[c,3]) - (lagoon_perc[r,3]))
-    pLagoon[r,c] <- p
-  }
-}
-
-pRocky<- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    p <- as.numeric((rocky_perc[c,3]) - (rocky_perc[r,3]))
-    pRocky[r,c] <- p
-  }
-}
-
-### Save all the files you need to remake these matrices ###
+#### SAVE FILES FOR USE IN NEXT STEP ####
 setwd(sp_dir)
 
 saveRDS(dist_matrix, file="dist_matrix")
@@ -381,133 +462,6 @@ saveRDS(pelagic_perc, file="pelagic_perc")
 saveRDS(reef_perc, file="reef_perc")
 saveRDS(lagoon_perc, file="lagoon_perc")
 saveRDS(rocky_perc, file="rocky_perc")
-
-saveRDS(pDist, file="pDist")
-saveRDS(pPelagic, file="pPelagic")
-saveRDS(pReef, file="pReef")
-saveRDS(pLagoon, file="pLagoon")
-saveRDS(pRocky, file="pRocky")
-
-#### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
-## Load files if need be ##
-# setwd(sp_dir)
-# 
-# pDist <- readRDS("pDist")
-# pPelagic <- readRDS("pPelagic")
-# pReef <- readRDS("pReef")
-# pLagoon <- readRDS("pLagoon")
-# pRocky <- readRDS("pRocky")
-
-# First determine the utility of each of the sites 
-# This is very sensitive to changes in the values particularly for reef 
-# PROBABLY ALSO NEED TO PUT DEPTH IN HERE
-
-a = 0.08
-b = 0.15
-c = 0.1
-d = 0.04
-e = 0.01
-
-Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
-
-# Calculate the summed utility across the rows 
-rowU <- matrix(NA, ncol=1, nrow=NCELL)
-cellU <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    U <- exp(Vj[r,c])
-    cellU[r,c] <- U
-  }
-}
-
-rowU <- as.data.frame(rowSums(cellU))
-
-# Calculate the probability that the fish will move to this site
-
-Pj <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    Pj[r,c] <- (exp(Vj[r,c]))/rowU[r,1]
-  }
-}
-rowSums(Pj)
-
-#### RECRUITMENT MATRIX ####
-## Want the recruits to be in the lagoons and then move out from there 
-dispersal <- lagoon_perc %>% 
-  dplyr::select(perc_habitat, ID)
-dispersal$area <- as.vector(water$area)
-
-dispersal <- dispersal %>% 
-  filter(perc_habitat!=0)
-
-temp <- array(0, dim=c(NCELL, 1))
-recruitment <- array(0, dim=c(nrow(dispersal), 2))
-recruitment[ ,2] <- as.numeric(dispersal$ID) 
-
-for (CELL in 1:NCELL){
-  
-  for (cell in 1:NCELL){
-  temp[cell, 1] <- as.numeric((dispersal[cell,2]/dispersal[cell,1]))
-  }
-  
-  temp[which(!is.finite(temp))] <- 0
-  summed <- sum(temp)
-  
-  recruitment[CELL,1] <- as.numeric(temp[CELL,1]/summed)
-}
-
-recruitment <- as.data.frame(recruitment)
-colnames(recruitment)[colnames(recruitment)=="V2"] <- "ID"
-
-recruitment <- merge(recruitment, lagoon_perc, by="ID", all=T) %>% #check that cells with no lagoon habitat have 0 probability of recruitment
-  mutate_all(~replace(., is.na(.), 0)) #For cells where there was no lagoon habitat put probability of recruitment as 0
-
-#### RECRUIT MOVEMENT ####
-## Want the recruits to stay in the lagoon until they mature and move to the reef
-
-a = 0.1
-b = 0.01
-c = 0.09
-d = 0.05
-e = 0.001
-
-Recj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
-
-# Calculate the summed utility across the rows 
-rowU <- matrix(NA, ncol=1, nrow=NCELL)
-cellU <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    U <- exp(Recj[r,c])
-    cellU[r,c] <- U
-  }
-}
-
-rowU <- as.data.frame(rowSums(cellU))
-
-# Calculate the probability that the fish will move to this site
-
-ProbRec <- matrix(NA, ncol=NCELL, nrow=NCELL)
-
-for (r in 1:NCELL){
-  for (c in 1:NCELL){
-    ProbRec[r,c] <- (exp(Recj[r,c]))/rowU[r,1]
-  }
-}
-rowSums(ProbRec)
-
-#### SAVE FILES ####
-setwd(sg_dir)
-saveRDS(Pj, file="movement")
-saveRDS(water, file="water")
-saveRDS(ProbRec, file="juvmove")
-saveRDS(recruitment, file="recruitment")
-
-#### SST FOR RECRUITMENT ####
 
 
 
