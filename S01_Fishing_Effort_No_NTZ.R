@@ -28,6 +28,7 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
+sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### LOAD FILES ####
 

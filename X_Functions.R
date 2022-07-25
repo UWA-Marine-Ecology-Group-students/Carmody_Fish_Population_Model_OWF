@@ -148,11 +148,14 @@ recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature,
 
 total.plot.func <- function (pop) {
   TimeSeries <- ggplot(pop)+
-      geom_line(aes(x=Year, y=Tot.Pop)) +
-      scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
-      xlab("Year")+
-      ylab("Total Population")+
-      theme_classic()
+    geom_line(aes(x=Year, y=Tot.Pop)) +
+    scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
+    xlab("Year")+
+    ylab("Total Population")+
+    theme_classic()+
+    geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
+    geom_vline(xintercept=2005, colour="grey20")+
+    geom_vline(xintercept=2017, linetype="dashed", colour="grey20")
     
     return(TimeSeries)
 }

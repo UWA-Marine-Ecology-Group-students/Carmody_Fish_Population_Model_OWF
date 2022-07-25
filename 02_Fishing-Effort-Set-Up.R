@@ -795,14 +795,15 @@ Fishing <- abind(Fishing, Fishing_1819_2, along=3)
 q <- as.data.frame(array(0, dim=c(59,1))) %>% 
   rename(Q = "V1")
 
-q[1:30, 1] <- 0.0005
+q[1:30, 1] <- 0.005
 
-# q has to now increase to 0.00065 in equal steps over 29 years which is 5.172414e-06 each year
+# q has to now increase to 0.0013 in equal steps over 29 years which is 0.000025 each year
 
 for (y in 31:59){
-  q[y,1] <- q[y-1,1] + 5.172414e-06
+  q[y,1] <- q[y-1,1] + 0.00005172413
 }
 
+Fishing2 <- Fishing
 # Now calculate F by multiplying our effort by q
 for (y in 1:59){
   Fishing[,,y] <- Fishing[,,y]*q[y,1]

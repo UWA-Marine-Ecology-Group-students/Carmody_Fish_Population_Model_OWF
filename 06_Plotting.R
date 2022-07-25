@@ -326,76 +326,76 @@ map <- ggplot(water)+
 
 #### PLOT SIMULATION ####
 
-sYear5 <- readRDS("sim01_YearlyTotal.5") 
+sYear5 <- readRDS("sim02_YearlyTotal.5") 
 sYear5.NT <- sYear5[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear5.F <- sYear5[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear10 <- readRDS("sim01_YearlyTotal.10")
+sYear10 <- readRDS("sim02_YearlyTotal.10")
 sYear10.NT <- sYear10[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear10.F <- sYear10[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear15 <- readRDS("sim01_YearlyTotal.15") 
+sYear15 <- readRDS("sim02_YearlyTotal.15") 
 sYear15.NT <- sYear15[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear15.F <- sYear15[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear20 <- readRDS("sim01_YearlyTotal.20")
+sYear20 <- readRDS("sim02_YearlyTotal.20")
 sYear20.NT <- sYear20[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear20.F <- sYear20[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear25 <- readRDS("sim01_YearlyTotal.25")
+sYear25 <- readRDS("sim02_YearlyTotal.25")
 sYear25.NT <- sYear25[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear25.F <- sYear25[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
 # First sanctuaries at year 27
-sYear30 <- readRDS("sim01_YearlyTotal.30")
+sYear30 <- readRDS("sim02_YearlyTotal.30")
 sYear30.NT <- sYear30[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear30.F <- sYear30[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear35 <- readRDS("sim01_YearlyTotal.35")
+sYear35 <- readRDS("sim02_YearlyTotal.35")
 sYear35.NT <- sYear35[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear35.F <- sYear35[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear40 <- readRDS("sim01_YearlyTotal.40")
+sYear40 <- readRDS("sim02_YearlyTotal.40")
 sYear40.NT <- sYear40[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear40.F <- sYear40[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear45 <- readRDS("sim01_YearlyTotal.45")
+sYear45 <- readRDS("sim02_YearlyTotal.45")
 sYear45.NT <- sYear45[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear45.F <- sYear45[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
 ## Sanctuaries expanded
-sYear50 <- readRDS("sim01_YearlyTotal.50")
+sYear50 <- readRDS("sim02_YearlyTotal.50")
 sYear50.NT <- sYear50[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear50.F <- sYear50[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
 ## Commonwealth sanctuary put in at year 53
-sYear55 <- readRDS("sim01_YearlyTotal.55")
+sYear55 <- readRDS("sim02_YearlyTotal.55")
 sYear55.NT <- sYear55[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear55.F <- sYear55[-c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 
-sYear59 <- readRDS("sim01_YearlyTotal.59")
+sYear59 <- readRDS("sim02_YearlyTotal.59")
 sYear59.NT <- sYear59[c(NoTake[[3]]),12, ] %>% 
   colSums(.)
 sYear59.F <- sYear59[-c(NoTake[[3]]),12, ] %>% 
@@ -411,7 +411,6 @@ sNoTakeAges <- as.data.frame(cbind(sYear5.NT, sYear10.NT, sYear15.NT, sYear20.NT
   mutate(Scenario = as.factor(Scenario))
 colnames(sNoTakeAges) <- c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
 
-
 sFishedAges <- as.data.frame(cbind(sYear5.F, sYear10.F, sYear15.F, sYear20.F, sYear25.F, sYear30.F, sYear35.F, sYear40.F, sYear45.F, sYear50.F, sYear55.F, sYear59.F)) %>% 
   mutate(Status = "Fished") %>% 
   mutate(Age = seq(1:30)) %>% 
@@ -425,7 +424,8 @@ sWholePop <- rbind(sNoTakeAges, sFishedAges) %>%
 
 sWholePop <- sWholePop %>% 
   mutate(Year = fct_relevel(Year, c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018"))) %>% 
-  mutate(Status = as.factor(Status)) 
+  mutate(Status = as.factor(Status)) %>% 
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT))
 
 sNoRecruits <- sWholePop %>% 
   filter(Age!=1) #%>% 
@@ -471,59 +471,70 @@ sline.recruits <- sWholePop %>%
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Number, group=Status, colour=NTGroup, shape=Status))+
+  ggplot(., aes(x=Year, y=NumKM2, group=Status, colour=NTGroup, shape=Status))+
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab("No. Fish per"~km^2)
 
 sline.sublegal <- sWholePop %>% 
   filter(Age>1 & Age <=4) %>% 
   group_by(Year, Status) %>% 
   mutate(Total = sum(Number)) %>% 
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Total/AreaFished, Total/AreaNT)) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Total, group=interaction(Status,Age), colour=NTGroup, shape=Status))+
+  ggplot(., aes(x=Year, y=NumKM2, group=interaction(Status,Age), colour=NTGroup, shape=Status))+
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab("No. Fish per"~km^2)
 
 sline.legal <- sWholePop %>% 
   filter(Age>4 & Age <=10) %>% 
   group_by(Year, Status) %>% 
   mutate(Total = sum(Number)) %>% 
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Total/AreaFished, Total/AreaNT)) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Total, group=Status, colour=NTGroup, shape=Status))+
+  ggplot(., aes(x=Year, y=NumKM2, group=Status, colour=NTGroup, shape=Status))+
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab("No. Fish per"~km^2)
+
 
 sline.biglegal <- sWholePop %>% 
   filter(Age>10) %>% 
   group_by(Year, Status) %>% 
   mutate(Total = sum(Number)) %>% 
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Total/AreaFished, Total/AreaNT)) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
                                                                                             ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
   mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Total, group=interaction(Status,Age), colour=NTGroup, shape=Status))+
+  ggplot(., aes(x=Year, y=NumKM2, group=interaction(Status,Age), colour=NTGroup, shape=Status))+
   geom_point(size=2.5)+
   geom_line()+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="seagreen")+
-  geom_vline(xintercept=9, colour="seagreen")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="seagreen") 
-
+  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=9, colour="grey20")+
+  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
+  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  ylab("No. Fish per"~km^2)
 
 #### Kobe Style Plot ####
 Years <- seq(5, 55, 5)
