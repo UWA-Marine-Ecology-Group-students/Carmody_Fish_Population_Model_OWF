@@ -7,6 +7,8 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(sfnetworks)
+library(TSP)
 
 ## Functions
 # This returns the centre of the ploygon, but if it's on land it will create a new centroid
@@ -272,12 +274,12 @@ dist.mat <- st_distance(points2) # Great Circle distance since in lat/lon
 num.5km <- apply(dist.mat, 1, function(x) {
   sum(x < 0.05) - 1
 })
-rm(num.3000)
 
 nn.dist <- apply(dist.mat, 1, function(x) {
   return(sort(x, partial = 2)[2])
 })
 
+## Get the IDS for the cells that are neighbours
 closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[2] })
 second.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[3] })
 third.closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[4] })
@@ -294,6 +296,7 @@ neighbours <- water %>%
   mutate(fifth = fifth.closest) %>% 
   mutate(sixth = sixth.closest)
 
+## Give the neighbouring points geometry based on the original set of points
 closest <- as.data.frame(closest) %>%
   rename(ID = "closest") %>% 
   inner_join(., points, by="ID") %>% 
@@ -333,6 +336,7 @@ sixth.closest <- st_cast(st_geometry(sixth.closest), "POINT")
 ### CONNECT THE POINTS TO THEIR NEIGHBOURS TO FORM A NETWORK ###
 n <- nrow(points)
 
+## Form linestrings and then multilinestrings
 # Closest
 linestrings.closest <- lapply(X = 1:n, FUN = function(x) {
   pair <- st_combine(c(points2[x], closest[x]))
@@ -391,8 +395,10 @@ network <- as_sfnetwork(connected, directed = FALSE) %>%
 
 ## Calculate the distances from each point to every other point on the network
 net <- activate(network, "nodes")
-cost_matrix < st_network_cost(net)
+cost_matrix <- st_network_cost(net)
 dim(cost_matrix) # Check that the dimensions match up to how many points you think you should have in the network
+
+dist_matrix <- dist(points)
 
 #### ADD HABITAT TO THE ENVIRONMENT ####
 

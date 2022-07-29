@@ -46,6 +46,8 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 SwimSpeed <- 1
 
 #### READ FILES ####
+setwd(sg_dir)
+
 dist_matrix <- readRDS(dist_matrix, file="dist_matrix")
 pelagic_perc <- readRDS(pelagic_perc, file="pelagic_perc")
 reef_perc <- readRDS(reef_perc, file="reef_perc")
