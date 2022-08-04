@@ -101,7 +101,7 @@ for(YEAR in 1:length(Time)){
     for(A in 1:dim(YearlyTotal)[3]){
       
       YearlyTotal[ , MONTH, A] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
-                                                Juv.Move=juv_movement)
+                                      Juv.Move=juv_movement)
       
     }  # End bracket for movement
     
@@ -110,11 +110,27 @@ for(YEAR in 1:length(Time)){
     for(A in 1:dim(YearlyTotal)[3]){
       
       if(MONTH==12 & 2<=A & A<30){
-        YearlyTotal[ ,1, A+1] <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
-                                                Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        
+        YearlyTotal[ ,1, A+1] <- survived.catch[[1]]
+        
+        # # Calculate catch
+        # n.catch <- survived.catch[[2]]
+        # 
+        # bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
+        
       } else if (MONTH!=12) {
-        YearlyTotal[ ,MONTH+1, A] <-mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
-                                                   Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        
+        YearlyTotal[ ,MONTH+1, A] <- survived.catch[[1]]
+        
+        # # Calculate catch
+        # n.catch <- survived.catch[[2]] # Fish caught in each cell of one age in one month
+        # 
+        # bio.catch[,A] <- n.catch * weight[(A*12)+1]
+        
       } else { }
       
     } # End Mortality
@@ -151,8 +167,8 @@ for(YEAR in 1:length(Time)){
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
   
-  filename <- paste("YearlyTotal", YEAR, sep=".")
-  saveRDS(YearlyTotal, file=filename)
+  # filename <- paste("YearlyTotal", YEAR, sep=".")
+  # saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(3)
 }

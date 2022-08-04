@@ -17,7 +17,7 @@ mortality.func <- function (Age, Nat.Mort, Effort, Max.Cell, Month, Year, Popula
   if(BurnIn==T){
     
     tot.survived <- Population[ , Month, Age]*exp(-(Nat.Mort/12))
-    list.surv.catch <- list(tot.survived)
+    return(tot.survived)
     
   } else if (BurnIn==F & YEAR<=31){
     tot.survived <- sapply(seq(Max.Cell), function(Cell) {
@@ -162,7 +162,7 @@ total.plot.func <- function (pop) {
 
 spatial.plot.func <- function (area, pop, pop.breaks, pop.labels, colours){
   
-  water <- water%>%
+  water <- area%>%
     mutate(pop = round(pop, digits=0)) %>% 
     mutate(pop_level = cut(pop, pop.breaks, include.lowest=T)) 
   

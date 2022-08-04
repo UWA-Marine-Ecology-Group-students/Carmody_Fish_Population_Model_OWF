@@ -46,13 +46,16 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 SwimSpeed <- 1
 
 #### READ FILES ####
-setwd(sg_dir)
+setwd(sp_dir)
 
-dist_matrix <- readRDS(dist_matrix, file="dist_matrix")
-pelagic_perc <- readRDS(pelagic_perc, file="pelagic_perc")
-reef_perc <- readRDS(reef_perc, file="reef_perc")
-lagoon_perc <- readRDS(lagoon_perc, file="lagoon_perc")
-rocky_perc <- readRDS(rocky_perc, file="rocky_perc")
+dist_matrix <- readRDS("network_matrix")
+pelagic_perc <- readRDS("pelagic_perc")
+reef_perc <- readRDS("reef_perc")
+lagoon_perc <- readRDS("lagoon_perc")
+rocky_perc <- readRDS("rocky_perc")
+water <- readRDS("water")
+
+NCELL <- nrow(water)
 
 #### CREATE MATRIX OF CONNVECTIVITY FOR FISH MOVEMENT ####
 ## Assume the fish will try and swim the shortest path between locations

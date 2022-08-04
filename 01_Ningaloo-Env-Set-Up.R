@@ -247,37 +247,30 @@ plot(buffered)
 buffered <- st_make_valid(buffered)
 
 water <- buffered %>% 
+  distinct(Spatial, .keep_all=T) %>%  # Remove any duplicated polygons if they happen to have cropped up
   mutate(ID=row_number())%>%
   mutate(ID=factor(ID))
+
 
 # Get centroids for the grid cells 
 centroids <- st_centroid_within_poly(water)
 plot(centroids, cex=0.3) 
 
 points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the bottom left and then work their way their way right
-  mutate(ID=row_number())
-
+  mutate(ID=row_number()) 
+  
 NCELL <- nrow(points) #Set the number of cells in the model
-
 
 #### CREATE THE DISTANCE MATRIX ####
 ## This method allows us to create a distance matrix that takes into account the land and forces the fish to swim around
 
 ## Convert the points in the centroids of the ploygon to a spatial points file
 points$ID <- as.integer(points$ID)
-points2 <- st_as_sf(points, coords = c("X", "Y"))
-points2 <- st_cast(st_geometry(points2), "POINT")
+points_sf <- st_as_sf(points, coords = c("X", "Y"))
+points_sp <- st_cast(st_geometry(points_sf), "POINT")
 
 ## Figure out which six points are the closest - won't all have six close ones but can start from there
-dist.mat <- st_distance(points2) # Great Circle distance since in lat/lon
-# Number within 1.5km: Subtract 1 to exclude the point itself
-num.5km <- apply(dist.mat, 1, function(x) {
-  sum(x < 0.05) - 1
-})
-
-nn.dist <- apply(dist.mat, 1, function(x) {
-  return(sort(x, partial = 2)[2])
-})
+dist.mat <- st_distance(points_sp) # Great Circle distance since in lat/lon
 
 ## Get the IDS for the cells that are neighbours
 closest <- apply(dist.mat, 1, function(x) { order(x, decreasing=F)[2] })
@@ -339,7 +332,7 @@ n <- nrow(points)
 ## Form linestrings and then multilinestrings
 # Closest
 linestrings.closest <- lapply(X = 1:n, FUN = function(x) {
-  pair <- st_combine(c(points2[x], closest[x]))
+  pair <- st_combine(c(points_sp[x], closest[x]))
   line <- st_cast(pair, "LINESTRING")
   return(line)
 })
@@ -347,7 +340,7 @@ multilinestring.closest <- st_multilinestring(do.call("rbind", linestrings.close
 
 # Second closest
 linestrings.second <- lapply(X = 1:n, FUN = function(x) {
-  pair <- st_combine(c(points2[x], second.closest[x]))
+  pair <- st_combine(c(points_sp[x], second.closest[x]))
   line <- st_cast(pair, "LINESTRING")
   return(line)
 })
@@ -355,7 +348,7 @@ multilinestring.second <- st_multilinestring(do.call("rbind", linestrings.second
 
 # Third closest
 linestrings.third <- lapply(X = 1:n, FUN = function(x) {
-  pair <- st_combine(c(points2[x], third.closest[x]))
+  pair <- st_combine(c(points_sp[x], third.closest[x]))
   line <- st_cast(pair, "LINESTRING")
   return(line)
 })
@@ -363,7 +356,7 @@ multilinestring.third<- st_multilinestring(do.call("rbind", linestrings.third))
 
 # Fourth closest
 linestrings.fourth <- lapply(X = 1:n, FUN = function(x) {
-  pair <- st_combine(c(points2[x], fourth.closest[x]))
+  pair <- st_combine(c(points_sp[x], fourth.closest[x]))
   line <- st_cast(pair, "LINESTRING")
   return(line)
 })
@@ -371,7 +364,7 @@ multilinestring.fourth <- st_multilinestring(do.call("rbind", linestrings.fourth
 
 # Fifth closest
 linestrings.fifth <- lapply(X = 1:n, FUN = function(x) {
-  pair <- st_combine(c(points2[x], fifth.closest[x]))
+  pair <- st_combine(c(points_sp[x], fifth.closest[x]))
   line <- st_cast(pair, "LINESTRING")
   return(line)
 })
@@ -379,7 +372,7 @@ multilinestring.fifth <- st_multilinestring(do.call("rbind", linestrings.fifth))
 
 # Sixth closest
 linestrings.sixth <- lapply(X = 1:n, FUN = function(x) {
-  pair <- st_combine(c(points2[x], sixth.closest[x]))
+  pair <- st_combine(c(points_sp[x], sixth.closest[x]))
   line <- st_cast(pair, "LINESTRING")
   return(line)
 })
@@ -395,10 +388,26 @@ network <- as_sfnetwork(connected, directed = FALSE) %>%
 
 ## Calculate the distances from each point to every other point on the network
 net <- activate(network, "nodes")
-cost_matrix <- st_network_cost(net)
-dim(cost_matrix) # Check that the dimensions match up to how many points you think you should have in the network
+network_matrix <- st_network_cost(net, from=points_sf, to=points_sf)
+network_matrix <- network_matrix * 111 # Multiple by 111 to get from degrees to kms
+dim(network_matrix) # Check that the dimensions match up to how many points you think you should have in the network
 
-dist_matrix <- dist(points)
+## Checks to make sure it's done what you want
+# Checking that short distances between points are the same e.g. 1 -> 2
+test <- st_distance(points_sf[1,2], points_sf[2,2])
+test * 111 # 9km which is sensible given that each hexagon is about 5km
+network_matrix[1,2] # 10.92 km which is also sensible
+
+# Checking that points that cross the land are not the same - should be longer in our network matrix
+# Find two points that are either side of the land and should have a long distances between them
+plot(points_sf, col = ifelse(points_sf$ID==930 | points_sf$ID==1000, "red", "black")) # These are on opposite sides of the cape
+
+test <- st_distance(points_sf[930,2], points_sf[1000,2])
+test*111 # 28km
+
+test_matrix <- st_network_cost(net, from=points_sf[930, 2], to=points_sf[1000,2])
+test_matrix*111 # 88km
+
 
 #### ADD HABITAT TO THE ENVIRONMENT ####
 
@@ -463,14 +472,12 @@ lagoon_perc <- hab_perc%>%
 #### SAVE FILES FOR USE IN NEXT STEP ####
 setwd(sp_dir)
 
-saveRDS(dist_matrix, file="dist_matrix")
+saveRDS(network_matrix, file="network_matrix")
 saveRDS(pelagic_perc, file="pelagic_perc")
 saveRDS(reef_perc, file="reef_perc")
 saveRDS(lagoon_perc, file="lagoon_perc")
 saveRDS(rocky_perc, file="rocky_perc")
-
-
-
+saveRDS(water, file="water")
 
 
 

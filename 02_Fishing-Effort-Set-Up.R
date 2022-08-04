@@ -478,21 +478,16 @@ NoTake <- NoTake %>%
   mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
   mutate(ID = as.numeric(ID))
 
-rownames(NoTake) <- seq(from = 1, to = 1901)
-
 NoTake87_05 <- NoTake %>% 
   filter(Fished87_05=="N") %>% 
-  mutate(ID = ID-1) %>%  # All of the cells are greater than 299 which is the one that I removed in an earlier script so they need to move back one position
   dplyr::select(ID)
 
 NoTake05_18 <- NoTake %>% 
   filter(Fished05_18=="N") %>% 
-  mutate(ID = ID-1) %>%
   dplyr::select(ID)
 
 NoTake18_21 <- NoTake %>% 
   filter(Fished18_21=="N") %>% 
-  mutate(ID = ID-1) %>%
   dplyr::select(ID)
 
 NoTake <- list()

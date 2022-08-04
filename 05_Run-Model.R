@@ -38,7 +38,7 @@ setwd(sg_dir)
 movement <- readRDS("movement")
 juv_movement <- readRDS("juvmove") 
 recruitment <- readRDS("recruitment")
-#fishing <- readRDS("fishing")
+fishing <- readRDS("fishing")
 NoTake <- readRDS("NoTakeList")
 water <- readRDS("water")
 selectivity <- readRDS("selret")
@@ -47,8 +47,8 @@ weight <- readRDS("weight")
 YearlyTotal <- readRDS("BurnInPop")
 
 ## Simulation Files
-setwd(sim_dir)
-fishing <- readRDS("sim02_fishing") # Effort is slightly wrong, need to shift everything by one year
+# setwd(sim_dir)
+# fishing <- readRDS("sim02_fishing") # Effort is slightly wrong, need to shift everything by one year
 
 ## Read in functions
 setwd(working.dir)
@@ -171,10 +171,10 @@ for(YEAR in 1:length(Time)){
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
   
-  filename <- paste("sim02_YearlyTotal", YEAR, sep=".")
+  filename <- paste("YearlyTotal", YEAR, sep=".")
   saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(3)
 }
 
-SpatialPlots[[1]]
+
