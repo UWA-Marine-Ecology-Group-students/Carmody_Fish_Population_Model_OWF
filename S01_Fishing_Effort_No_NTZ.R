@@ -57,7 +57,7 @@ boat_days <- boat_days%>%
   mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
 
 ## Spatial Data
-setwd(sg_dir)
+setwd(sp_dir)
 
 water <- readRDS("water")
 NCELL <- nrow(water)
@@ -351,10 +351,27 @@ for(YEAR in 1:59){
   layer <- layer+1
 }
 
-Fishing <- Fishing*q # multiply by catchability
+#### Determining catchability ####
+## Have estimated an increase in recreational efficiency of 30% from 1990 when colour sounders become more commonplace (GPS was 2002) according to Marriott et al. 2011
+q <- as.data.frame(array(0, dim=c(59,1))) %>% 
+  rename(Q = "V1")
+
+q[1:30, 1] <- 0.005
+
+# q has to now increase to 0.0013 in equal steps over 29 years which is 0.000025 each year
+
+for (y in 31:59){
+  q[y,1] <- q[y-1,1] + 0.00005172413
+}
+
+Fishing2 <- Fishing
+# Now calculate F by multiplying our effort by q
+for (y in 1:59){
+  Fishing[,,y] <- Fishing[,,y]*q[y,1]
+}
 
 #### SAVE DATA ####
 setwd(sim_dir)
-saveRDS(Fishing, file="sim01_fishing")
+saveRDS(Fishing, file="S01_fishing")
 
 

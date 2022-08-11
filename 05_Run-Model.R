@@ -38,7 +38,7 @@ setwd(sg_dir)
 movement <- readRDS("movement")
 juv_movement <- readRDS("juvmove") 
 recruitment <- readRDS("recruitment")
-fishing <- readRDS("fishing")
+# fishing <- readRDS("fishing")
 NoTake <- readRDS("NoTakeList")
 water <- readRDS("water")
 selectivity <- readRDS("selret")
@@ -47,8 +47,8 @@ weight <- readRDS("weight")
 YearlyTotal <- readRDS("BurnInPop")
 
 ## Simulation Files
-# setwd(sim_dir)
-# fishing <- readRDS("sim02_fishing") # Effort is slightly wrong, need to shift everything by one year
+setwd(sim_dir)
+fishing <- readRDS("S01_fishing")
 
 ## Read in functions
 setwd(working.dir)
@@ -86,7 +86,7 @@ yearly.catch <- array(0, dim=(c(length(Time), 3)))
 
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
-setwd(pop_dir)
+setwd(sim_dir)
 
 for(YEAR in 1:length(Time)){
   
@@ -156,7 +156,7 @@ for(YEAR in 1:length(Time)){
   Total[YEAR,1] <- sum(water$pop)
   print(Total[YEAR,1])
   
-  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==50){
     TotalPop <- as.data.frame(Total) %>% 
       rename(Tot.Pop="V1")
     TotalPop$Year <- seq(1960, 2018, by=1)
@@ -171,7 +171,7 @@ for(YEAR in 1:length(Time)){
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
   } else { }
   
-  filename <- paste("YearlyTotal", YEAR, sep=".")
+  filename <- paste("S04_YearlyTotal", YEAR, sep="_")
   saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(3)

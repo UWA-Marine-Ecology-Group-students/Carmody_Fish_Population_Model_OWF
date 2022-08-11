@@ -649,7 +649,7 @@ Months <- array(0, dim=c(NCELL, 12))
 Ramps <- array(0, dim=c(NCELL, 4))
 layer <- 1
 
-for(YEAR in 1:26){
+for(YEAR in 1:27){
   
   for(MONTH in 1:12){
     
@@ -678,7 +678,7 @@ Months <- array(0, dim=c(NCELL_8705, 12))
 Ramps <- array(0, dim=c(NCELL_8705, 4))
 layer <- 1
 
-for(YEAR in 27:44){
+for(YEAR in 28:45){
   
   for(MONTH in 1:12){
     
@@ -707,7 +707,7 @@ Months <- array(0, dim=c(NCELL_0517, 12))
 Ramps <- array(0, dim=c(NCELL_0517, 4))
 layer <- 1
 
-for(YEAR in 45:56){
+for(YEAR in 46:57){
   
   for(MONTH in 1:12){
     
@@ -730,13 +730,13 @@ for(YEAR in 45:56){
   layer <- layer+1
 }
 
-# 2017-2019
+# 2018-2019
 Fishing_1819 <- array(0, dim=c(NCELL_1819, 12, 3)) #This array has a row for every cell, a column for every month, and a layer for every year
 Months <- array(0, dim=c(NCELL_1819, 12))
 Ramps <- array(0, dim=c(NCELL_1819, 4))
 layer <- 1
 
-for(YEAR in 57:59){
+for(YEAR in 58:59){
   
   for(MONTH in 1:12){
     
