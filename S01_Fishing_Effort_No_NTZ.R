@@ -28,7 +28,6 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
-sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### LOAD FILES ####
 
@@ -48,12 +47,14 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
 
 ## Data
 setwd(data_dir)
-boat_days <- read.csv("Boat_Days_Gascoyne.csv")
+boat_days <- read.csv("Boat_Days_Ningaloo.csv")
 
 boat_days <- boat_days%>%
-  mutate(NumMonth = as.numeric(NumMonth)) %>% 
-  mutate(Month = as.factor(Month)) %>% 
-  mutate(Gascoyne_Boat_Days = as.numeric(Gascoyne_Boat_Days)) %>% 
+  mutate(NumMonth = as.numeric(NumMonth)) %>%
+  mutate(Month = as.factor(Month)) %>%
+  mutate(Survey_Year = as.character(Survey_Year)) %>% 
+  mutate(Boat_Days_State = as.numeric(Boat_Days_State)) %>%
+  mutate(Boat_Days_Commonwealth = as.numeric(Boat_Days_Commonwealth)) %>%
   mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
 
 ## Spatial Data
@@ -68,32 +69,271 @@ BR <- st_read("Boat_Ramps.shp") %>%
   st_transform(4283)%>%
   st_make_valid
 
-# Parameter values
-q <- 0.005
+#### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
-#### SET UP FISHING SURFACE ####
+# Work out the number of boat days for the Ningaloo region split by state and commonwealth
+# We have estimates for just this area from Claire Smallwood but not for all years 
+# We have calculated proportions for each month based on the Gascoyne data 
+# So we are going to interpolate the months we are missing 
 
-# Work out the number of boat days for the Exmouth region
-# For this we're using data from the whole of the Gascoyne and then splitting up the number of boat days in Exmouth compared
-# to Carnarvon/Shark Bay and then using visitor numbers to work out what percentage of the baot days were in Exmouth
-# LGA statistics for visitors to the biggest shires where people would go fishing in the Gascoyne indicate that trips to
-# Exmouth are about 33% of the visitation to the region so we'll allocate 33% of the Boat Days to Exmouth
-# We then need to create a model for hindcasting fishing effort back to something like the 1960s to get an estimate of what 
-# effort might have been like for the years where we don't have any data 
+## Interpolate the values for state and commonwealth separately
+# January
+boat_days_jan <- boat_days %>% 
+  filter(NumMonth==1)
 
-## Working out the fishing effort in the Gascoyne
-# Plotting the data to see what it looks like
-TotalYear <- boat_days %>% 
-  group_by(Year) %>% 
-  summarise(., Total_Boat_Days=sum(Gascoyne_Boat_Days))
+inter_jan_state <- approx(boat_days_jan$Year, boat_days_jan$Boat_Days_State, xout=c(2013,2015,2017)) %>% 
+  unlist()
+inter_jan_comm <- approx(boat_days_jan$Year, boat_days_jan$Boat_Days_Commonwealth, xout=c(2013,2015,2017)) %>% 
+  unlist()
 
-YearPlot <- ggplot(TotalYear) + 
-  geom_point(aes(x=Year, y=Total_Boat_Days))
+# February
+boat_days_feb <- boat_days %>% 
+  filter(NumMonth==2)
 
-YearModel <- lm(Total_Boat_Days~Year, data=TotalYear)
-summary(YearModel)
+inter_feb_state <- approx(boat_days_feb$Year, boat_days_feb$Boat_Days_State, xout=c(2013,2015,2017)) %>% 
+  unlist()
+inter_feb_comm <- approx(boat_days_feb$Year, boat_days_feb$Boat_Days_Commonwealth, xout=c(2013,2015,2017)) %>% 
+  unlist()
+
+# March
+boat_days_mar <- boat_days %>% 
+  filter(NumMonth==3)
+
+inter_mar_state <- approx(boat_days_mar$Year, boat_days_mar$Boat_Days_State, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+inter_mar_comm <- approx(boat_days_mar$Year, boat_days_mar$Boat_Days_Commonwealth, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+
+# April
+boat_days_apr <- boat_days %>% 
+  filter(NumMonth==4)
+
+inter_apr_state <- approx(boat_days_apr$Year, boat_days_apr$Boat_Days_State, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+inter_apr_comm <- approx(boat_days_apr$Year, boat_days_apr$Boat_Days_Commonwealth, xout=c(2012,2013,2015,2017)) %>% 
+  unlist()
+
+# May
+boat_days_may <- boat_days %>% 
+  filter(NumMonth==5)
+
+inter_may_state <- approx(boat_days_may$Year, boat_days_may$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_may_comm <- approx(boat_days_may$Year, boat_days_may$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# June
+boat_days_jun <- boat_days %>% 
+  filter(NumMonth==6)
+
+inter_jun_state <- approx(boat_days_jun$Year, boat_days_jun$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_jun_comm <- approx(boat_days_jun$Year, boat_days_jun$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# July
+boat_days_jul <- boat_days %>% 
+  filter(NumMonth==7)
+
+inter_jul_state <- approx(boat_days_jul$Year, boat_days_jul$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_jul_comm <- approx(boat_days_jul$Year, boat_days_jul$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# August
+boat_days_aug <- boat_days %>% 
+  filter(NumMonth==8)
+
+inter_aug_state <- approx(boat_days_aug$Year, boat_days_aug$Boat_Days_State, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+inter_aug_comm <- approx(boat_days_aug$Year, boat_days_aug$Boat_Days_Commonwealth, xout=c(2012,2014,2015,2017)) %>% 
+  unlist()
+
+# September
+boat_days_sep <- boat_days %>% 
+  filter(NumMonth==9)
+
+inter_sep_state <- approx(boat_days_sep$Year, boat_days_sep$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_sep_comm <- approx(boat_days_sep$Year, boat_days_sep$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+# October
+boat_days_oct <- boat_days %>% 
+  filter(NumMonth==10)
+
+inter_oct_state <- approx(boat_days_oct$Year, boat_days_oct$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_oct_comm <- approx(boat_days_oct$Year, boat_days_oct$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+# November
+boat_days_nov <- boat_days %>% 
+  filter(NumMonth==11)
+
+inter_nov_state <- approx(boat_days_nov$Year, boat_days_nov$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_nov_comm <- approx(boat_days_nov$Year, boat_days_nov$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+# December
+boat_days_dec <- boat_days %>% 
+  filter(NumMonth==12)
+
+inter_dec_state <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_State, xout=c(2012,2014,2016)) %>% 
+  unlist()
+inter_dec_comm <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
+  unlist()
+
+## Add these values in to the data frame where we are missing the values
+boat_days[c(25,49,73), 4] <- inter_jan_state[4:6]
+boat_days[c(25,49,73), 5] <- inter_jan_comm[4:6]
+
+boat_days[c(26,50,74),4] <- inter_feb_state[4:6]
+boat_days[c(26,50,74),5] <- inter_feb_comm[4:6]
+
+boat_days[c(15,27,51,75),4] <- inter_mar_state[5:8]
+boat_days[c(15,27,51,75),5] <- inter_mar_comm[5:8]
+
+boat_days[c(16,28,52,76),4] <- inter_apr_state[5:8]
+boat_days[c(16,28,52,76),5] <- inter_apr_comm[5:8]
+
+boat_days[c(17,41,53,77),4] <- inter_may_state[5:8]
+boat_days[c(17,41,53,77),5] <- inter_may_comm[5:8]
+
+boat_days[c(18,42,54,78),4] <- inter_jun_state[5:8]
+boat_days[c(18,42,54,78),5] <- inter_jun_comm[5:8]
+
+boat_days[c(19,43,55,79),4] <- inter_jul_state[5:8]
+boat_days[c(19,43,55,79),5] <- inter_jul_comm[5:8]
+
+boat_days[c(20,44,56,80),4] <- inter_aug_state[5:8]
+boat_days[c(20,44,56,80),5] <- inter_aug_comm[5:8]
+
+boat_days[c(21,45,69),4] <- inter_sep_state[4:6]
+boat_days[c(21,45,69),5] <- inter_sep_comm[4:6]
+
+boat_days[c(22,46,70),4] <- inter_oct_state[4:6]
+boat_days[c(22,46,70),5] <- inter_oct_comm[4:6]
+
+boat_days[c(23,47,71),4] <- inter_nov_state[4:6]
+boat_days[c(23,47,71),5] <- inter_nov_comm[4:6]
+
+boat_days[c(24,48,72),4] <- inter_dec_state[4:6]
+boat_days[c(24,48,72),5] <- inter_dec_comm[4:6]
+
+## Add boat days together to get total boat days for both state and commonwealth waters
+boat_days <- boat_days %>% 
+  mutate(Total_Boat_Days = Boat_Days_State + Boat_Days_Commonwealth)
+
+## There are few situations in early 2011 and late 2018 where we don't have any data so we're going to create 
+## a linear model to try and estimate what those values would be
+
+# 2011 Jan and Feb
+January_Boat <- boat_days %>% 
+  filter(Month %in% c("Jan")) %>% 
+  drop_na()
+
+JanModel <- lm(Total_Boat_Days~Year, data=January_Boat)
+summary(JanModel)
+
+Jan_2011 <- as.data.frame(array(0, dim=c(1,2))) %>% 
+  mutate(V1=seq(2011, 2011, by=1)) %>% 
+  rename("Year"=V1)
+
+predictions <- predict(JanModel, newdata=Jan_2011)
+boat_days[1,7] <- predictions
+
+Feb_Boat <- boat_days %>% 
+  filter(Month %in% c("Feb")) %>% 
+  drop_na()
+
+FebModel <- lm(Total_Boat_Days~Year, data=Feb_Boat)
+summary(FebModel)
+
+Feb_2011 <- as.data.frame(array(0, dim=c(1,2))) %>% 
+  mutate(V1=seq(2011, 2011, by=1)) %>% 
+  rename("Year"=V1)
+
+predictions <- predict(FebModel, newdata=Feb_2011)
+boat_days[2,7] <- predictions
+
+# September October November and December of 2018
+Sep_Boat <- boat_days %>% 
+  filter(Month %in% c("Sep")) %>% 
+  drop_na()
+
+SepModel <- lm(Total_Boat_Days~Year, data=Sep_Boat)
+summary(SepModel)
+
+Sep_2011 <- as.data.frame(array(0, dim=c(1,2))) %>% 
+  mutate(V1=seq(2018, 2018, by=1)) %>% 
+  rename("Year"=V1)
+
+predictions <- predict(SepModel, newdata=Sep_2011)
+boat_days[93,7] <- predictions
+
+Oct_Boat <- boat_days %>% 
+  filter(Month %in% c("Oct")) %>% 
+  drop_na()
+
+OctModel <- lm(Total_Boat_Days~Year, data=Oct_Boat)
+summary(OctModel)
+
+Oct_2011 <- as.data.frame(array(0, dim=c(1,2))) %>% 
+  mutate(V1=seq(2018, 2018, by=1)) %>% 
+  rename("Year"=V1)
+
+predictions <- predict(OctModel, newdata=Oct_2011)
+boat_days[94,7] <- predictions
+
+Nov_Boat <- boat_days %>% 
+  filter(Month %in% c("Nov")) %>% 
+  drop_na()
+
+NovModel <- lm(Total_Boat_Days~Year, data=Nov_Boat)
+summary(NovModel)
+
+Nov_2011 <- as.data.frame(array(0, dim=c(1,2))) %>% 
+  mutate(V1=seq(2018, 2018, by=1)) %>% 
+  rename("Year"=V1)
+
+predictions <- predict(NovModel, newdata=Nov_2011)
+boat_days[95,7] <- predictions
+
+Dec_Boat <- boat_days %>% 
+  filter(Month %in% c("Dec")) %>% 
+  drop_na()
+
+DecModel <- lm(Total_Boat_Days~Year, data=Dec_Boat)
+summary(DecModel)
+
+Dec_2011 <- as.data.frame(array(0, dim=c(1,2))) %>% 
+  mutate(V1=seq(2018, 2018, by=1)) %>% 
+  rename("Year"=V1)
+
+predictions <- predict(DecModel, newdata=Dec_2011)
+boat_days[96,7] <- predictions
+
+total_plot <- boat_days %>% 
+  unite("YearxMonth", c("Year", "NumMonth"), remove = T, sep = "-") %>% 
+  mutate(YearxMonth = as.character(YearxMonth)) %>% 
+  mutate(YearxMonth = factor(YearxMonth, levels=unique(YearxMonth))) %>% 
+  ggplot(.) + 
+  #geom_point(aes(x=YearxMonth, y=Total_Boat_Days))+
+  geom_line(aes(x=YearxMonth, y=Total_Boat_Days, group=1))
+
 
 #### HINDCASTING ####
+## Going to do the hindcast based on the yearly total of boat days in the whole area
+TotalYear <- boat_days %>% 
+  group_by(Year) %>% 
+  summarise(Total=sum(Total_Boat_Days, na.rm = T)) %>% 
+  ungroup()
+
+YearModel <- lm(Total~Year, data=TotalYear)
+summary(YearModel)
+
 Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>% 
   mutate(V1=seq(1990, 2010, by=1)) %>% 
   rename("Year"=V1)
@@ -101,22 +341,22 @@ Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>%
 predictions <- predict(YearModel, newdata=Year2011_1990)
 
 Year2011_1990 <- Year2011_1990 %>% 
-  mutate(Total_Boat_Days = predictions)
+  mutate(Total = predictions)
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 118466, length=30)
+effort <- seq(0, 64409.83, length=30)
 years <- seq(1960, 1989, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
   rename("Year" = years) %>% 
-  rename("Total_Boat_Days" = effort)
+  rename("Total" = effort)
 
 #### JOIN FISHING EFFORT ####
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
 YearPlot <- ggplot(boat_days_hind) + 
-  geom_line(aes(x=Year, y=Total_Boat_Days))+ 
+  geom_line(aes(x=Year, y=Total))+ 
   theme_classic()+
   ylab("Total Boat Days")
 
@@ -125,8 +365,8 @@ YearPlot <- ggplot(boat_days_hind) +
 # Work out proportion of fishing effort in each month for each year
 boat_days <- boat_days %>% 
   group_by(Year) %>% 
-  mutate(Year_Sum = sum(Gascoyne_Boat_Days)) %>%
-  mutate(Month_Prop = Gascoyne_Boat_Days/Year_Sum) %>% 
+  mutate(Year_Sum = sum(Total_Boat_Days)) %>%
+  mutate(Month_Prop = Total_Boat_Days/Year_Sum) %>% 
   dplyr::select(-Year_Sum)
 
 # Work out the average fishing effort for each month
@@ -134,7 +374,7 @@ boat_days <- boat_days %>%
   group_by(Month) %>% 
   mutate(Ave_Month_Prop = mean(Month_Prop))
 
-Month_Prop_Ave <- boat_days[1:12,c(2,6)]
+Month_Prop_Ave <- boat_days[1:12,c(2,9)]
 
 check <- boat_days %>% 
   group_by(Year) %>% 
@@ -142,7 +382,7 @@ check <- boat_days %>%
 
 check <- boat_days %>% 
   group_by(Year) %>% 
-  summarise(Ave_Month = mean(Gascoyne_Boat_Days))
+  summarise(Ave_Month = mean(Total_Boat_Days))
 
 # Split up the hindcast data into monthly means 
 boat_days_hind <- boat_days_hind %>% 
@@ -155,38 +395,32 @@ boat_days_hind <- boat_days_hind %>%
 
 
 boat_days_hind <- boat_days_hind %>% 
-  mutate(Gascoyne_Boat_Days = 0) %>% 
+  mutate(Total_Boat_Days = 0) %>% 
   left_join(., Month_Prop_Ave) %>% 
   group_by(Year) %>% 
-  mutate(Gascoyne_Boat_Days = Total_Boat_Days*Ave_Month_Prop) %>% 
+  mutate(Total_Boat_Days = Total*Ave_Month_Prop) %>% 
   ungroup() %>% 
-  dplyr::select(-c(Total_Boat_Days))
+  dplyr::select(-c(Total, Ave_Month_Prop))
 
 check <- boat_days_hind %>% 
   group_by(Year) %>% 
-  summarise(., sum(Gascoyne_Boat_Days))
+  summarise(., sum(Total_Boat_Days))
 
 # Put it all together into one big dataframe
 
-Full_Boat_Days <- boat_days[,1:4] %>% 
+Full_Boat_Days <- boat_days[,c(1,2,3,7)] %>% 
   rbind(boat_days_hind) %>% 
-  arrange(-Year)
-
+  arrange(-Year) %>% 
+  rename(Boat_Days = "Total_Boat_Days")
 
 # Plot and check that it looks right
 MonthPlot <- Full_Boat_Days %>%
   mutate(Unique = paste(Year, NumMonth, sep="_")) %>%
-  filter(Month %in% c("Jun")) %>%
+  filter(Month %in% c("Jan")) %>%
   ggplot() +
-  geom_point(aes(x=Unique, y=Gascoyne_Boat_Days))
+  geom_point(aes(x=Unique, y=Total_Boat_Days))
 
 #### ALLOCATION EFFORT TO EXMOUTH AND BOAT RAMPS ####
-## We're using tourism numbers to allocate to Exmouth - saying about 65% of the trips to the region are to Ningaloo
-
-# Create data frame that is just Exmouth Boat Days 
-Exmouth_Boat_Days <- Full_Boat_Days %>% 
-  mutate(Boat_Days = Gascoyne_Boat_Days*0.65) %>% 
-  dplyr::select(-Gascoyne_Boat_Days)
 
 # Split up the effort to Boat Ramps according to the information we have collected from Exmouth about how often people
 # Use the boat ramps - the Exmouth Marina wasn't constructed until 1997 but there was a ramp at town beah from the 60s 
@@ -212,62 +446,21 @@ BR_Trips <- BR_Trips %>%
 
 # Create a loop that allocates the correct proportion of boat effort to each of the BRs accounting for reduced effort at Bundegi before ther ramp was built
 for(Y in 1:708){
-  if(Exmouth_Boat_Days[Y,1]<2008){ # This is for when Bundegi wasn't a proper ramp so probably would have had less effort
-    Exmouth_Boat_Days$Tb_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[1,6]
-    Exmouth_Boat_Days$Bd_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[2,6]
-    Exmouth_Boat_Days$ExM_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[3,6] 
-    Exmouth_Boat_Days$CrB_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[4,6]
+  if(Full_Boat_Days[Y,1]<2008){ # This is for when Bundegi wasn't a proper ramp so probably would have had less effort
+    Full_Boat_Days$Tb_BR = Full_Boat_Days$Boat_Days*BR_Trips[1,6]
+    Full_Boat_Days$Bd_BR = Full_Boat_Days$Boat_Days*BR_Trips[2,6]
+    Full_Boat_Days$ExM_BR = Full_Boat_Days$Boat_Days*BR_Trips[3,6] 
+    Full_Boat_Days$CrB_BR = Full_Boat_Days$Boat_Days*BR_Trips[4,6]
   } else {
-    Exmouth_Boat_Days$Tb_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[1,5] 
-    Exmouth_Boat_Days$Bd_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[2,5] 
-    Exmouth_Boat_Days$ExM_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[3,5] 
-    Exmouth_Boat_Days$CrB_BR = Exmouth_Boat_Days$Boat_Days*BR_Trips[4,5]
+    Full_Boat_Days$Tb_BR = Full_Boat_Days$Boat_Days*BR_Trips[1,5] 
+    Full_Boat_Days$Bd_BR = Full_Boat_Days$Boat_Days*BR_Trips[2,5] 
+    Full_Boat_Days$ExM_BR = Full_Boat_Days$Boat_Days*BR_Trips[3,5] 
+    Full_Boat_Days$CrB_BR = Full_Boat_Days$Boat_Days*BR_Trips[4,5]
   }
 }
 
-check <- Exmouth_Boat_Days %>% 
+check <- Full_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
-
-#### CONVERT NO-TAKE INTO NUMERIC VECTORS OF CELL IDS ####
-
-# Creating new columns for each of our year groups when new NTZs were put in place
-
-NoTake <- st_sf(water) %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(Fished, ID, COMMENTS)
-
-NoTake <- NoTake %>% 
-  rename(Fished60_87 = "Fished") %>% 
-  mutate(Fished60_87 = "Y") %>% 
-  mutate(Fished87_05 = ifelse(str_detect(COMMENTS, c("Old")), "N", "Y")) %>% 
-  mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
-  mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
-  dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
-  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
-  mutate(ID = as.numeric(ID))
-
-rownames(NoTake) <- seq(from = 1, to = 1901)
-
-NoTake87_05 <- NoTake %>% 
-  filter(Fished87_05=="N") %>% 
-  mutate(ID = ID-1) %>%  # All of the cells are greater than 299 which is the one that I removed in an earlier script so they need to move back one position
-  dplyr::select(ID)
-
-NoTake05_18 <- NoTake %>% 
-  filter(Fished05_18=="N") %>% 
-  mutate(ID = ID-1) %>%
-  dplyr::select(ID)
-
-NoTake18_21 <- NoTake %>% 
-  filter(Fished18_21=="N") %>% 
-  mutate(ID = ID-1) %>%
-  dplyr::select(ID)
-
-NoTake <- list()
-
-NoTake[[1]] <- as.numeric(NoTake87_05$ID)
-NoTake[[2]] <- as.numeric(NoTake05_18$ID)
-NoTake[[3]] <- as.numeric(NoTake18_21$ID)
 
 #### ALLOCATING EFFORT TO CELLS ####
 
@@ -318,7 +511,7 @@ colSums(BR_U)
 
 # Now we have BR_U which has the "utilities" for each cells based on it's size and distance from BR  
 
-BR_Trips <- Exmouth_Boat_Days %>% # This is just the trips from each boat ramp
+BR_Trips <- Full_Boat_Days %>% # This is just the trips from each boat ramp
   ungroup() %>% 
   mutate(NumYear = rep(59:1, each=12)) %>% #This is to turn the years into a count for the loop
   dplyr::select(NumYear, NumMonth, Bd_BR, ExM_BR, Tb_BR, CrB_BR)  
@@ -365,6 +558,7 @@ for (y in 31:59){
 }
 
 Fishing2 <- Fishing
+
 # Now calculate F by multiplying our effort by q
 for (y in 1:59){
   Fishing[,,y] <- Fishing[,,y]*q[y,1]

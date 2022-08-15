@@ -57,7 +57,7 @@ boat_days <- boat_days%>%
   mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
 
 ## Spatial Data
-setwd(sg_dir)
+setwd(sp_dir)
 
 water <- readRDS("water")
 NCELL <- nrow(water)
@@ -760,7 +760,7 @@ for(YEAR in 58:59){
 }
 
 ## Add cells in the NTZs back in 
-# Have to do this by adding in rows in to the matrix in the correct places the correct places but just give them 0
+# Have to do this by adding in rows in to the matrix in the correct places but just give them 0
 
 # 1987-2005
 NTCells <- NoTake[[1]]
@@ -799,6 +799,7 @@ for (y in 31:59){
 }
 
 Fishing2 <- Fishing
+
 # Now calculate F by multiplying our effort by q
 for (y in 1:59){
   Fishing[,,y] <- Fishing[,,y]*q[y,1]

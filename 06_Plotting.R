@@ -29,6 +29,7 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 pop_dir <-  paste(working.dir, "Output_Population", sep="/")
+sim_dir <-  paste(working.dir, "Simulations", sep="/")
 
 
 # Normal
@@ -39,9 +40,13 @@ pop_dir <-  paste(working.dir, "Output_Population", sep="/")
 
 #### READ IN DATA ####
 setwd(sg_dir)
+
 NoTake <- readRDS("NoTakeList")
 
-#* Scenario 1 Normal - IN PROGRESS ####
+setwd(sp_dir)
+water <- readRDS("water")
+
+#* Normal - IN PROGRESS ####
 setwd(pop_dir)
 
 # Whole Population 
@@ -114,9 +119,222 @@ for(YEAR in 1:13){
   
 }
 
-#* Scenario 2 - Nothing COMPLETED ####
-#* Scenario 3 - NTZ and Temp Closure COMPLETED ####
-#* Scenario 4 - Just Temp Closure COMPLETED ####
+#* Scenario 1 - Nothing COMPLETED ####
+setwd(sim_dir)
+
+# Whole Population 
+s1_TotalPop <- array(0, dim=c(59,2))
+s1_TotalPop <- as.data.frame(s1_TotalPop)
+s1_TotalPop <- s1_TotalPop %>% 
+  rename(Year="V1") %>% 
+  mutate(Year=seq(1960,2018,1)) %>% 
+  rename(Tot.Pop="V2")
+
+numYear <- seq(1,59,1)
+
+for(Y in 1:59){
+  
+  year <- readRDS(paste0("S01_YearlyTotal_", numYear[Y]))
+  year <- rowSums(year[,,1:30], dim=2)
+  year <- sum(year[,12])
+  
+  s1_TotalPop[Y,2] <- year
+  
+}
+
+
+# Separated by Fished and No-Take
+s1_NoTakeAges <- array(0, dim=c(30,13))
+s1_NoTakeAges <- as.data.frame(s1_NoTakeAges)
+s1_FishedAges <- s1_NoTakeAges
+
+
+numYears <- seq(0,59,5)
+numYears[1] <- 1
+numYears[13] <- 59
+
+for(YEAR in 1:13){
+  
+  Population <-  readRDS(paste0("S01_YearlyTotal_", numYears[YEAR]))
+  
+  Population.NT <- Population[c(NoTake[[3]]),12, ] %>% 
+    colSums(.)
+  Population.F <- Population[-c(NoTake[[3]]),12, ] %>% 
+    colSums(.)
+  
+  s1_NoTakeAges[,YEAR] <- Population.NT
+  s1_FishedAges[,YEAR] <- Population.F
+  
+  if (YEAR==13){
+    s1_NoTakeAges <- s1_NoTakeAges %>% 
+      mutate(Status = "NTZ") %>% 
+      mutate(Age = seq(1:30)) %>% 
+      mutate(Scenario = "Normal") %>% 
+      mutate(Scenario = as.factor(Scenario))
+    colnames(s1_NoTakeAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
+    
+    s1_FishedAges <- s1_FishedAges %>% 
+      mutate(Status = "Fished") %>% 
+      mutate(Age = seq(1:30)) %>% 
+      mutate(Scenario = "Normal") %>% 
+      mutate(Scenario = as.factor(Scenario))
+    colnames(s1_FishedAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
+    
+    s1_WholePop <- rbind(s1_NoTakeAges, s1_FishedAges) %>%  
+      pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
+      mutate(Year = as.factor(Year)) %>% 
+      mutate(Year = fct_relevel(Year, c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018"))) %>% 
+      mutate(Status = as.factor(Status)) 
+    
+    s1_NoRecruits <- s1_WholePop %>% 
+      filter(Age!=1) 
+  }
+  
+}
+
+
+#* Scenario 2 - NTZ and Temp Closure COMPLETED ####
+# Whole Population 
+s2_TotalPop <- array(0, dim=c(59,2))
+s2_TotalPop <- as.data.frame(s2_TotalPop)
+s2_TotalPop <- s2_TotalPop %>% 
+  rename(Year="V1") %>% 
+  mutate(Year=seq(1960,2018,1)) %>% 
+  rename(Tot.Pop="V2")
+
+numYear <- seq(1,59,1)
+
+for(Y in 1:59){
+  
+  year <- readRDS(paste0("S02_YearlyTotal_", numYear[Y]))
+  year <- rowSums(year[,,1:30], dim=2)
+  year <- sum(year[,12])
+  
+  s2_TotalPop[Y,2] <- year
+  
+}
+
+
+# Separated by Fished and No-Take
+s2_NoTakeAges <- array(0, dim=c(30,13))
+s2_NoTakeAges <- as.data.frame(s2_NoTakeAges)
+s2_FishedAges <- s2_NoTakeAges
+
+
+numYears <- seq(0,59,5)
+numYears[1] <- 1
+numYears[13] <- 59
+
+for(YEAR in 1:13){
+  
+  Population <-  readRDS(paste0("S02_YearlyTotal_", numYears[YEAR]))
+  
+  Population.NT <- Population[c(NoTake[[3]]),12, ] %>% 
+    colSums(.)
+  Population.F <- Population[-c(NoTake[[3]]),12, ] %>% 
+    colSums(.)
+  
+  s2_NoTakeAges[,YEAR] <- Population.NT
+  s2_FishedAges[,YEAR] <- Population.F
+  
+  if (YEAR==13){
+    s2_NoTakeAges <- s2_NoTakeAges %>% 
+      mutate(Status = "NTZ") %>% 
+      mutate(Age = seq(1:30)) %>% 
+      mutate(Scenario = "Temp Closure and NTZ") %>% 
+      mutate(Scenario = as.factor(Scenario))
+    colnames(s2_NoTakeAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
+    
+    s2_FishedAges <- s2_FishedAges %>% 
+      mutate(Status = "Fished") %>% 
+      mutate(Age = seq(1:30)) %>% 
+      mutate(Scenario = "Temp Closure and NTZ") %>% 
+      mutate(Scenario = as.factor(Scenario))
+    colnames(s2_FishedAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
+    
+    s2_WholePop <- rbind(s2_NoTakeAges, s2_FishedAges) %>%  
+      pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
+      mutate(Year = as.factor(Year)) %>% 
+      mutate(Year = fct_relevel(Year, c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018"))) %>% 
+      mutate(Status = as.factor(Status)) 
+    
+    s2_NoRecruits <- s2_WholePop %>% 
+      filter(Age!=1) 
+  }
+  
+}
+
+#* Scenario 3 - Just Temp Closure COMPLETED ####
+# Whole Population 
+s3_TotalPop <- array(0, dim=c(59,2))
+s3_TotalPop <- as.data.frame(s3_TotalPop)
+s3_TotalPop <- s3_TotalPop %>% 
+  rename(Year="V1") %>% 
+  mutate(Year=seq(1960,2018,1)) %>% 
+  rename(Tot.Pop="V2")
+
+numYear <- seq(1,59,1)
+
+for(Y in 1:59){
+  
+  year <- readRDS(paste0("S03_YearlyTotal_", numYear[Y]))
+  year <- rowSums(year[,,1:30], dim=2)
+  year <- sum(year[,12])
+  
+  s3_TotalPop[Y,2] <- year
+  
+}
+
+
+# Separated by Fished and No-Take
+s3_NoTakeAges <- array(0, dim=c(30,13))
+s3_NoTakeAges <- as.data.frame(s3_NoTakeAges)
+s3_FishedAges <- s3_NoTakeAges
+
+
+numYears <- seq(0,59,5)
+numYears[1] <- 1
+numYears[13] <- 59
+
+for(YEAR in 1:13){
+  
+  Population <-  readRDS(paste0("S03_YearlyTotal_", numYears[YEAR]))
+  
+  Population.NT <- Population[c(NoTake[[3]]),12, ] %>% 
+    colSums(.)
+  Population.F <- Population[-c(NoTake[[3]]),12, ] %>% 
+    colSums(.)
+  
+  s3_NoTakeAges[,YEAR] <- Population.NT
+  s3_FishedAges[,YEAR] <- Population.F
+  
+  if (YEAR==13){
+    s3_NoTakeAges <- s3_NoTakeAges %>% 
+      mutate(Status = "NTZ") %>% 
+      mutate(Age = seq(1:30)) %>% 
+      mutate(Scenario = "Temp Closure") %>% 
+      mutate(Scenario = as.factor(Scenario))
+    colnames(s3_NoTakeAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
+    
+    s3_FishedAges <- s3_FishedAges %>% 
+      mutate(Status = "Fished") %>% 
+      mutate(Age = seq(1:30)) %>% 
+      mutate(Scenario = "Temp Closure") %>% 
+      mutate(Scenario = as.factor(Scenario))
+    colnames(s3_FishedAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
+    
+    s3_WholePop <- rbind(s3_NoTakeAges, s3_FishedAges) %>%  
+      pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
+      mutate(Year = as.factor(Year)) %>% 
+      mutate(Year = fct_relevel(Year, c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018"))) %>% 
+      mutate(Status = as.factor(Status)) 
+    
+    s3_NoRecruits <- s3_WholePop %>% 
+      filter(Age!=1) 
+  }
+  
+}
+
 
 #### CALCULATE TOTAL AREA OF FISHED AND NO-TAKE ####
 AreaFished <- water %>% 
@@ -136,31 +354,39 @@ AreaNT <- (sum(AreaNT$cell_area))/100000
 #### TIME SERIES PLOT WITH ALL SCENARIOS ####
 
 TotalPop <- TotalPop %>% 
-  mutate(sTot.Pop = sTotalPop$sTot.Pop) %>% 
-  rename(Normal = "Tot.Pop") %>% 
-  rename(Simulation = "sTot.Pop") %>% 
+  mutate(s1_Tot.Pop = s1_TotalPop$Tot.Pop,
+         s2_Tot.Pop = s2_TotalPop$Tot.Pop,
+         s3_Tot.Pop = s3_TotalPop$Tot.Pop) %>% 
+  rename(Normal = "Tot.Pop",
+         Nothing = "s1_Tot.Pop",
+         Temp.Closure.NTZ = "s2_Tot.Pop",
+         Temp.Closure = "s3_Tot.Pop") %>% 
   pivot_longer(cols=-c(Year), names_to="Scenario", values_to="Total.Population")
 
 TimeSeries <- TotalPop %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "With NTZs", ifelse(Scenario %in% ("Simulation") & Year>1985, "Without NTZs", 0)))) %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
+                                                             ifelse(Scenario %in% c("Temp.Closure") & Year>1985, "Temporal Closure Only", 
+                                                                    ifelse(Scenario %in% c("Nothing"), "None", "Temporal Closure and NTZs"))))) %>% 
   mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  mutate(ColourGroup = fct_relevel(ColourGroup, c("Pre 1987", "With NTZs", "Without NTZs"))) %>% 
+  mutate(ColourGroup = fct_relevel(ColourGroup, c("Pre 1987", "NTZs as normal", "None" ,"Temporal Closure Only", "Temporal Closure and NTZs"))) %>% 
   ggplot()+
   geom_line(aes(x=Year, y=Total.Population, group=Scenario, colour=ColourGroup)) +
   scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
-  scale_colour_manual("Scenario",values=c( "gray20",  "#7ac0c2", "#487088"), labels=c("Pre 1987", 
-                                                                                      "With NTZs in place",
-                                                                                      "Without NTZs in place"))+
+  scale_colour_manual("Scenario",values=c( "gray20",  "#6BBB5D", "red", "#96D1B4", "#48AA9F"), labels=c("Pre 1987", "NTZs in place as normal", 
+                                                                                                            "No NTZs or Temporal Closure" ,"Temporal Closure Only", 
+                                                                                                            "Temporal Closure and NTZs in place"))+
   xlab("Year")+
   ylab("Total Population")+
   geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2008, linetype="dotted", colour="grey20")+
   theme_classic()
 
+#  #4698BC
 #### LINE PLOTS BY AGE GROUP OF ALL SCENARIOS ####
 
-AllNoTake <- rbind(NoTakeAges, sNoTakeAges) 
-AllFished <- rbind(FishedAges, sFishedAges)
+AllNoTake <- rbind(NoTakeAges, s1_NoTakeAges, s2_NoTakeAges, s3_NoTakeAges) 
+AllFished <- rbind(FishedAges, s1_FishedAges, s2_FishedAges, s3_FishedAges)
 
 ScenarioWholePop <- rbind(AllNoTake, AllFished) %>%  
   pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
