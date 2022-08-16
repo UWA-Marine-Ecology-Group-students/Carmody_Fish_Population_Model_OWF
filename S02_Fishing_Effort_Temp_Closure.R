@@ -28,6 +28,7 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
+sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### LOAD FILES ####
 
@@ -645,7 +646,7 @@ BR_Trips <- Full_Boat_Days %>% # This is just the trips from each boat ramp
   dplyr::select(NumYear, NumMonth, Bd_BR, ExM_BR, Tb_BR, CrB_BR)  
 
 # 1960-1986
-Fishing_6086 <- array(0, dim=c(NCELL_6086, 12, 26)) #This array has a row for every cell, a column for every month, and a layer for every year
+Fishing_6086 <- array(0, dim=c(NCELL_6086, 12, 27)) #This array has a row for every cell, a column for every month, and a layer for every year
 Months <- array(0, dim=c(NCELL, 12))
 Ramps <- array(0, dim=c(NCELL, 4))
 layer <- 1
@@ -732,7 +733,7 @@ for(YEAR in 46:57){
 }
 
 # 2018-2019
-Fishing_1819 <- array(0, dim=c(NCELL_1819, 12, 3)) #This array has a row for every cell, a column for every month, and a layer for every year
+Fishing_1819 <- array(0, dim=c(NCELL_1819, 12, 2)) #This array has a row for every cell, a column for every month, and a layer for every year
 Months <- array(0, dim=c(NCELL_1819, 12))
 Ramps <- array(0, dim=c(NCELL_1819, 4))
 layer <- 1
@@ -777,7 +778,7 @@ Fishing_0517_2[-NTCells,,] <- Fishing_0517
 
 # 2017-2019
 NTCells <- NoTake[[3]]
-Fishing_1819_2 <- array(0, dim=c(NCELL,12,3))
+Fishing_1819_2 <- array(0, dim=c(NCELL,12,2))
 
 Fishing_1819_2[-NTCells,,] <- Fishing_1819
 

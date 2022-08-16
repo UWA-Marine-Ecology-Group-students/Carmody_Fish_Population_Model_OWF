@@ -46,7 +46,7 @@ NoTake <- readRDS("NoTakeList")
 setwd(sp_dir)
 water <- readRDS("water")
 
-#* Normal - IN PROGRESS ####
+#* Normal - RE-DONE ####
 setwd(pop_dir)
 
 # Whole Population 
@@ -61,7 +61,7 @@ numYear <- seq(1,59,1)
 
 for(Y in 1:59){
   
-  year <- readRDS(paste0("YearlyTotal.", numYear[Y]))
+  year <- readRDS(paste0("YearlyTotal_", numYear[Y]))
   year <- rowSums(year[,,1:30], dim=2)
   year <- sum(year[,12])
   
@@ -82,7 +82,7 @@ numYears[13] <- 59
 
 for(YEAR in 1:13){
   
-  Population <-  readRDS(paste0("YearlyTotal.", numYears[YEAR]))
+  Population <-  readRDS(paste0("YearlyTotal_", numYears[YEAR]))
   
   Population.NT <- Population[c(NoTake[[3]]),12, ] %>% 
     colSums(.)
@@ -119,7 +119,7 @@ for(YEAR in 1:13){
   
 }
 
-#* Scenario 1 - Nothing COMPLETED ####
+#* Scenario 1 - RE-DONE ####
 setwd(sim_dir)
 
 # Whole Population 
@@ -169,14 +169,14 @@ for(YEAR in 1:13){
     s1_NoTakeAges <- s1_NoTakeAges %>% 
       mutate(Status = "NTZ") %>% 
       mutate(Age = seq(1:30)) %>% 
-      mutate(Scenario = "Normal") %>% 
+      mutate(Scenario = "Nothing") %>% 
       mutate(Scenario = as.factor(Scenario))
     colnames(s1_NoTakeAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
     
     s1_FishedAges <- s1_FishedAges %>% 
       mutate(Status = "Fished") %>% 
       mutate(Age = seq(1:30)) %>% 
-      mutate(Scenario = "Normal") %>% 
+      mutate(Scenario = "Nothing") %>% 
       mutate(Scenario = as.factor(Scenario))
     colnames(s1_FishedAges) <- c("1960", "1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018", "Status", "Age", "Scenario")
     
@@ -193,7 +193,7 @@ for(YEAR in 1:13){
 }
 
 
-#* Scenario 2 - NTZ and Temp Closure COMPLETED ####
+#* Scenario 2 - Temp Closure with NTZ RE-DONE ####
 # Whole Population 
 s2_TotalPop <- array(0, dim=c(59,2))
 s2_TotalPop <- as.data.frame(s2_TotalPop)
@@ -372,7 +372,7 @@ TimeSeries <- TotalPop %>%
   ggplot()+
   geom_line(aes(x=Year, y=Total.Population, group=Scenario, colour=ColourGroup)) +
   scale_x_continuous("Year", breaks = c(1960, 1970, 1980, 1990, 2000, 2010, 2020))+
-  scale_colour_manual("Scenario",values=c( "gray20",  "#6BBB5D", "red", "#96D1B4", "#48AA9F"), labels=c("Pre 1987", "NTZs in place as normal", 
+  scale_colour_manual("Scenario",values=c( "gray20",  "#69BE28", "#005594", "#8AD2D8", "#53AF8B"), labels=c("Pre 1987", "NTZs in place as normal", 
                                                                                                             "No NTZs or Temporal Closure" ,"Temporal Closure Only", 
                                                                                                             "Temporal Closure and NTZs in place"))+
   xlab("Year")+
@@ -382,7 +382,7 @@ TimeSeries <- TotalPop %>%
   geom_vline(xintercept=2008, linetype="dotted", colour="grey20")+
   theme_classic()
 
-#  #4698BC
+#  
 #### LINE PLOTS BY AGE GROUP OF ALL SCENARIOS ####
 
 AllNoTake <- rbind(NoTakeAges, s1_NoTakeAges, s2_NoTakeAges, s3_NoTakeAges) 
@@ -390,7 +390,7 @@ AllFished <- rbind(FishedAges, s1_FishedAges, s2_FishedAges, s3_FishedAges)
 
 ScenarioWholePop <- rbind(AllNoTake, AllFished) %>%  
   pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
-  mutate(Year = as.factor(Year)) %>% 
+  # mutate(Year = as.factor(Year)) %>% 
   mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT))
 
 ScenarioNoRecruits <- ScenarioWholePop %>% 
@@ -398,89 +398,148 @@ ScenarioNoRecruits <- ScenarioWholePop %>%
 
 line.recruits <- ScenarioWholePop %>% 
   filter(Age==1) %>% 
-  mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
-                                                                                            ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
-  mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=NumKM2, group=interaction(Status,Scenario), colour=NTGroup, shape=interaction(Status, Scenario)))+
-  geom_point(size=2.5)+
-  geom_line()+
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
+                                                             ifelse(Scenario %in% c("Temp Closure") & Year>1985, "Temporal Closure Only", 
+                                                                    ifelse(Scenario %in% c("Nothing"), "None", "Temporal Closure and NTZs"))))) %>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+  mutate(ShapeGroup = ifelse(Year>1985, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
+  mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
+  ggplot(., aes(x=Year, y=NumKM2, group=interaction(Status,Scenario), colour=ColourGroup))+
+  geom_point(size=2.5, aes(fill=ShapeGroup,  shape=ShapeGroup))+
+  geom_line(aes(colour=ColourGroup))+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=9, colour="grey20")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
-  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
-                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
-                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
-  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=10, colour="grey20")+
+  geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
+  geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
+  scale_shape_manual(values= c(`Pre-1987`="circle",`NTZ.Normal`="square filled", `NTZ.Nothing`="triangle filled", `NTZ.Temp Closure`="diamond filled", `NTZ.Temp Closure and NTZ`="triangle down filled" ,
+                               `Fished.Normal`="square filled", `Fished.Nothing`="triangle filled", `Fished.Temp Closure`="diamond filled", `Fished.Temp Closure and NTZ`="triangle down filled"), name="Area and scenario",
+                     labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal CLosure and NTZs (NTZ)",
+                              "Normal Scenario (Fished)", "No Management (Fished)",
+                              "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)")
+                     , guide="none")+
+  scale_fill_manual(values= c(`Pre-1987`="grey20", `NTZ.Normal`="#69BE28", `NTZ.Nothing`="#005594", `NTZ.Temp Closure`="#8AD2D8", `NTZ.Temp Closure and NTZ`="#53AF8B",
+                              `Fished.Normal`="white", `Fished.Nothing`="white",`Fished.Temp Closure`="white", `Fished.Temp Closure and NTZ`="white"),
+                    labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                             "Normal Scenario (Fished)", "No Management (Fished)",
+                             "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)"), name="Area and Scenario")+
+  scale_colour_manual(values = c("#005594",  "#69BE28", "grey20", "#53AF8B", "#8AD2D8"), guide="none")+ 
+  guides(fill = guide_legend(override.aes = list(shape = c("circle", "square filled", "triangle filled", "diamond filled", "triangle down filled", "square filled", "triangle filled", "diamond filled", "triangle down filled"),
+                                                 colour=c("grey20", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B"))))+
   ylab(NULL)+
   xlab(NULL)+
-  ggplot2::annotate("text", x=1.3, y=1.1, label="(a) Recruits", size = 3, fontface=2)
+  ggplot2::annotate("text", x=1., y=1.7, label="(a) Recruits", size = 3, fontface=2)
 
 line.sublegal <- ScenarioWholePop %>% 
   filter(Age>1 & Age <=4) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
-  mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
-                                                                                            ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
-  mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=NTGroup, shape=interaction(Status, Scenario)))+
-  geom_point(size=2.5)+
-  geom_line()+
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
+                                                                ifelse(Scenario %in% c("Temp Closure") & Year>1985, "Temporal Closure Only", 
+                                                                       ifelse(Scenario %in% c("Nothing"), "None", "Temporal Closure and NTZs"))))) %>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+  mutate(ShapeGroup = ifelse(Year>1985, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
+  mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
+  ggplot(.)+
+  geom_point(aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=ShapeGroup, fill=ShapeGroup,  shape=ShapeGroup), size=2.5,)+
+  geom_line(aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=ColourGroup))+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=9, colour="grey20")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
-  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
-                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
-                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
-  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=10, colour="grey20")+
+  geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
+  geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
+  scale_shape_manual(values= c(`Pre-1987`="circle",`NTZ.Normal`="square filled", `NTZ.Nothing`="triangle filled", `NTZ.Temp Closure`="diamond filled", `NTZ.Temp Closure and NTZ`="triangle down filled" , `Pre-1987`="circle",
+                               `Fished.Normal`="square filled", `Fished.Nothing`="triangle filled", `Fished.Temp Closure`="diamond filled", `Fished.Temp Closure and NTZ`="triangle down filled"), name="Area and scenario",
+                     labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                              "Normal Scenario (Fished)", "No Management (Fished)",
+                              "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)")
+                     , guide="none")+
+  scale_fill_manual(values= c(`Pre-1987`="grey20", `NTZ.Normal`="#69BE28", `NTZ.Nothing`="#005594", `NTZ.Temp Closure`="#8AD2D8", `NTZ.Temp Closure and NTZ`="#53AF8B",
+                              `Fished.Normal`="white", `Fished.Nothing`="white",`Fished.Temp Closure`="white", `Fished.Temp Closure and NTZ`="white"),
+                    labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                             "Normal Scenario (Fished)", "No Management (Fished)",
+                             "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)"), name="Area and Scenario")+
+  scale_colour_manual(values = c("#69BE28", "#005594", "#8AD2D8", "#53AF8B", "#005594", "#69BE28", "#005594", "#8AD2D8", "#53AF8B", "#69BE28", "grey20", "grey20", "#53AF8B", "#8AD2D8"), guide="none")+ 
+  guides(fill = guide_legend(override.aes = list(shape = c("circle", "square filled", "triangle filled", "diamond filled", "triangle down filled", "square filled", "triangle filled", "diamond filled", "triangle down filled"),
+                                                 colour=c("grey20", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B"))))+
   ylab(NULL)+
   xlab(NULL)+
-  ggplot2::annotate("text", x=1.4, y=0.3, label="(b) Sub-legal", size = 3, fontface=2)
+  ggplot2::annotate("text", x=1.2, y=0.3, label="(b) Sub-legal sized", size = 3, fontface=2)
+line.sublegal
 
 line.legal <- ScenarioWholePop %>% 
   filter(Age>4 & Age <=10) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
-  mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
-                                                                                            ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
-  mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Total, group=interaction(Status, Scenario), colour=NTGroup, shape=interaction(Status, Scenario)))+
-  geom_point(size=2.5)+
-  geom_line()+
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
+                                                             ifelse(Scenario %in% c("Temp Closure") & Year>1985, "Temporal Closure Only", 
+                                                                    ifelse(Scenario %in% c("Nothing"), "None", "Temporal Closure and NTZs"))))) %>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+  mutate(ShapeGroup = ifelse(Year>1985, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
+  mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
+  ggplot(.)+
+  geom_point(aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=ShapeGroup, fill=ShapeGroup,  shape=ShapeGroup), size=2.5,)+
+  geom_line(aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=ColourGroup))+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=9, colour="grey20")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
-  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
-                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
-                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
-  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=10, colour="grey20")+
+  geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
+  geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
+  scale_shape_manual(values= c(`Pre-1987`="circle",`NTZ.Normal`="square filled", `NTZ.Nothing`="triangle filled", `NTZ.Temp Closure`="diamond filled", `NTZ.Temp Closure and NTZ`="triangle down filled" , `Pre-1987`="circle",
+                               `Fished.Normal`="square filled", `Fished.Nothing`="triangle filled", `Fished.Temp Closure`="diamond filled", `Fished.Temp Closure and NTZ`="triangle down filled"), name="Area and scenario",
+                     labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                              "Normal Scenario (Fished)", "No Management (Fished)",
+                              "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)")
+                     , guide="none")+
+  scale_fill_manual(values= c(`Pre-1987`="grey20", `NTZ.Normal`="#69BE28", `NTZ.Nothing`="#005594", `NTZ.Temp Closure`="#8AD2D8", `NTZ.Temp Closure and NTZ`="#53AF8B",
+                              `Fished.Normal`="white", `Fished.Nothing`="white",`Fished.Temp Closure`="white", `Fished.Temp Closure and NTZ`="white"),
+                    labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                             "Normal Scenario (Fished)", "No Management (Fished)",
+                             "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)"), name="Area and Scenario")+
+  scale_colour_manual(values = c("#69BE28", "#005594", "#8AD2D8", "#53AF8B", "#005594", "#69BE28", "#005594", "#8AD2D8", "#53AF8B", "#69BE28", "grey20", "grey20", "#53AF8B", "#8AD2D8"), guide="none")+ 
+  guides(fill = guide_legend(override.aes = list(shape = c("circle", "square filled", "triangle filled", "diamond filled", "triangle down filled", "square filled", "triangle filled", "diamond filled", "triangle down filled"),
+                                                 colour=c("grey20", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B"))))+
   ylab(NULL)+
   xlab(NULL)+
-  ggplot2::annotate("text", x=1.1, y=0.32, label="(c) Legal", size = 3, fontface=2)
+  ggplot2::annotate("text", x=1, y=0.3, label="(c) Legal sized", size = 3, fontface=2)
+line.legal
 
 line.biglegal <- ScenarioWholePop %>% 
   filter(Age>10) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
-  mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
-                                                                                            ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
-  mutate(NTGroup = as.factor(NTGroup)) %>% 
-  ggplot(., aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=NTGroup, shape=interaction(Status,Scenario)))+
-  geom_point(size=2.5)+
-  geom_line()+
+  mutate(ColourGroup = ifelse(Year<=1985, "grey20", ifelse(Scenario %in% c("Normal") & Year>1985, "#69BE28", 
+                                                             ifelse(Scenario %in% c("Temp Closure") & Year>1985, "#8AD2D8", 
+                                                                    ifelse(Scenario %in% c("Nothing"), "#005594", "#53AF8B"))))) %>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+  mutate(ShapeGroup = ifelse(Year>1985, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
+  mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
+  ggplot(.)+
+  geom_point(aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=ShapeGroup, fill=ShapeGroup,  shape=ShapeGroup), size=2.5,)+
+  geom_line(aes(x=Year, y=Total, group=interaction(Status,Scenario), colour=ColourGroup))+
   theme_classic()+
-  geom_vline(xintercept=5.6, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=9, colour="grey20")+
-  geom_vline(xintercept=11.5, linetype="dashed", colour="grey20")+
-  scale_shape_manual(values= c(16,15,1,0), name="Area and scenario", 
-                     labels= c("Fished area with NTZs in place", "NTZ area with NTZs in place", 
-                               "Fished area with no NTZs in place", "NTZ area with no NTZs in place"))+
-  scale_colour_manual(values = c("gray20", "#7ac0c2", "#47315e", "#487088"), guide=FALSE)+
+  geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=10, colour="grey20")+
+  geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
+  geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
+  scale_shape_manual(values= c(`Pre-1987`="circle",`NTZ.Normal`="square filled", `NTZ.Nothing`="triangle filled", `NTZ.Temp Closure`="diamond filled", `NTZ.Temp Closure and NTZ`="triangle down filled" , `Pre-1987`="circle",
+                               `Fished.Normal`="square filled", `Fished.Nothing`="triangle filled", `Fished.Temp Closure`="diamond filled", `Fished.Temp Closure and NTZ`="triangle down filled"), name="Area and scenario",
+                     labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                              "Normal Scenario (Fished)", "No Management (Fished)",
+                              "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)")
+                     , guide="none")+
+  scale_fill_manual(values= c(`Pre-1987`="grey20", `NTZ.Normal`="#69BE28", `NTZ.Nothing`="#005594", `NTZ.Temp Closure`="#8AD2D8", `NTZ.Temp Closure and NTZ`="#53AF8B",
+                              `Fished.Normal`="white", `Fished.Nothing`="white",`Fished.Temp Closure`="white", `Fished.Temp Closure and NTZ`="white"),
+                    labels=c("Pre-1987", "Normal Scenario (NTZ)", "No Management (NTZ)", "Temporal Closure (NTZ)", "Temporal Closure and NTZs (NTZ)",
+                             "Normal Scenario (Fished)", "No Management (Fished)",
+                             "Temporal Closure (Fished)" ,"Temporal Closure and NTZs (Fished)"), name="Area and Scenario")+
+  scale_colour_manual(values = c("#005594", "#53AF8B", "#69BE28", "#8AD2D8", "#69BE28", "#005594", "#8AD2D8", "#53AF8B", "grey20", "#69BE28", "#005594", "#8AD2D8", "#53AF8B", "grey20"), guide="none")+ 
+  guides(fill = guide_legend(override.aes = list(shape = c("circle", "square filled", "triangle filled", "diamond filled", "triangle down filled", "square filled", "triangle filled", "diamond filled", "triangle down filled"),
+                                                 colour=c("grey20", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B"))))+
   ylab(NULL)+
   xlab(NULL)+
-  ggplot2::annotate("text", x=1.5, y=0.22, label="(d) Large Legal", size = 3, fontface=2)
+  ggplot2::annotate("text", x=1.25, y=0.2, label="(d) Large legal sized", size = 3, fontface=2)
+line.biglegal 
 
 #### KOBE STYLE PLOT ####
 Years <- seq(5, 55, 5)

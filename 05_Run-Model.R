@@ -174,7 +174,7 @@ for(YEAR in 1:length(Time)){
   filename <- paste("YearlyTotal", YEAR, sep="_")
   saveRDS(YearlyTotal, file=filename)
   
-  Sys.sleep(3)
+  Sys.sleep(0.3)
 }
 
 
