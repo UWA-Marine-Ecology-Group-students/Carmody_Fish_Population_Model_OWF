@@ -808,7 +808,7 @@ for (y in 1:59){
 }
 
 # Remove fishing effort for six months out of the year to simulate a temporal closure from 2008 which covers the spawning season
-Fishing[ ,c(1,2,3,10,11,12), 49:59] <- 0
+Fishing[ ,c(1,2,3,10,11,12), 28:59] <- 0
 
 #### SAVE DATA ####
 setwd(sim_dir)
