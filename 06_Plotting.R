@@ -42,11 +42,36 @@ sim_dir <-  paste(working.dir, "Simulations", sep="/")
 
 #### READ IN DATA ####
 setwd(sg_dir)
-
 NoTake <- readRDS("NoTakeList")
+
 
 setwd(sp_dir)
 water <- readRDS("water")
+bathy <- raster("ga_bathy_ningaloocrop.tif")
+
+#* Create list of cells to restrict plots to shallow water (<30m)
+
+water_bathy <- extract(bathy, water, fun=mean, df=TRUE)
+
+water_bathy <- water_bathy %>% 
+  mutate(ID = as.factor(ID))
+
+water <- water %>% 
+  left_join(., water_bathy, by="ID") %>% 
+  rename(bathy = "ga_bathy_ningaloocrop") %>% 
+  filter(bathy >= c(-30)) %>% 
+  filter(!is.na(bathy))
+
+shallow_cells_NTZ <- water %>% 
+  filter(Fished %in% c("N")) %>% 
+  st_drop_geometry(.)
+
+shallow_cells_F <- water %>% 
+  filter(Fished %in% c("Y")) %>% 
+  st_drop_geometry(.)
+
+shallow_NTZ_ID <- shallow_cells_NTZ$ID
+shallow_F_ID <- shallow_cells_F$ID
 
 #* Normal - RE-DONE ####
 setwd(pop_dir)
@@ -70,7 +95,6 @@ for(Y in 1:59){
   TotalPop[Y,2] <- year
   
 }
-
 
 # Separated by Fished and No-Take
 NoTakeAges <- array(0, dim=c(30,13))
@@ -339,26 +363,25 @@ for(YEAR in 1:13){
 
 
 #### CALCULATE TOTAL AREA OF FISHED AND NO-TAKE ####
+
 AreaFished <- water %>% 
+  mutate(cell_area = st_area(Spatial)) %>% 
   mutate(cell_area = as.numeric(cell_area)) %>% 
-  mutate(Fished=as.factor(Fished)) %>% 
+  mutate(Fished=as.factor(Fished_17)) %>% 
   filter(Fished=="Y") 
 
 AreaFished <- (sum(AreaFished$cell_area))/100000
 
 AreaNT <- water %>% 
+  mutate(cell_area = st_area(Spatial)) %>% 
   mutate(cell_area = as.numeric(cell_area)) %>% 
-  mutate(Fished=as.factor(Fished)) %>% 
+  mutate(Fished=as.factor(Fished_17)) %>% 
   filter(Fished=="N") 
 
 AreaNT <- (sum(AreaNT$cell_area))/100000
-
 #### TIME SERIES PLOT WITH ALL SCENARIOS ####
 
 TotalPop <- TotalPop %>% 
-  mutate(s1_Tot.Pop = s1_TotalPop$Tot.Pop,
-         s2_Tot.Pop = s2_TotalPop$Tot.Pop,
-         s3_Tot.Pop = s3_TotalPop$Tot.Pop) %>% 
   rename(Normal = "Tot.Pop",
          Nothing = "s1_Tot.Pop",
          Temp.Closure.NTZ = "s2_Tot.Pop",
@@ -392,7 +415,12 @@ AllFished <- rbind(FishedAges, s1_FishedAges, s2_FishedAges, s3_FishedAges)
 
 ScenarioWholePop <- rbind(AllNoTake, AllFished) %>%  
   pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>% 
-  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT))
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT)) %>% 
+  mutate(Stage = ifelse(Age==1, "Recruit",
+                        ifelse(Age>1 & Age<=4, "Sublegal",
+                               ifelse(Age>4 & Age<=10, "Legal",
+                                      ifelse(Age>10, "Large Legal",NA)))))
+
 
 line.recruits.NTZ <- ScenarioWholePop %>% 
   filter(Age==1) %>% 
@@ -466,7 +494,7 @@ line.recruits.Fished <- ScenarioWholePop %>%
 line.recruits.Fished
 
 line.sublegal.NTZ <- ScenarioWholePop %>% 
-  filter(Age>1 & Age <=4) %>% 
+  filter(Stage %in% c("Sublegal")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
@@ -504,7 +532,7 @@ line.sublegal.NTZ <- ScenarioWholePop %>%
 line.sublegal.NTZ
 
 line.sublegal.Fished <- ScenarioWholePop %>% 
-  filter(Age>1 & Age <=4) %>% 
+  filter(Stage %in% c("Sublegal")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
@@ -542,7 +570,7 @@ line.sublegal.Fished <- ScenarioWholePop %>%
 line.sublegal.Fished
 
 line.legal.NTZ <- ScenarioWholePop %>% 
-  filter(Age>4 & Age <=10) %>% 
+  filter(Stage %in% c("Legal")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
@@ -575,12 +603,12 @@ line.legal.NTZ <- ScenarioWholePop %>%
   guides(fill = guide_legend(override.aes = list(shape = c("circle", "square filled", "triangle filled", "diamond filled", "triangle down filled", "square filled", "triangle filled", "diamond filled", "triangle down filled"),
                                                  colour=c("grey20", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B"))))+
   ylab(NULL)+
-  xlab(NULL)+
-  ggplot2::annotate("text", x=1.7, y=0.3, label="(c) Legal sized", size = 3, fontface=2)
+  xlab(NULL)
+  #ggplot2::annotate("text", x=1.7, y=0.3, label="(c) Legal sized", size = 3, fontface=2)
 line.legal.NTZ
 
 line.legal.Fished <- ScenarioWholePop %>% 
-  filter(Age>4 & Age <=10) %>% 
+  filter(Stage %in% c("Legal")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
@@ -613,12 +641,12 @@ line.legal.Fished <- ScenarioWholePop %>%
   guides(fill = guide_legend(override.aes = list(shape = c("circle", "square filled", "triangle filled", "diamond filled", "triangle down filled", "square filled", "triangle filled", "diamond filled", "triangle down filled"),
                                                  colour=c("grey20", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "#69BE28",  "#005594", "#8AD2D8", "#53AF8B"))))+
   ylab(NULL)+
-  xlab(NULL)+
-  ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+  xlab(NULL)
+  #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 line.legal.Fished
 
 line.biglegal.NTZ <- ScenarioWholePop %>% 
-  filter(Age>10) %>% 
+  filter(Stage %in% c("Large Legal")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "grey20", ifelse(Scenario %in% c("Normal") & Year>1985, "#69BE28", 
@@ -656,7 +684,7 @@ line.biglegal.NTZ <- ScenarioWholePop %>%
 line.biglegal.NTZ
 
 line.biglegal.Fished <- ScenarioWholePop %>% 
-  filter(Age>10) %>% 
+  filter(Stage %in% c("Large Legal")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "grey20", ifelse(Scenario %in% c("Normal") & Year>1985, "#69BE28", 
@@ -719,8 +747,28 @@ LinePlotsxGroup.F <-grid.arrange(arrangeGrob(line.recruits.Fished + theme(legend
                                    legend, 
                                    widths=unit.c(unit(1, "npc") - legend$width, legend$width), 
                                    nrow=1)
-##
 
+LinePlotsxSubLegal <-grid.arrange(arrangeGrob(line.recruits.NTZ + theme(legend.position="none"),
+                                              line.recruits.Fished + theme(legend.position="none"),
+                                              line.sublegal.NTZ + theme(legend.position="none"),
+                                              line.sublegal.Fished + theme(legend.position="none"),
+                                              nrow = 2,
+                                              left = y.label,
+                                              bottom = x.label), 
+                                  legend, 
+                                  widths=unit.c(unit(1, "npc") - legend$width, legend$width), 
+                                  nrow=1)
+
+LinePlotsxLegal <-grid.arrange(arrangeGrob(line.legal.NTZ + theme(legend.position="none"),
+                                              line.legal.Fished + theme(legend.position="none"),
+                                              line.biglegal.NTZ + theme(legend.position="none"),
+                                              line.biglegal.Fished + theme(legend.position="none"),
+                                              nrow = 2,
+                                              left = y.label,
+                                              bottom = x.label), 
+                                  legend, 
+                                  widths=unit.c(unit(1, "npc") - legend$width, legend$width), 
+                                  nrow=1)
 
 #### KOBE STYLE PLOT ####
 Years <- seq(5, 55, 5)

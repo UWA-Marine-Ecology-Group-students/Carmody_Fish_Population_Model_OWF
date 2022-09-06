@@ -5,6 +5,7 @@
 # Will run the full model with fishing
 # Make sure you reset things like NCELL if you've
 # used the test script
+# This takes about 1.5 hours to run
 
 ###################################################
 library(tidyverse)
@@ -113,23 +114,13 @@ for(YEAR in 1:length(Time)){
         survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
                                          Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
         
-        YearlyTotal[ ,1, A+1] <- survived.catch[[1]]
-        
-        # # Calculate catch
-        # n.catch <- survived.catch[[2]]
-        # 
-        # bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
+        YearlyTotal[ ,1, A+1] <- survived.catch # These are only called survived.catch because I copied and pasted from the actual model, it's only giving you the number that survived though
         
       } else if (MONTH!=12) {
         survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
                                          Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
         
-        YearlyTotal[ ,MONTH+1, A] <- survived.catch[[1]]
-        
-        # # Calculate catch
-        # n.catch <- survived.catch[[2]] # Fish caught in each cell of one age in one month
-        # 
-        # bio.catch[,A] <- n.catch * weight[(A*12)+1]
+        YearlyTotal[ ,MONTH+1, A] <- survived.catch
         
       } else { }
       
@@ -155,13 +146,13 @@ for(YEAR in 1:length(Time)){
   ## Plotting ##
   Total[YEAR,1] <- sum(water$pop)
   
-  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==100){
-    TotalPlot <- total.plot.func(pop=Total)
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==50){
+    TotalPlot <- total.plot.func(pop=Total) # This has also started giving an error and I don't know why, but the output looks fine when you plot it manually
     print(TotalPlot)
   } else { }
   
-  if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
-    TimesPlotted <- TimesPlotted+1
+  if(BurnIn==F & YEAR==59|BurnIn==F & YEAR==50){
+    TimesPlotted <- TimesPlotted+1 
     SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
     AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
     #LengthPlots[[TimesPlotted]] <- length.plot.func()
@@ -172,6 +163,9 @@ for(YEAR in 1:length(Time)){
   
   Sys.sleep(3)
 }
+
+Total <- as.data.frame(Total)
+plot(x=seq(1,50,1), y=Total$V1)
 
 ## Save burn in population for use in the actual model
 setwd(sg_dir)

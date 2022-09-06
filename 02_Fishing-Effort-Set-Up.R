@@ -68,12 +68,18 @@ BR <- st_read("Boat_Ramps.shp") %>%
   st_transform(4283)%>%
   st_make_valid
 
+# No Take Zones
+setwd(sg_dir)
+NoTake <- readRDS("NoTakeList")
+
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
 # Work out the number of boat days for the Ningaloo region split by state and commonwealth
 # We have estimates for just this area from Claire Smallwood but not for all years 
 # We have calculated proportions for each month based on the Gascoyne data 
 # So we are going to interpolate the months we are missing 
+
+# Yes I'm aware that this code is horrendous and repetitive, again I had intended to put it into a loop and never got around to it... :')
 
 ## Interpolate the values for state and commonwealth separately
 # January
@@ -184,7 +190,7 @@ inter_dec_state <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_State, xou
 inter_dec_comm <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
   unlist()
 
-## Add these values in to the data frame where we are missing the values
+## Add these values in to the data frame where we are missing the values (oh boy this code is grim)
 boat_days[c(25,49,73), 4] <- inter_jan_state[4:6]
 boat_days[c(25,49,73), 5] <- inter_jan_comm[4:6]
 
@@ -227,6 +233,8 @@ boat_days <- boat_days %>%
 
 ## There are few situations in early 2011 and late 2018 where we don't have any data so we're going to create 
 ## a linear model to try and estimate what those values would be
+
+# (oh god more repetitve stuff)
 
 # 2011 Jan and Feb
 January_Boat <- boat_days %>% 
@@ -344,7 +352,7 @@ Year2011_1990 <- Year2011_1990 %>%
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 64409.83, length=30)
+effort <- seq(0, 64409.83, length=30) # Use the max from the predictive model to then get a straight line back to 0 
 years <- seq(1960, 1989, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
@@ -354,7 +362,7 @@ Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>%
 #### JOIN FISHING EFFORT ####
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
-YearPlot <- ggplot(boat_days_hind) + 
+YearPlot <- ggplot(boat_days_hind) + # Check it looks right
   geom_line(aes(x=Year, y=Total))+ 
   theme_classic()+
   ylab("Total Boat Days")
@@ -403,7 +411,7 @@ boat_days_hind <- boat_days_hind %>%
 
 check <- boat_days_hind %>% 
   group_by(Year) %>% 
-  summarise(., sum(Total_Boat_Days))
+  summarise(., sum(Total_Boat_Days)) # check that the values match
 
 # Put it all together into one big dataframe
 
@@ -439,8 +447,8 @@ BR_Trips <- data.frame(BoatRamp = c("Tantabiddi", "Bundegi", "ExmouthMar", "Cora
 BR_Trips <- BR_Trips %>% 
   mutate(Trip_per_Hr = as.numeric(unlist((Trips/Effort)))) %>% # Standardise the no. trips based on how much time you spent sampling
   mutate(BR_Prop = Trip_per_Hr/sum(Trip_per_Hr)) %>% #Then work out the proportion of trips each hour that leave from each boat ramp
-  mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008, have 
-# allocated 10% of its boats to the other Exmouth Boat Ramps
+  mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008 as the boat ramp pretty much didn't exist, have allocated 10% of its boats to the other Exmouth Boat Ramps
+
 
 # Create a loop that allocates the correct proportion of boat effort to each of the BRs accounting for reduced effort at Bundegi before ther ramp was built
 for(Y in 1:708){
@@ -460,41 +468,16 @@ for(Y in 1:708){
 check <- Full_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
 
-#### CONVERT NO-TAKE INTO NUMERIC VECTORS OF CELL IDS ####
+#### CREATE SEPARATE VECTORS OF ROW IDS FROM THE NO TAKE LIST ####
 
-# Creating new columns for each of our year groups when new NTZs were put in place
+# Get the cell IDs/rows for the no take cells in each portion of the model
 
-NoTake <- st_sf(water) %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(Fished, ID, COMMENTS)
+NoTake87_05 <- NoTake[[1]] 
 
-NoTake <- NoTake %>% 
-  rename(Fished60_87 = "Fished") %>% 
-  mutate(Fished60_87 = "Y") %>% 
-  mutate(Fished87_05 = ifelse(str_detect(COMMENTS, c("Old")), "N", "Y")) %>% 
-  mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
-  mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
-  dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
-  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
-  mutate(ID = as.numeric(ID))
+NoTake05_18 <- NoTake[[2]] 
 
-NoTake87_05 <- NoTake %>% 
-  filter(Fished87_05=="N") %>% 
-  dplyr::select(ID)
+NoTake18_21 <- NoTake[[3]] 
 
-NoTake05_18 <- NoTake %>% 
-  filter(Fished05_18=="N") %>% 
-  dplyr::select(ID)
-
-NoTake18_21 <- NoTake %>% 
-  filter(Fished18_21=="N") %>% 
-  dplyr::select(ID)
-
-NoTake <- list()
-
-NoTake[[1]] <- as.numeric(NoTake87_05$ID)
-NoTake[[2]] <- as.numeric(NoTake05_18$ID)
-NoTake[[3]] <- as.numeric(NoTake18_21$ID)
 
 #### ALLOCATING EFFORT TO CELLS ####
 
@@ -502,7 +485,8 @@ NoTake[[3]] <- as.numeric(NoTake18_21$ID)
 BR <- st_sf(BR)
 
 water <- water %>% 
-  mutate(DistBR = 0)
+  mutate(DistBR = 0) %>% 
+  mutate(cell_area = st_area(Spatial))
 
 centroids <- st_centroid_within_poly(water)
 
@@ -810,5 +794,5 @@ setwd(sg_dir)
 
 saveRDS(Fishing, file="fishing")
 #saveRDS(NoTake, file="NoTake")
-saveRDS(NoTake, file="NoTakeList")
+#saveRDS(NoTake, file="NoTakeList")
 

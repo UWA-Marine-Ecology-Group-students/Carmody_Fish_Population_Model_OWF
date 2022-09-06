@@ -8,6 +8,8 @@ library(forcats)
 library(RColorBrewer)
 library(geosphere)
 
+rm(list = ls())
+
 ## Functions
 # This returns the centre of the ploygon, but if it's on land it will create a new centroid
 
@@ -25,14 +27,6 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
   return(centroid_in_poly)
 }
 
-## Create colours for the plot
-cols <- brewer.pal(8, "RdBu")
-levels_water <- data.frame(c("<1000", "1000-1100", "1100-1200", "1200-1300",
-                             "1300-1400", "1400-1500", "1500-1600", ">1600"))
-names(levels_water)[1] <- "Levels"
-levels_water$Levels <- as.factor(levels_water$Levels)
-names(cols) <- levels(levels_water$Levels)
-
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -43,7 +37,7 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
-SwimSpeed <- 1
+SwimSpeed <- 0.01
 
 #### READ FILES ####
 setwd(sp_dir)
@@ -57,10 +51,13 @@ water <- readRDS("water")
 
 NCELL <- nrow(water)
 
+water$cell_area <- st_area(water)
+
 #### CREATE MATRIX OF CONNVECTIVITY FOR FISH MOVEMENT ####
 ## Assume the fish will try and swim the shortest path between locations
 # Calculate the probability a fish moves to this site in a given time step using the swimming speed we set earlier 
 # This creates a dispersal kernel based on the negative exponential distribution
+# Some of these loops take quite a while to run
 
 pDist <- matrix(NA, ncol=NCELL, nrow=NCELL)
 
@@ -119,13 +116,13 @@ saveRDS(pRocky, file="pRocky")
 
 #### CREATE PROBABILITY OF MOVEMENT USING UTILITY FUNCTION ####
 ## Load files if need be ##
-# setwd(sp_dir)
+setwd(sp_dir)
 # 
 # pDist <- readRDS("pDist")
-# pPelagic <- readRDS("pPelagic")
-# pReef <- readRDS("pReef")
-# pLagoon <- readRDS("pLagoon")
-# pRocky <- readRDS("pRocky")
+pPelagic <- readRDS("pPelagic")
+pReef <- readRDS("pReef")
+pLagoon <- readRDS("pLagoon")
+pRocky <- readRDS("pRocky")
 
 # First determine the utility of each of the sites 
 # This is very sensitive to changes in the values particularly for reef 
@@ -167,7 +164,7 @@ rowSums(Pj)
 ## Want the recruits to be in the lagoons and then move out from there 
 dispersal <- lagoon_perc %>% 
   dplyr::select(perc_habitat, ID)
-dispersal$area <- as.vector(water$area)
+dispersal$area <- as.vector(water$cell_area)
 
 dispersal <- dispersal %>% 
   filter(perc_habitat!=0)
@@ -185,7 +182,7 @@ for (CELL in 1:NCELL){
   temp[which(!is.finite(temp))] <- 0
   summed <- sum(temp)
   
-  recruitment[CELL,1] <- as.numeric(temp[CELL,1]/summed)
+  recruitment[CELL,1] <- as.numeric(temp[CELL,1]/summed) # This loop throws an error saying that the subscript is out of bounds but as far as I can tell it's not a problem, I just made the loop run for too long and haven't fixed it up yet because
 }
 
 recruitment <- as.data.frame(recruitment)
@@ -235,3 +232,4 @@ saveRDS(Pj, file="movement")
 saveRDS(water, file="water")
 saveRDS(ProbRec, file="juvmove")
 saveRDS(recruitment, file="recruitment")
+
