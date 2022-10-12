@@ -64,6 +64,10 @@ setwd(sp_dir)
 water <- readRDS("water")
 NCELL <- nrow(water)
 
+# No Take Zones
+setwd(sg_dir)
+NoTake <- readRDS("NoTakeList")
+
 # Locations of the boat ramps
 setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
@@ -466,37 +470,14 @@ check <- Full_Boat_Days %>%
 
 # Creating new columns for each of our year groups when new NTZs were put in place
 
-NoTake <- st_sf(water) %>% 
-  st_drop_geometry() %>% 
-  dplyr::select(Fished, ID, COMMENTS)
+# Get the cell IDs/rows for the no take cells in each portion of the model
 
-NoTake <- NoTake %>% 
-  rename(Fished60_87 = "Fished") %>% 
-  mutate(Fished60_87 = "Y") %>% 
-  mutate(Fished87_05 = ifelse(str_detect(COMMENTS, c("Old")), "N", "Y")) %>% 
-  mutate(Fished05_18 = ifelse(str_detect(COMMENTS, "[:alpha:]") & !str_detect(COMMENTS, ("Comm Cloates")), "N", "Y")) %>% 
-  mutate(Fished18_21 = ifelse(str_detect(COMMENTS, "[:alpha:]"), "N", "Y")) %>% 
-  dplyr::select(ID, Fished60_87, Fished87_05, Fished05_18, Fished18_21) %>% 
-  mutate_at(vars(contains("Fished")), ~replace(., is.na(.), "Y")) %>% 
-  mutate(ID = as.numeric(ID))
+NoTake87_05 <- NoTake[[1]] 
 
-NoTake87_05 <- NoTake %>% 
-  filter(Fished87_05=="N") %>% 
-  dplyr::select(ID)
+NoTake05_18 <- NoTake[[2]] 
 
-NoTake05_18 <- NoTake %>% 
-  filter(Fished05_18=="N") %>% 
-  dplyr::select(ID)
+NoTake18_21 <- NoTake[[3]] 
 
-NoTake18_21 <- NoTake %>% 
-  filter(Fished18_21=="N") %>% 
-  dplyr::select(ID)
-
-NoTake <- list()
-
-NoTake[[1]] <- as.numeric(NoTake87_05$ID)
-NoTake[[2]] <- as.numeric(NoTake05_18$ID)
-NoTake[[3]] <- as.numeric(NoTake18_21$ID)
 
 #### ALLOCATING EFFORT TO CELLS ####
 
@@ -504,7 +485,8 @@ NoTake[[3]] <- as.numeric(NoTake18_21$ID)
 BR <- st_sf(BR)
 
 water <- water %>% 
-  mutate(DistBR = 0)
+  mutate(DistBR = 0) %>% 
+  mutate(cell_area = st_area(Spatial))
 
 centroids <- st_centroid_within_poly(water)
 

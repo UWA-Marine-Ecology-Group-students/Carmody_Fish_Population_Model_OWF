@@ -1,0 +1,179 @@
+###################################################
+
+# Script just for running the full model 
+# Requires files that are made in the first script
+# Will run the full model with fishing
+# Make sure you reset things like NCELL if you've
+# used the test script
+# This takes about 1.5 hours to run
+
+###################################################
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(sf)
+library(raster)
+library(stringr)
+library(forcats)
+library(RColorBrewer)
+library(geosphere)
+
+
+#### SET DIRECTORIES ####
+working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
+
+data_dir <- paste(working.dir, "Data", sep="/")
+fig_dir <- paste(working.dir, "Figures", sep="/")
+m_dir <- paste(working.dir, "Matrices", sep="/")
+sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
+sg_dir <- paste(working.dir, "Staging", sep="/")
+
+#### PRE-SETS ####
+
+## Create colours for the plot
+pop.groups <- c(0,50,100,500,1000,2000,3000,4000,5000,6000)
+my.colours <- "RdBu"
+
+model.name <- "ningaloo"
+
+## Read in functions
+setwd(working.dir)
+source("X_Functions.R")
+source("05_Population-Set-Up.R")
+
+#### LOAD FILES ####
+setwd(sg_dir)
+movement <- readRDS(paste0(model.name, sep="_", "movement"))
+juv_movement <- readRDS(paste0(model.name, sep="_","juvmove")) 
+recruitment <- readRDS(paste0(model.name, sep="_","recruitment"))
+fishing <- readRDS(paste0(model.name, sep="_", "fishing"))
+NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
+start.pop <- readRDS(paste0(model.name, sep="_","Starting_Pop"))
+selectivity <- readRDS("selectivity")
+maturity <- readRDS("maturity")
+weight <- readRDS("weight")
+
+setwd(sp_dir)
+water <- readRDS(paste0(model.name, sep="_","water"))
+
+#* Small model ####
+# YearlyTotal <- start.pop[as.numeric(water$ID),,]
+
+#### PARAMETER VALUES ####
+
+## Natural Mortality
+# We have instantaneous mortality from Marriot et al 2011 and we need to convert that into monthly mortality
+M <- 0.146
+step <- 1/12 # We're doing a monthly timestep here
+
+# Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
+alpha <- 0.4344209
+beta <- 0.00944941
+
+#Fish movement parameters
+SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 
+
+NCELL <- nrow(water)
+Ages <- seq(1,30) #These are the ages you want to plot 
+Time <- seq(1,50) #This is how long you want the model to run for
+PlotTotal <- T #This is whether you want a line plot of the total or the map
+
+Pop.Groups <- seq(1,12)
+
+#### SET UP INITIAL POPULATION ####
+
+Total <- array(NA, dim=c(length(Time),1))
+
+YearlyTotal <- array(0, dim = c(NCELL,12,30)) #This is our yearly population split by age category (every layer is an age group)
+
+start.pop.year <- start.pop %>% 
+  slice(which(row_number() %% 12 == 1)) # Gives you the total in each age group at the end of the year
+
+for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with the fish in age group summing to the total we caluclated above - beware the numbers change slightly due to rounding errors
+  for(N in 1:start.pop.year[d,1]){
+    cellID <- ceiling((runif(n=1, min = 0, max = 1))*NCELL)
+    YearlyTotal[cellID,1,d] <- YearlyTotal[cellID,1,d]+1
+  }
+}
+
+PopTotal <- array(0, dim=c(NCELL, 12, length(Time))) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+
+#### RUN MODEL ####
+BurnIn = T #This is to swap the model between burn in and running the model properly
+
+for(YEAR in 1:length(Time)){
+  
+  for(MONTH in 1:12){
+    
+    ## Movement - this is where you'd change things to suit the months
+    for(A in 1:dim(YearlyTotal)[3]){
+      
+      YearlyTotal[ , MONTH, A] <- movement.func(Age=A, Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement,
+                                      Juv.Move=juv_movement)
+      
+    }  # End bracket for movement
+    
+    ## Mortality
+    
+    for(A in 1:dim(YearlyTotal)[3]){
+      
+      if(MONTH==12 & 2<=A & A<30){
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        
+        YearlyTotal[ ,1, A+1] <- survived.catch # These are only called survived.catch because I copied and pasted from the actual model, it's only giving you the number that survived though
+        
+      } else if (MONTH!=12) {
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+        
+        YearlyTotal[ ,MONTH+1, A] <- survived.catch
+        
+      } else { }
+      
+    } # End Mortality
+    
+    ## Recruitment
+    if(MONTH==10){
+      Recruits <- recruitment.func(Population=YearlyTotal, settlement=recruitment, Max.Cell=NCELL, 
+                                   BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
+      
+      YearlyTotal[ ,1,1] <- Recruits
+      
+    } else { }
+    # End Recruitment
+  } #End bracket for months
+  
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+  
+  
+  print(YEAR)
+  water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
+  
+  ## Plotting ##
+  Total[YEAR,1] <- sum(water$pop)
+  
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==50){
+    TotalPlot <- total.plot.func(pop=Total) # This has also started giving an error and I don't know why, but the output looks fine when you plot it manually
+    print(TotalPlot)
+  } else { }
+  
+  if(BurnIn==F & YEAR==59|BurnIn==F & YEAR==50){
+    TimesPlotted <- TimesPlotted+1 
+    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="RdBu")
+    AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+    #LengthPlots[[TimesPlotted]] <- length.plot.func()
+  } else { }
+  
+  # filename <- paste("YearlyTotal", YEAR, sep=".")
+  # saveRDS(YearlyTotal, file=filename)
+  
+  Sys.sleep(3)
+}
+
+Total <- as.data.frame(Total)
+plot(x=seq(1,50,1), y=Total$V1)
+
+## Save burn in population for use in the actual model
+setwd(sg_dir)
+saveRDS(YearlyTotal, file=paste0(model.name, sep="_", "BurnInPop"))

@@ -99,7 +99,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
   } else {  
     
     ## Adult Movement
-    Pop <- matrix(Population[ , Month, Age]) #This gives you the fish in all the sites at timestep t-1 of age A-1
+    Pop <- matrix(Population[ , Month, Age]) #This gives you the fish in all the sites at timestep 
     
     Pop2 <- sapply(seq(Max.Cell), function(Cell){
       Pop2 <- as.matrix(Adult.Move[Cell, ] * Pop[Cell,1]) #This should give you the number of fish that move from sites to all the other sites
@@ -112,7 +112,7 @@ movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move, Juv.Mov
     # if((isTRUE(all.equal(Pop2, Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
     # {print(Pop2)
     #   print(Moved)} else{ }
-    
+    # 
     All.Movers <- cbind(All.Movers, Movement2)
     
     return(All.Movers)
