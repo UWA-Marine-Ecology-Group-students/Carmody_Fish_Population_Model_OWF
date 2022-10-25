@@ -70,11 +70,11 @@ NCELL <- nrow(water)
 setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
-  st_make_valid
+  st_make_valid()
 
 # No Take Zones
 setwd(sg_dir)
-NoTake <- readRDS("NoTakeList")
+NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
@@ -432,7 +432,13 @@ MonthPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_point(aes(x=Unique, y=Total_Boat_Days))
 
-#### ALLOCATION EFFORT TO BBOAT RAMPS ####
+#### FOR SENSITIVITY ANALYSIS - REMEMBER TO TURN OFF NINGALOO SAVE ####
+## Changing F 
+
+# Full_Boat_Days <- Full_Boat_Days %>%
+#   mutate(Total_Boat_Days = Total_Boat_Days*2)
+
+#### ALLOCATION EFFORT TO BOAT RAMPS ####
 
 # Split up the effort to Boat Ramps according to the information we have collected from Exmouth about how often people
 # Use the boat ramps - the Exmouth Marina wasn't constructed until 1997 but there was a ramp at town beah from the 60s 
@@ -784,10 +790,10 @@ q <- as.data.frame(array(0, dim=c(59,1))) %>%
 
 q[1:30, 1] <- 0.005
 
-# q has to now increase to 0.0065 in equal steps over 29 years which is 0.000025 each year
+# q has to now increase to 0.0065 in equal steps over 29 years 
 
 for (y in 31:59){
-  q[y,1] <- q[y-1,1] + 0.00006896551
+  q[y,1] <- q[y-1,1] + 0.00022413793
 }
 
 Fishing2 <- Fishing
@@ -801,31 +807,30 @@ for (y in 1:59){
 setwd(sg_dir)
 
 saveRDS(Fishing, file=paste0("ningaloo", sep="_", "fishing"))
-#saveRDS(NoTake, file="NoTake")
-#saveRDS(NoTake, file="NoTakeList")
+# saveRDS(NoTake, file="NoTake")
+# saveRDS(NoTake, file="NoTakeList")
 
 #### FOR SMALL MODEL ####
 ## Don't want to redo fishing effort because then we'd have an insane amount of fishing effort in this small area, just want to take the appropriate cells and keep the fishing effort as if it was the larger model
-model.name <- "small"
+# model.name <- "small"
 
-setwd(sp_dir)
-small_water <- readRDS(paste0(model.name, sep="_", "water"))
-water <- readRDS("water")
+# setwd(sp_dir)
+# small_water <- readRDS(paste0(model.name, sep="_", "water"))
+# water <- readRDS("water")
 
-setwd(sg_dir)
-Fishing <- readRDS("ningaloo_fishing")
+# setwd(sg_dir)
+# Fishing <- readRDS("ningaloo_fishing")
 
-small_water_id <- st_intersects(small_water, water) %>% 
-  as.data.frame(.) %>% 
-  distinct(row.id, .keep_all = T) 
-
-small_fishing <- Fishing[as.numeric(small_water_id$col.id),,] 
-small_fishing <- small_fishing/3
-
-
-setwd(sg_dir)
-saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
-saveRDS(small_water, file=paste0(model.name, sep="_", "water"))
+# small_water_id <- st_intersects(small_water, water) %>% 
+#   as.data.frame(.) %>% 
+#   distinct(row.id, .keep_all = T) 
+# 
+# small_fishing <- Fishing[as.numeric(small_water_id$col.id),,] 
+# small_fishing <- small_fishing
+# 
+# 
+# setwd(sg_dir)
+# saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
 
 
 

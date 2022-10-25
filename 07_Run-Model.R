@@ -40,7 +40,7 @@ setwd(sg_dir)
 movement <- readRDS(paste0(model.name, sep="_", "movement"))
 juv_movement <- readRDS(paste0(model.name, sep="_","juvmove")) 
 recruitment <- readRDS(paste0(model.name, sep="_","recruitment"))
-fishing <- readRDS(paste0(model.name, sep="_", "fishing"))
+# fishing <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water"))
 YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
@@ -49,8 +49,8 @@ maturity <- readRDS("maturity")
 weight <- readRDS("weight")
 
 ## Simulation Files
-# setwd(sim_dir)
-# fishing <- readRDS("S02_fishing")
+setwd(sim_dir)
+fishing <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
 
 
 ## Read in functions
@@ -64,8 +64,8 @@ M <- 0.146
 step <- 1/12 # We're doing a monthly time step here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
-alpha <- 0.4344209
-beta <- 0.00944941
+alpha <- 0.4344209 #0.4344209
+beta <-	0.01889882
 
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
@@ -89,7 +89,7 @@ yearly.catch <- array(0, dim=(c(length(Time), 3)))
 
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
-setwd(pop_dir)
+setwd(sim_dir)
 
 for(YEAR in 1:length(Time)){
   
@@ -175,7 +175,7 @@ for(YEAR in 1:length(Time)){
     
   } else { }
   
-  filename <- paste0(model.name, sep="_", "YearlyTotal", sep="_", YEAR)
+  filename <- paste0(model.name, sep="_", "S02_YearlyTotal", sep="_", YEAR)
   saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(0.3)

@@ -20,6 +20,14 @@ library(RColorBrewer)
 library(geosphere)
 library(abind)
 
+###################################################
+
+# Script for setting up the fishing surface 
+# Requires files that are made in the first script
+# Also requires fishing effort data
+
+rm(list = ls())
+
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
 
@@ -28,6 +36,7 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
+sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### LOAD FILES ####
 
@@ -45,6 +54,8 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
   return(centroid_in_poly)
 }
 
+model.name <- "ningaloo"
+
 ## Data
 setwd(data_dir)
 boat_days <- read.csv("Boat_Days_Ningaloo.csv")
@@ -60,14 +71,17 @@ boat_days <- boat_days%>%
 ## Spatial Data
 setwd(sp_dir)
 
-water <- readRDS("water")
+water <- readRDS(paste0(model.name, sep="_","water"))
 NCELL <- nrow(water)
 
 # Locations of the boat ramps
-setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid
+
+# No Take Zones
+setwd(sg_dir)
+NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
@@ -75,6 +89,8 @@ BR <- st_read("Boat_Ramps.shp") %>%
 # We have estimates for just this area from Claire Smallwood but not for all years 
 # We have calculated proportions for each month based on the Gascoyne data 
 # So we are going to interpolate the months we are missing 
+
+# Yes I'm aware that this code is horrendous and repetitive, again I had intended to put it into a loop and never got around to it... :')
 
 ## Interpolate the values for state and commonwealth separately
 # January
@@ -185,7 +201,7 @@ inter_dec_state <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_State, xou
 inter_dec_comm <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
   unlist()
 
-## Add these values in to the data frame where we are missing the values
+## Add these values in to the data frame where we are missing the values (oh boy this code is grim)
 boat_days[c(25,49,73), 4] <- inter_jan_state[4:6]
 boat_days[c(25,49,73), 5] <- inter_jan_comm[4:6]
 
@@ -228,6 +244,8 @@ boat_days <- boat_days %>%
 
 ## There are few situations in early 2011 and late 2018 where we don't have any data so we're going to create 
 ## a linear model to try and estimate what those values would be
+
+# (oh god more repetitve stuff)
 
 # 2011 Jan and Feb
 January_Boat <- boat_days %>% 
@@ -326,6 +344,7 @@ total_plot <- boat_days %>%
 
 #### HINDCASTING ####
 ## Going to do the hindcast based on the yearly total of boat days in the whole area
+## Has now been changed to max point in 2000 but haven't changed the names of the data frames
 TotalYear <- boat_days %>% 
   group_by(Year) %>% 
   summarise(Total=sum(Total_Boat_Days, na.rm = T)) %>% 
@@ -334,8 +353,8 @@ TotalYear <- boat_days %>%
 YearModel <- lm(Total~Year, data=TotalYear)
 summary(YearModel)
 
-Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>% 
-  mutate(V1=seq(1990, 2010, by=1)) %>% 
+Year2011_1990 <- as.data.frame(array(0, dim=c(11,1))) %>% 
+  mutate(V1=seq(2000, 2010, by=1)) %>% 
   rename("Year"=V1)
 
 predictions <- predict(YearModel, newdata=Year2011_1990)
@@ -345,17 +364,18 @@ Year2011_1990 <- Year2011_1990 %>%
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 64409.83, length=30)
-years <- seq(1960, 1989, by=1)
+effort <- seq(0, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
+years <- seq(1960, 2000, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
   rename("Year" = years) %>% 
-  rename("Total" = effort)
+  rename("Total" = effort) %>% 
+  filter(Year < 2000)
 
 #### JOIN FISHING EFFORT ####
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
-YearPlot <- ggplot(boat_days_hind) + 
+YearPlot <- ggplot(boat_days_hind) + # Check it looks right
   geom_line(aes(x=Year, y=Total))+ 
   theme_classic()+
   ylab("Total Boat Days")
@@ -404,14 +424,13 @@ boat_days_hind <- boat_days_hind %>%
 
 check <- boat_days_hind %>% 
   group_by(Year) %>% 
-  summarise(., sum(Total_Boat_Days))
+  summarise(., sum(Total_Boat_Days)) # check that the values match
 
 # Put it all together into one big dataframe
 
 Full_Boat_Days <- boat_days[,c(1,2,3,7)] %>% 
   rbind(boat_days_hind) %>% 
-  arrange(-Year) %>% 
-  rename(Boat_Days = "Total_Boat_Days")
+  arrange(-Year)
 
 # Plot and check that it looks right
 MonthPlot <- Full_Boat_Days %>%
@@ -447,28 +466,28 @@ BR_Trips <- BR_Trips %>%
 # Create a loop that allocates the correct proportion of boat effort to each of the BRs accounting for reduced effort at Bundegi before ther ramp was built
 for(Y in 1:708){
   if(Full_Boat_Days[Y,1]<2008){ # This is for when Bundegi wasn't a proper ramp so probably would have had less effort
-    Full_Boat_Days$Tb_BR = Full_Boat_Days$Boat_Days*BR_Trips[1,6]
-    Full_Boat_Days$Bd_BR = Full_Boat_Days$Boat_Days*BR_Trips[2,6]
-    Full_Boat_Days$ExM_BR = Full_Boat_Days$Boat_Days*BR_Trips[3,6] 
-    Full_Boat_Days$CrB_BR = Full_Boat_Days$Boat_Days*BR_Trips[4,6]
+    Full_Boat_Days$Tb_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[1,6]
+    Full_Boat_Days$Bd_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[2,6]
+    Full_Boat_Days$ExM_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[3,6] 
+    Full_Boat_Days$CrB_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[4,6]
   } else {
-    Full_Boat_Days$Tb_BR = Full_Boat_Days$Boat_Days*BR_Trips[1,5] 
-    Full_Boat_Days$Bd_BR = Full_Boat_Days$Boat_Days*BR_Trips[2,5] 
-    Full_Boat_Days$ExM_BR = Full_Boat_Days$Boat_Days*BR_Trips[3,5] 
-    Full_Boat_Days$CrB_BR = Full_Boat_Days$Boat_Days*BR_Trips[4,5]
+    Full_Boat_Days$Tb_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[1,5] 
+    Full_Boat_Days$Bd_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[2,5] 
+    Full_Boat_Days$ExM_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[3,5] 
+    Full_Boat_Days$CrB_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[4,5]
   }
 }
 
 check <- Full_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
-
 #### ALLOCATING EFFORT TO CELLS ####
 
 ## Work out the probability of visiting a cell from each boat ramp based on distance and size
 BR <- st_sf(BR)
 
 water <- water %>% 
-  mutate(DistBR = 0)
+  mutate(DistBR = 0) %>% 
+  mutate(cell_area = st_area(Spatial))
 
 centroids <- st_centroid_within_poly(water)
 
@@ -551,10 +570,10 @@ q <- as.data.frame(array(0, dim=c(59,1))) %>%
 
 q[1:30, 1] <- 0.005
 
-# q has to now increase to 0.0013 in equal steps over 29 years which is 0.000025 each year
+# q has to now increase by 30% in equal steps over 29 years 
 
 for (y in 31:59){
-  q[y,1] <- q[y-1,1] + 0.00005172413
+  q[y,1] <- q[y-1,1] + 0.00022413793
 }
 
 Fishing2 <- Fishing
@@ -566,6 +585,6 @@ for (y in 1:59){
 
 #### SAVE DATA ####
 setwd(sim_dir)
-saveRDS(Fishing, file="S01_fishing")
+saveRDS(Fishing, file=paste0(model.name, sep="_", "S01_fishing"))
 
 

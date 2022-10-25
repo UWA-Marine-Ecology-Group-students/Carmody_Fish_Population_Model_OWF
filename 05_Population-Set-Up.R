@@ -47,7 +47,7 @@ prop.fem <- 0.5
 M <- 0.146  #Marriot et al. 2011
 
 # Beverton-Holt Parameters
-h <- 0.76 # Steepness
+h <- 0.76 # Steepness 0.76
 R0 <- 1 # Initial recruitment
 
 # Selectivity
@@ -179,7 +179,7 @@ Equil.Rec <- (Fish.Fem.SSB-alpha)/(beta*Fish.Fem.SSB)
 ## the proportion of females at age
 ## We also need to decide on an initial level of recruitment (in thousands)
 
-init.recruit <- 5000 # in thousands
+init.recruit <- 5000 # in thousands - normally 5000 for big model, 50 for small model
 
 ## Calculate initial fished recruitment
 

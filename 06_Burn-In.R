@@ -56,9 +56,6 @@ weight <- readRDS("weight")
 setwd(sp_dir)
 water <- readRDS(paste0(model.name, sep="_","water"))
 
-#* Small model ####
-# YearlyTotal <- start.pop[as.numeric(water$ID),,]
-
 #### PARAMETER VALUES ####
 
 ## Natural Mortality
@@ -67,8 +64,8 @@ M <- 0.146
 step <- 1/12 # We're doing a monthly timestep here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
-alpha <- 0.4344209
-beta <- 0.00944941
+alpha <- 0.4344209 #0.4344209
+beta <-	0.0001889882
 
 #Fish movement parameters
 SwimSpeed <- 1.0 # Swim 1km in a day - this is completely made up 

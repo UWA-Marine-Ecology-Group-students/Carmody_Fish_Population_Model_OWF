@@ -3,10 +3,8 @@
 # Script for setting up the fishing surface 
 # Requires files that are made in the first script
 # Also requires fishing effort data
-# Scenario where there is a temporal closure
 
 ###################################################
-
 
 ## NEED TO CHANGE THE INITIAL FISHING MORTALITY AT 1965 TO BE THE SAME AS THE EQLUILIBRIUM LEVEL ##
 library(tidyverse)
@@ -19,6 +17,8 @@ library(forcats)
 library(RColorBrewer)
 library(geosphere)
 library(abind)
+
+rm(list = ls())
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -46,6 +46,8 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
   return(centroid_in_poly)
 }
 
+model.name <- "ningaloo"
+
 ## Data
 setwd(data_dir)
 boat_days <- read.csv("Boat_Days_Ningaloo.csv")
@@ -61,18 +63,18 @@ boat_days <- boat_days%>%
 ## Spatial Data
 setwd(sp_dir)
 
-water <- readRDS("water")
+water <- readRDS(paste0(model.name, sep="_","water"))
 NCELL <- nrow(water)
-
-# No Take Zones
-setwd(sg_dir)
-NoTake <- readRDS("NoTakeList")
 
 # Locations of the boat ramps
 setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
-  st_make_valid
+  st_make_valid()
+
+# No Take Zones
+setwd(sg_dir)
+NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
@@ -80,6 +82,8 @@ BR <- st_read("Boat_Ramps.shp") %>%
 # We have estimates for just this area from Claire Smallwood but not for all years 
 # We have calculated proportions for each month based on the Gascoyne data 
 # So we are going to interpolate the months we are missing 
+
+# Yes I'm aware that this code is horrendous and repetitive, again I had intended to put it into a loop and never got around to it... :')
 
 ## Interpolate the values for state and commonwealth separately
 # January
@@ -190,7 +194,7 @@ inter_dec_state <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_State, xou
 inter_dec_comm <- approx(boat_days_dec$Year, boat_days_dec$Boat_Days_Commonwealth, xout=c(2012,2014,2016)) %>% 
   unlist()
 
-## Add these values in to the data frame where we are missing the values
+## Add these values in to the data frame where we are missing the values (oh boy this code is grim)
 boat_days[c(25,49,73), 4] <- inter_jan_state[4:6]
 boat_days[c(25,49,73), 5] <- inter_jan_comm[4:6]
 
@@ -233,6 +237,8 @@ boat_days <- boat_days %>%
 
 ## There are few situations in early 2011 and late 2018 where we don't have any data so we're going to create 
 ## a linear model to try and estimate what those values would be
+
+# (oh god more repetitve stuff)
 
 # 2011 Jan and Feb
 January_Boat <- boat_days %>% 
@@ -331,6 +337,7 @@ total_plot <- boat_days %>%
 
 #### HINDCASTING ####
 ## Going to do the hindcast based on the yearly total of boat days in the whole area
+## Has now been changed to max point in 2000 but haven't changed the names of the data frames
 TotalYear <- boat_days %>% 
   group_by(Year) %>% 
   summarise(Total=sum(Total_Boat_Days, na.rm = T)) %>% 
@@ -339,8 +346,8 @@ TotalYear <- boat_days %>%
 YearModel <- lm(Total~Year, data=TotalYear)
 summary(YearModel)
 
-Year2011_1990 <- as.data.frame(array(0, dim=c(21,1))) %>% 
-  mutate(V1=seq(1990, 2010, by=1)) %>% 
+Year2011_1990 <- as.data.frame(array(0, dim=c(11,1))) %>% 
+  mutate(V1=seq(2000, 2010, by=1)) %>% 
   rename("Year"=V1)
 
 predictions <- predict(YearModel, newdata=Year2011_1990)
@@ -350,17 +357,18 @@ Year2011_1990 <- Year2011_1990 %>%
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 64409.83, length=30)
-years <- seq(1960, 1989, by=1)
+effort <- seq(0, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
+years <- seq(1960, 2000, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
   rename("Year" = years) %>% 
-  rename("Total" = effort)
+  rename("Total" = effort) %>% 
+  filter(Year < 2000)
 
 #### JOIN FISHING EFFORT ####
 boat_days_hind <- rbind(boat_days_hind, Years_1960_1989)
 
-YearPlot <- ggplot(boat_days_hind) + 
+YearPlot <- ggplot(boat_days_hind) + # Check it looks right
   geom_line(aes(x=Year, y=Total))+ 
   theme_classic()+
   ylab("Total Boat Days")
@@ -409,7 +417,7 @@ boat_days_hind <- boat_days_hind %>%
 
 check <- boat_days_hind %>% 
   group_by(Year) %>% 
-  summarise(., sum(Total_Boat_Days))
+  summarise(., sum(Total_Boat_Days)) # check that the values match
 
 # Put it all together into one big dataframe
 
@@ -424,7 +432,13 @@ MonthPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_point(aes(x=Unique, y=Total_Boat_Days))
 
-#### ALLOCATION EFFORT TO BBOAT RAMPS ####
+#### FOR SENSITIVITY ANALYSIS - REMEMBER TO TURN OFF NINGALOO SAVE ####
+## Changing F 
+
+# Full_Boat_Days <- Full_Boat_Days %>%
+#   mutate(Total_Boat_Days = Total_Boat_Days*2)
+
+#### ALLOCATION EFFORT TO BOAT RAMPS ####
 
 # Split up the effort to Boat Ramps according to the information we have collected from Exmouth about how often people
 # Use the boat ramps - the Exmouth Marina wasn't constructed until 1997 but there was a ramp at town beah from the 60s 
@@ -445,8 +459,8 @@ BR_Trips <- data.frame(BoatRamp = c("Tantabiddi", "Bundegi", "ExmouthMar", "Cora
 BR_Trips <- BR_Trips %>% 
   mutate(Trip_per_Hr = as.numeric(unlist((Trips/Effort)))) %>% # Standardise the no. trips based on how much time you spent sampling
   mutate(BR_Prop = Trip_per_Hr/sum(Trip_per_Hr)) %>% #Then work out the proportion of trips each hour that leave from each boat ramp
-  mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008, have 
-# allocated 10% of its boats to the other Exmouth Boat Ramps
+  mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008 as the boat ramp pretty much didn't exist, have allocated 10% of its boats to the other Exmouth Boat Ramps
+
 
 # Create a loop that allocates the correct proportion of boat effort to each of the BRs accounting for reduced effort at Bundegi before ther ramp was built
 for(Y in 1:708){
@@ -466,9 +480,7 @@ for(Y in 1:708){
 check <- Full_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
 
-#### CONVERT NO-TAKE INTO NUMERIC VECTORS OF CELL IDS ####
-
-# Creating new columns for each of our year groups when new NTZs were put in place
+#### CREATE SEPARATE VECTORS OF ROW IDS FROM THE NO TAKE LIST ####
 
 # Get the cell IDs/rows for the no take cells in each portion of the model
 
@@ -524,6 +536,8 @@ Cell_Vars_8705 <- Cell_Vars[-c(NoTake[[1]]), ]
 Cell_Vars_0517 <- Cell_Vars[-c(NoTake[[2]]), ]
 Cell_Vars_1819 <- Cell_Vars[-c(NoTake[[3]]), ]
 
+
+### NEED TO DO THESE AS A PROPER UTILITY FUNCTION LIKE I HAVE DONE FOR THE MOVEMENT ##
 
 ## 1960-1987 
 BR_U_6086 <- as.data.frame(matrix(0, nrow=NCELL_6086, ncol=4)) #Set up data frame to hold utilities of cells
@@ -656,7 +670,7 @@ for(YEAR in 1:27){
   layer <- layer+1
 }
 
-# 1987-2005
+# 1987-2004
 Fishing_8705 <- array(0, dim=c(NCELL_8705, 12,18)) #This array has a row for every cell, a column for every month, and a layer for every year
 Months <- array(0, dim=c(NCELL_8705, 12))
 Ramps <- array(0, dim=c(NCELL_8705, 4))
@@ -744,27 +758,27 @@ for(YEAR in 58:59){
 }
 
 ## Add cells in the NTZs back in 
-# Have to do this by adding in rows in to the matrix in the correct places the correct places but just give them 0
+# Have to do this by adding in rows in to the matrix in the correct places but just give them 0
 
-# 1987-2005
+# 1987-2004
 NTCells <- NoTake[[1]]
 Fishing_8705_2 <- array(0, dim=c(NCELL,12,18))
 
 Fishing_8705_2[-NTCells,,] <- Fishing_8705
 
-# 2005-2017
+# 2005-2016
 NTCells <- NoTake[[2]]
 Fishing_0517_2 <- array(0, dim=c(NCELL,12,12))
 
 Fishing_0517_2[-NTCells,,] <- Fishing_0517
 
-# 2017-2019
+# 2017-2018
 NTCells <- NoTake[[3]]
 Fishing_1819_2 <- array(0, dim=c(NCELL,12,2))
 
 Fishing_1819_2[-NTCells,,] <- Fishing_1819
 
-## Put it all back together and calculate fishing effort
+## Put it all back together 
 Fishing <- abind(Fishing_6086, Fishing_8705_2, along=3)
 Fishing <- abind(Fishing, Fishing_0517_2, along=3)
 Fishing <- abind(Fishing, Fishing_1819_2, along=3)
@@ -776,10 +790,10 @@ q <- as.data.frame(array(0, dim=c(59,1))) %>%
 
 q[1:30, 1] <- 0.005
 
-# q has to now increase to 0.0013 in equal steps over 29 years which is 0.000025 each year
+# q has to now increase to 0.0065 in equal steps over 29 years 
 
 for (y in 31:59){
-  q[y,1] <- q[y-1,1] + 0.00005172413
+  q[y,1] <- q[y-1,1] + 0.00022413793
 }
 
 Fishing2 <- Fishing
@@ -795,6 +809,6 @@ Fishing[ ,c(1,2,3,10,11,12), 28:59] <- 0
 #### SAVE DATA ####
 setwd(sim_dir)
 
-saveRDS(Fishing, file="S02_fishing")
+saveRDS(Fishing, file=paste0(model.name, sep="_", "S02_fishing"))
 
 
