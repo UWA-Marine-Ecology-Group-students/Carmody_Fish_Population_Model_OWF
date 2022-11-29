@@ -38,7 +38,7 @@ model.name <- "ningaloo"
 ## Normal Model Files
 setwd(sg_dir)
 movement <- readRDS(paste0(model.name, sep="_", "movement"))
-juv_movement <- readRDS(paste0(model.name, sep="_","juvmove")) 
+juv_movement <- readRDS(paste0(model.name, sep="_","movement")) # Have taken out having juvenile movement and now it's the same as adult but I don't want to change the code for the functions  
 recruitment <- readRDS(paste0(model.name, sep="_","recruitment"))
 # fishing <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -50,7 +50,7 @@ weight <- readRDS("weight")
 
 ## Simulation Files
 setwd(sim_dir)
-fishing <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
+fishing <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
 
 
 ## Read in functions
@@ -65,7 +65,7 @@ step <- 1/12 # We're doing a monthly time step here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 alpha <- 0.4344209 #0.4344209
-beta <-	0.01889882
+beta <-	0.01889882 #0.01889882
 
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
@@ -175,11 +175,13 @@ for(YEAR in 1:length(Time)){
     
   } else { }
   
-  filename <- paste0(model.name, sep="_", "S02_YearlyTotal", sep="_", YEAR)
+  filename <- paste0(model.name, sep="_", "S03_YearlyTotal", sep="_", YEAR)
   saveRDS(YearlyTotal, file=filename)
   
   Sys.sleep(0.3)
 }
 
 
+## SAVE THE CATCHES AND GET SPATIAL PLOT ##
 
+saveRDS(yearly.catch, file=paste0(model.name, sep="_", "S03_YearlyCatch"))

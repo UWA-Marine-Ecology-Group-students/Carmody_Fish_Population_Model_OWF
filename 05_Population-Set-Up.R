@@ -24,7 +24,7 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
-model.name <- "ningaloo"
+model.name <- "small"
 
 #### PARAMETERS FOR THE FISH POPULATION #####
 

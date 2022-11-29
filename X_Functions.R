@@ -162,7 +162,7 @@ total.plot.func <- function (pop) {
 
 spatial.plot.func <- function (area, pop, pop.breaks, pop.labels, colours){
   
-  water <- area%>%
+  water <- area %>%
     mutate(pop = round(pop, digits=0)) %>% 
     mutate(pop_level = cut(pop, pop.breaks, include.lowest=T)) 
   
@@ -170,9 +170,9 @@ spatial.plot.func <- function (area, pop, pop.breaks, pop.labels, colours){
   mycols <- colorRampPalette(rev(brewer.pal(8, colours)))(nb.cols)
   
   map <- ggplot(water)+
-    geom_sf(aes(fill=pop_level, color=Fished))+
+    geom_sf(aes(fill=pop_level), lwd=0)+
     scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-    scale_color_manual(name="Fished", values=c("white", "black"))+
+    #scale_color_manual(name="Fished", values=c("black", "black"))+
     theme_void()
   
   return(map)

@@ -7,6 +7,7 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(sfnetworks)
 
 rm(list = ls())
 
@@ -38,8 +39,6 @@ sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
 model.name <- "ningaloo"
-
-SwimSpeed <- 0.00001
 
 #### READ FILES ####
 setwd(sp_dir)
@@ -363,13 +362,13 @@ pRocky <- readRDS(paste0(model.name, sep="_","pRocky"))
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-SwimSpeed <-0.0000001
+SwimSpeed <- 2.9
 
 a = -SwimSpeed
-b = 0.15 #0.15
-c = 0.1 #0.1
-d = 0.04 #0.4
-e = 0.01 #0.01
+b = 0.9 #0.15
+c = 0.5 #0.1
+d = 0.7 #0.4
+e = 0.1 #0.01
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -431,7 +430,7 @@ recruitment <- merge(recruitment, lagoon_perc, by="ID", all=T) %>% #check that c
 #### RECRUIT MOVEMENT ####
 ## Want the recruits to stay in the lagoon until they mature and move to the reef
 
-a = -0.1 #-0.1
+a = -SwimSpeed #-SwimSpeed
 b = 0.01 #0.01
 c = 0.09 #0.09
 d = 0.05 #0.05

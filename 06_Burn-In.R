@@ -34,7 +34,7 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 pop.groups <- c(0,50,100,500,1000,2000,3000,4000,5000,6000)
 my.colours <- "RdBu"
 
-model.name <- "ningaloo"
+model.name <- "small"
 
 ## Read in functions
 setwd(working.dir)
