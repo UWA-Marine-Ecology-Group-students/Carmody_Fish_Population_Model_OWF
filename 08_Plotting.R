@@ -711,65 +711,6 @@ area_plot <- water %>%
 area_plot
 
 
-#### KOBE STYLE PLOT ####
-Years <- seq(5, 55, 5)
-Years[12] <- 59
-
-TotMatBio <- matrix(0, ncol=12, nrow=30)
-
-for(Y in 1:12){
-  
-  Population <-  get(paste0("Year", Years[Y]))
-  
-  for (A in 1:30){
-    adults <- Population[ ,10, ] %>% 
-      colSums(.) # Gives us just females because they are the limiting factor for reproduction
-    adults <- adults * 0.5
-    
-    MatBio<- lapply(1:dim(Population)[3], function(Age){
-      SB <- adults[Age] * maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
-      TotMatBio <- sum(SB) #Gives us total mature spawning biomass
-    })
-    MatBio <- do.call(rbind, MatBio)
-    TotMatBio[ ,Y] <- MatBio
-  }
-}
-
-TotMatBio <- as.data.frame(TotMatBio) %>% 
-  `colnames<-`(c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018")) %>% 
-  mutate(Age = seq(1, 30, 1)) %>% 
-  pivot_longer(cols=-c(Age), names_to="Year", values_to="Number") %>% 
-  mutate(Year = as.factor(Year)) %>% 
-  group_by(Year) %>% 
-  summarise(TotalBio=sum(Number)) %>% 
-  mutate(TotalBio = TotalBio/1000)
-
-YearlyFishing <- fishing %>% 
-  colSums(fishing) %>% 
-  colSums(.)
-
-YearlyFishing <- YearlyFishing[Years, ]
-YearlyFishing <- as.data.frame(YearlyFishing)
-
-YearlyFishing <- YearlyFishing*q
-
-F_SB <- cbind(TotMatBio, YearlyFishing) %>% 
-  mutate(Year = c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018")) %>% 
-  mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 
-                                                                                            ifelse(Year %in% c("2010","2015"),3, ifelse(Year %in% c("2018"), 4, 0))))) %>% 
-  mutate(NTGroup = as.factor(NTGroup)) 
-
-F_SB_Plot <- F_SB %>% 
-  mutate(Group = 1) %>% 
-  ggplot(., aes(x=TotalBio, y=YearlyFishing, label=Year, color=NTGroup, group=Group))+
-  geom_point()+
-  geom_text(hjust=0, vjust=0, position=position_jitter(width=0.01,height=0.006))+
-  geom_path()+
-  scale_x_continuous(breaks=seq(0,12,1), limits=c(0,12))+
-  theme_classic()+
-  xlab("Total Spawning Biomass")+
-  ylab("Yearly Fishing Effort")
-
 #### SPATIAL PLOTS ####
 setwd(sp_dir)
 water <- readRDS(paste0(model.name, sep="_","water"))

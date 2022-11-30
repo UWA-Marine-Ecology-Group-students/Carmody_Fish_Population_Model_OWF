@@ -432,6 +432,11 @@ MonthPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_point(aes(x=Unique, y=Total_Boat_Days))
 
+## Save the monthly allocations for use in later things 
+setwd(sg_dir)
+
+saveRDS(Month_Prop_Ave, file="Average_Monthly_Effort")
+
 #### FOR SENSITIVITY ANALYSIS - REMEMBER TO TURN OFF NINGALOO SAVE ####
 ## Changing F 
 

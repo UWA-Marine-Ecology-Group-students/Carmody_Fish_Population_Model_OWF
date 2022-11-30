@@ -143,7 +143,23 @@ recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature,
   return(settled)
 }
 
-# Then get added to January Population 
+#### MSY Functions ####
+## Need to get yield per recruit, biomass and mature/spawning biomass 
+# We need number survived in each age class, fishing mort. and total mort. and weight at age
+ypr.func <- function(Survived, Fishing.Mort, Nat.Mort, Weight, Age, Select){
+  
+  Survived.age <- Survived[Age,12]
+  
+  fishing.mort <- Fishing.Mort[FM]*Select[(((Age-1)*12)+1),3]
+  total.mort <- fishing.mort+Nat.Mort
+  
+  ypr <- Survived.age*(fishing.mort/total.mort)*(1-exp(-total.mort))*Weight[(Age*12)+1]
+  
+  return(ypr)
+  
+}
+
+
 #### Plotting ####
 
 total.plot.func <- function (pop) {
@@ -224,7 +240,30 @@ return(barplot.ages)
    
 }
 
+msy.plot.func <- function(yield, biomass,spawning){
   
+  yield.plot <- ggplot()+
+    geom_line(aes(x=yield[,1], y=yield[,2]))+
+    theme_classic()+
+    xlab("Fishing Mortality")+
+    ylab("Yeild per Recruit")
+  
+  biomass.plot <- ggplot()+
+    geom_line(aes(x=biomass[,1], y=biomass[,2]))+
+    theme_classic()+
+    xlab("Fishing Mortality")+
+    ylab("Total Biomass")
+  
+  spawning.plot <- ggplot()+
+    geom_line(aes(x=spawning[,1], y=spawning[,2]))+
+    theme_classic()+
+    xlab("Fishing Mortality")+
+    ylab("Total Spawning Biomass")
+  
+  msy.plots <- list(yield.plot, biomass.plot, spawning.plot)
+  return(msy.plots)
+  
+}
   
 
 

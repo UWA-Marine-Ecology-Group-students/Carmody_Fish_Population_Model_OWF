@@ -27,11 +27,7 @@ sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### PRE-SETS ####
 
-## Create colours for the plot
-pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150)
-my.colours <- "PuBu"
-
-model.name <- "ningaloo"
+model.name <- "small"
 
 #### LOAD FILES ####
 
@@ -40,7 +36,7 @@ setwd(sg_dir)
 movement <- readRDS(paste0(model.name, sep="_", "movement"))
 juv_movement <- readRDS(paste0(model.name, sep="_","movement")) # Have taken out having juvenile movement and now it's the same as adult but I don't want to change the code for the functions  
 recruitment <- readRDS(paste0(model.name, sep="_","recruitment"))
-# fishing <- readRDS(paste0(model.name, sep="_", "fishing"))
+fishing <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water"))
 YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
