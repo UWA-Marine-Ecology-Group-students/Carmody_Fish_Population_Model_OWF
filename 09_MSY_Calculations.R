@@ -148,6 +148,7 @@ BR_U <- BR_U %>% #make sure you give the columns good names so that you know wha
   rename("Tb_U" = V3) %>% 
   rename("CrB_U"=V4)
 
+# Add coefficients to each variable - all the BRs are the same but make them negative because the further away they are the less likely people are to visit
 a = 0.1
 b = -0.1 
 c = -0.1 
@@ -159,8 +160,7 @@ Vj <- Cell_Vars %>%
          ExM_BR = ExM_BR*c,
          Tb_BR = Tb_BR*d,
          CrB_BR = CrB_BR*e,
-         Area= Area*a) %>% 
-  mutate(vj = Bd_BR+ExM_BR+Tb_BR+CrB_BR+Area)
+         Area= Area*a)
   
 rowU <- matrix(NA, ncol=1, nrow=NCELL)
 cellU <- matrix(NA, ncol=4, nrow=NCELL)
@@ -239,7 +239,7 @@ Ages <- seq(1,30) #These are the ages you want to plot
 # Need to get it to produce the plots we want as well 
 # I think the only function I'll be using from the main model is the mortality function
 for(FM in 1:11){
-  for(MONTH in 1:12){
+  for(MONTH in 1:11){
     for(A in 1:dim(StartPop)[3]){
       
       if(MONTH==12 & 2<=A & A<30){
@@ -253,7 +253,7 @@ for(FM in 1:11){
         n.catch <- survived.catch[[2]]
         
         bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
-      } else if (MONTH!=12 & A>0) {
+      } else if (MONTH!=12) {
         survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=Fishing_MSY, Max.Cell = NCELL,
                                          Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=FM) # Changing Year to be the level of fishing mortality
         
@@ -265,21 +265,21 @@ for(FM in 1:11){
         bio.catch[ ,A] <- n.catch * weight[(A*12)+1] # Catch of each age class in each month
       }
      
-       survived.age[A,MONTH] <- sum(survived.catch[[1]]) # Gives us one value for all fish of that age group that survived
+       survived.age[A,MONTH+1] <- sum(survived.catch[[1]]) # Gives us one value for all fish of that age group that survived
     
        }
     # This is where we just take the values last month of the year
-    if(MONTH==12){
+    if(MONTH==11){
       for(A in 1:dim(YearlyTotal)[3])
         
       YPR <- ypr.func(survived.age, F_values, M, weight, Age=A, selectivity)
-      #Biomass[A] <- bio.func(blah)
-      #SB[A] <- SB.func(blah)
+      Biomass <- bio.func(survived.age, weight, YearlyTotal)
+      SB <- SB.func(survived.age, weight, YearlyTotal, maturity)
       
       
       YPR.F[FM,2] <- sum(YPR)
-      #Biomass.F[FM,2] <- sum(Biomass[,12])
-      #SB.F[FM,2] <- sum(SB[,12])
+      Biomass.F[FM,2] <- sum(Biomass)
+      SB.F[FM,2] <- sum(SB)
     } else { }
     
     monthly.catch[1:30,MONTH] <- colSums(bio.catch) # Total catch in each month
@@ -288,58 +288,16 @@ for(FM in 1:11){
   Flevel.catch[FM,1] <- sum(monthly.catch) # Total catch across the year for each level of F
   
   # Create plots at the very end of the loop with all of the different values of F
-  if(A==30 & MONTH==12){
+  if(A==30 & MONTH==11){
     MSY.plots <- msy.plot.func(YPR.F, Biomass.F, SB.F) # List with my three different plots in it
   } else { }
 }
 MSY.plots[[1]]
+MSY.plots[[2]]
+MSY.plots[[3]]
 
 
-
-#### WORKING OUT BIOMASS ####
-Years <- seq(5, 55, 5)
-Years[12] <- 59
-
-TotMatBio <- matrix(0, ncol=12, nrow=30)
-
-for(Y in 1:12){
-  
-  Population <-  get(paste0("Year", Years[Y]))
-  
-  for (A in 1:30){
-    adults <- Population[ ,10, ] %>% 
-      colSums(.) # Gives us just females because they are the limiting factor for reproduction
-    adults <- adults * 0.5
-    
-    MatBio<- lapply(1:dim(Population)[3], function(Age){
-      SB <- adults[Age] * maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
-      TotMatBio <- sum(SB) #Gives us total mature spawning biomass
-    })
-    MatBio <- do.call(rbind, MatBio)
-    TotMatBio[ ,Y] <- MatBio
-  }
-}
-
-TotMatBio <- as.data.frame(TotMatBio) %>% 
-  `colnames<-`(c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018")) %>% 
-  mutate(Age = seq(1, 30, 1)) %>% 
-  pivot_longer(cols=-c(Age), names_to="Year", values_to="Number") %>% 
-  mutate(Year = as.factor(Year)) %>% 
-  group_by(Year) %>% 
-  summarise(TotalBio=sum(Number)) %>% 
-  mutate(TotalBio = TotalBio/1000)
-
-YearlyFishing <- fishing %>% 
-  colSums(fishing) %>% 
-  colSums(.)
-
-YearlyFishing <- YearlyFishing[Years, ]
-YearlyFishing <- as.data.frame(YearlyFishing)
-
-YearlyFishing <- YearlyFishing*q
-
-
-#### PLOTTING ####
+#### KOBE PLOT ####
 F_SB <- cbind(TotMatBio, YearlyFishing) %>% 
   mutate(Year = c("1965", "1970", "1975", "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2018")) %>% 
   mutate(NTGroup = ifelse(Year %in% c("1960","1965","1970","1975","1980","1985"), 1, ifelse(Year %in% c("1990","1995","2000","2005"), 2, 

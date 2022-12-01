@@ -137,6 +137,9 @@ for(i in 1:n.closest){
 connected <- st_combine(c(multilinestrings[[1]], multilinestrings[[2]], multilinestrings[[3]], multilinestrings[[4]], multilinestrings[[5]], multilinestrings[[6]]))
 connected <- st_cast(connected, "LINESTRING") # Needs to be a line string rather than multiline for the next step
 
+setwd(working.dir)
+st_write(connected, paste0(model.name, sep="_", "network.shapefile.shp"))
+
 ### SET UP THE SF NETWORK AND CREATE A DISTANCE MATRIX ###
 network <- as_sfnetwork(connected, directed = FALSE) %>%
   activate("edges") %>%

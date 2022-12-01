@@ -159,6 +159,32 @@ ypr.func <- function(Survived, Fishing.Mort, Nat.Mort, Weight, Age, Select){
   
 }
 
+bio.func <- function(Survived, Weight, Population){
+  
+  for (A in 1:30){
+    adults <- Survived[ ,12]
+    TotBio<- lapply(1:dim(Population)[3], function(Age){
+      SB <- adults[Age] * Weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
+      Bio <- sum(SB) #Gives us total biomass
+    })
+    TotalBio <- do.call(rbind, TotBio)
+  }
+  return(TotalBio)
+}
+  
+SB.func <- function(Survived, Weight, Population, Maturity){
+  for (A in 1:30){
+    adults <- Survived[ ,10]
+    adults <- adults * 0.5
+    
+    MatBio<- lapply(1:dim(Population)[3], function(Age){
+      SB <- adults[Age] * Maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
+      TotMatBio <- sum(SB) #Gives us total mature spawning biomass
+    })
+    MatBio <- do.call(rbind, MatBio)
+  }
+  return(MatBio)
+}
 
 #### Plotting ####
 

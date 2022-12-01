@@ -26,6 +26,8 @@ pop_dir <-  paste(working.dir, "Output_Population", sep="/")
 sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 #### PRE-SETS ####
+pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150)
+my.colours <- "PuBu"
 
 model.name <- "small"
 
@@ -173,10 +175,10 @@ for(YEAR in 1:length(Time)){
   
   filename <- paste0(model.name, sep="_", "S03_YearlyTotal", sep="_", YEAR)
   saveRDS(YearlyTotal, file=filename)
-  
+
   Sys.sleep(0.3)
 }
-
+SpatialPlots[[10]]
 
 ## SAVE THE CATCHES AND GET SPATIAL PLOT ##
 
