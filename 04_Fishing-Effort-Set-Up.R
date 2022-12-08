@@ -719,24 +719,24 @@ saveRDS(Fishing, file=paste0("ningaloo", sep="_", "fishing"))
 
 #### FOR SMALL MODEL ####
 ## Don't want to redo fishing effort because then we'd have an insane amount of fishing effort in this small area, just want to take the appropriate cells and keep the fishing effort as if it was the larger model
-model.name <- "small"
-
-setwd(sp_dir)
-small_water <- readRDS(paste0(model.name, sep="_", "water"))
-water <- readRDS("water")
-
-setwd(sg_dir)
-Fishing <- readRDS("ningaloo_fishing")
-
-small_water_id <- st_intersects(small_water, water) %>%
-  as.data.frame(.) %>%
-  distinct(row.id, .keep_all = T)
-
-small_fishing <- Fishing[as.numeric(small_water_id$col.id),,]
-small_fishing <- small_fishing
-
-setwd(sg_dir)
-saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
+# model.name <- "small"
+# 
+# setwd(sp_dir)
+# small_water <- readRDS(paste0(model.name, sep="_", "water"))
+# water <- readRDS("water")
+# 
+# setwd(sg_dir)
+# Fishing <- readRDS("ningaloo_fishing")
+# 
+# small_water_id <- st_intersects(small_water, water) %>%
+#   as.data.frame(.) %>%
+#   distinct(row.id, .keep_all = T)
+# 
+# small_fishing <- Fishing[as.numeric(small_water_id$col.id),,]
+# small_fishing <- small_fishing
+# 
+# setwd(sg_dir)
+# saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
 
 
 

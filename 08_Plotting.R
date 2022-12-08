@@ -62,7 +62,7 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
 # Sim 2 NTZs and Temporal Closure
 # Sim 3 Just temporal closure, no sanctuary zones 
 
-model.name <- "ningaloo"
+model.name <- "small"
 #### READ IN DATA ####
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -717,7 +717,7 @@ water <- readRDS(paste0(model.name, sep="_","water"))
 
 pop.groups <- c(0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10)
 
-setwd(pop_dir)
+setwd(sg_dir)
 
 TotalPop_Normal <- readRDS("ningaloo_YearlyTotal_59") %>% 
   rowSums(.[,,4:30], dim=2) 
@@ -776,7 +776,7 @@ WholePop <- rbind(NoTakeAges, FishedAges) %>%
 
 
 check <- WholePop %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
+  filter(Stage %in% c("Sublegal")) %>% 
   #filter(Status %in% c("NTZ")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
@@ -786,12 +786,12 @@ check <- WholePop %>%
   mutate(ColourGroup = as.factor(ColourGroup)) %>% 
   mutate(ShapeGroup = ifelse(Year>1985, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
   mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
-  mutate(PercChange = ifelse(Status %in% c("Fished"), ((Total-0.12931098)/0.12931098)*100, ((Total-0.3366771)/0.3366771)*100)) %>% 
+  #mutate(PercChange = ifelse(Status %in% c("Fished"), ((Total-0.12931098)/0.12931098)*100, ((Total-0.3366771)/0.3366771)*100)) %>% 
   ggplot(.)+
-  geom_point(aes(x=Year, y=PercChange, group=Status, colour=ShapeGroup)
+  geom_point(aes(x=Year, y=Total, group=Status, colour=ShapeGroup)
                  #, colour=ColourGroup, fill=ColourGroup,  shape=ShapeGroup), size=2.5
                  )+
-  geom_line(aes(x=Year, y=PercChange, group=Status, colour=ShapeGroup
+  geom_line(aes(x=Year, y=Total, group=Status, colour=ShapeGroup
                 #, colour=ColourGroup
                 ))+
   theme_classic()+

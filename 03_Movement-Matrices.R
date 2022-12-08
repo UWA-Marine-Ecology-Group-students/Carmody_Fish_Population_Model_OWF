@@ -38,7 +38,7 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
-model.name <- "ningaloo"
+model.name <- "small"
 
 #### READ FILES ####
 setwd(sp_dir)
@@ -55,7 +55,7 @@ for (i in 1:4){
   hab.file <- st_read(paste0(habitat.types[i], "Habitat.gpkg", sep="")) %>% 
     st_transform(4283)%>%
     st_make_valid%>%
-    st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)%>% # This needs to be the same as in the first script
+    st_crop(xmin=113.8826, xmax=113.9967, ymin=-22.0725, ymax=-21.84793)%>% # This needs to be the same as in the first script
     mutate(type = habitat.types[i]) %>% 
     dplyr::select(type, geom)
   
@@ -468,7 +468,7 @@ rowSums(ProbRec)
 #### SAVE FILES ####
 setwd(sg_dir)
 saveRDS(Pj, file=paste0(model.name, sep="_", "movement"))
-saveRDS(water, file=paste0(model.name, sep="_","water"))
 saveRDS(ProbRec, file=paste0(model.name, sep="_","juvmove"))
 saveRDS(recruitment, file=paste0(model.name, sep="_","recruitment"))
+saveRDS(water, file=paste0(model.name, sep="_", "water"))
 

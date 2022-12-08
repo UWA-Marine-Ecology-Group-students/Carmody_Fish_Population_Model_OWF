@@ -39,7 +39,7 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/") # For spatial dataframes that we're still working on
 sg_dir <- paste(working.dir, "Staging", sep="/") # For finished dataframes that we aren't going to change any more
 
-model.name <- "ningaloo"
+model.name <- "small"
 
 
 #### LOAD FILES ####

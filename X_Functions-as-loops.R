@@ -13,55 +13,45 @@
 
 mortality.func <- function (Age, Nat.Mort, Effort, Max.Cell, Month, Year, Population, Select){
   
-  tot.survived <- sapply(seq(Max.Cell), function(Cell) {
+  for(cell in 1:Max.Cell){
     tot.survived <- Population[Cell,Month,Age]*exp(-Select[(((Age-1)*12)+1),Year]*Effort[Cell,Month,Year])*exp(-(Nat.Mort/12)) 
     
-    #Calculate Catch
-    sel.effort <- (Select[(((Age-1)*12)+1),1]*Effort[Cell,Month,Year])
+    # Calculate catch
+    sel.effort <- (Select[(((Age-1)*12)+1),Year]*Effort[Cell,Month,Year])
     catch <- sel.effort/((Nat.Mort/12)+sel.effort)
     catch <- tot.survived[Cell]*catch
-  })
-  
-  # Calculate catch
-  
-  list.surv.catch <- list(tot.survived, catch)
-  return(list.surv.catch)
-  
+    }
+
+    list.surv.catch <- list(tot.survived, catch)
+    return(list.surv.catch)
 }
 
 
 #### Movement ####
 
-movement.func <- function (Age, Month, Population, Max.Cell, Adult.Move){
-
+movement.func <- function (Max.Age, Month, Population, Max.Cell, Adult.Move){
+  
   All.Movers <- NULL
+  
+  for(Age in 1:Max.Age){
+    
+    Moving <- NULL
+    
+    Pop <- matrix(Population[ , Month, Age])
+    ## Adult Movement
+    for(Cell in 1:Max.Cell){
+      Pop2 <- Adult.Move[Cell, ] * Pop[Cell,1] #This should give you the number of fish that move from site s to all the other sites
+      Pop2 <- t(Pop2)
+      Moving <- rbind(Moving, Pop2) 
+    } #End bracket for movement in each cell
+    
+    Moved <- as.matrix(colSums(Moving))
+    
+    All.Movers <- cbind(All.Movers,Moved) 
+    All.Movers.Ages <- array(All.Movers, dim=c(Max.Cell, 1, Max.Age))
 
-  ## Adult Movement
-
-  Moving <- sapply(1:30, function(a){
-    All.Movers <- sapply(seq(Max.Cell), function(Cell){
-      temp <- matrix(Population[ ,Month, a])
-      Pop2 <- matrix(Adult.Move[Cell, ] * temp[Cell,1]) %>%  #This should give you the number of fish that move from sites to all the other sites
-        unlist()
-      
-    })
-    Movement <- rowSums(All.Movers)
-  })
-
-
-#dim(Moving) <- c(Max.Cell,1,30)
-  # #End bracket for movement in each cell
-  # 
-  # Movement2 <- colSums(Pop2)
-  # Moved <- sum(Movement2)
-  # # print(isTRUE(all.equal(Pop2, Moved)))
-  # # if((isTRUE(all.equal(Pop2, Moved))) == FALSE) #This just prints the values of the fish that moved if it's not the same as the fish that were meant to move
-  # # {print(Pop2)
-  # #   print(Moved)} else{ }
-  # #
-  # All.Movers <- cbind(All.Movers, Movement2)
-
-  return(Moving)
+  }
+  return(All.Movers)
 }
 
 #### Recruitment Function ####
@@ -79,7 +69,7 @@ recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature,
     recs <- (SB/BHa+BHb*SB) # This gives us males and females to go into the next generation
   })
   tot.recs <- do.call(rbind, tot.recs)
-
+  
   settle.recs <- sum(tot.recs)
   
   settled <- settle.recs*settlement[,2]
@@ -114,7 +104,7 @@ bio.func <- function(Survived, Weight, Population){
   }
   return(TotalBio)
 }
-  
+
 SB.func <- function(Survived, Weight, Population, Maturity){
   for (A in 1:30){
     adults <- Survived[ ,10]
@@ -141,8 +131,8 @@ total.plot.func <- function (pop) {
     geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
     geom_vline(xintercept=2005, colour="grey20")+
     geom_vline(xintercept=2017, linetype="dashed", colour="grey20")
-    
-    return(TimeSeries)
+  
+  return(TimeSeries)
 }
 
 spatial.plot.func <- function (area, pop, pop.breaks, pop.labels, colours){
@@ -187,8 +177,8 @@ age.plot.func <- function (pop, NTZs){
     rename(Number = "colSums(NoTakeAges)") %>% 
     mutate(Status = "NTZ") %>% 
     mutate(Age = seq(1:30))
-    
-    
+  
+  
   FishedAges <- as.data.frame(colSums(FishedAges)) %>% 
     rename(Number = "colSums(FishedAges)") %>% 
     mutate(Status = "Fished") %>% 
@@ -201,12 +191,12 @@ age.plot.func <- function (pop, NTZs){
     ungroup() %>% 
     mutate(Proportion = (Number/TotalZone))
   
-barplot.ages <- ggplot(AllAges)+
-  geom_bar(aes(y=Proportion, x=Age, fill=Status), position="dodge", stat="identity")+
-  theme_classic()
-
-return(barplot.ages)
-   
+  barplot.ages <- ggplot(AllAges)+
+    geom_bar(aes(y=Proportion, x=Age, fill=Status), position="dodge", stat="identity")+
+    theme_classic()
+  
+  return(barplot.ages)
+  
 }
 
 msy.plot.func <- function(yield, biomass,spawning){
@@ -233,7 +223,6 @@ msy.plot.func <- function(yield, biomass,spawning){
   return(msy.plots)
   
 }
-  
 
 
-  
+
