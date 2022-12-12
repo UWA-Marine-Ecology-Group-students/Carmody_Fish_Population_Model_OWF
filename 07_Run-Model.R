@@ -44,6 +44,7 @@ YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 selectivity <- readRDS("selret")
 maturity <- readRDS("maturity")
 weight <- readRDS("weight")
+recruitment <- readRDS(paste0(model.name, sep="_","recruitment"))
 
 ## Simulation Files
 # setwd(sim_dir)
@@ -89,90 +90,90 @@ BurnIn = F #This is to swap the model between burn in and running the model prop
 setwd(pop_dir)
 
 start.time <- Sys.time()
-for(YEAR in 1:length(Time)){
+for(YEAR in 1:2){
   
   for(MONTH in 1:12){
     
     # Movement
     # for(A in 1:dim(YearlyTotal)[3]){
     
-      YearlyTotal[,MONTH,] <- movement.func(Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement, Age=A)
+      YearlyTotal[,MONTH, ] <- movement.func(Month=MONTH, Population=YearlyTotal, Max.Cell=NCELL, Adult.Move= movement, Age=A)
      
-    
+
     # }  # End bracket for movement
-    
+    # 
     ## Mortality
-  #   
-  #   for(A in 1:dim(YearlyTotal)[3]){
-  #     
-  #     if(MONTH==12 & 2<=A & A<30){
-  #       survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
-  #                                        Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
-  #       
-  #       YearlyTotal[ ,1, A+1] <- survived.catch[[1]]
-  #       
-  #        # Calculate catch
-  #       n.catch <- survived.catch[[2]]
-  # 
-  #       bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
-  #       
-  #     } else if (MONTH!=12) {
-  #       survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
-  #                                        Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
-  #       
-  #       YearlyTotal[ ,MONTH+1, A] <- survived.catch[[1]]
-  #       
-  #       # Calculate catch
-  #       n.catch <- survived.catch[[2]] # Fish caught in each cell of one age in one month
-  # 
-  #       bio.catch[,A] <- n.catch * weight[(A*12)+1]
-  #       
-  #     } else { }
-  #     
-  #     
-  #   } # End Mortality
-  #   
-  #   # ## Recruitment
-  #   if(MONTH==10){
-  #     Recruits <- recruitment.func(Population=YearlyTotal, settlement=recruitment, Max.Cell=NCELL,
-  #                                  BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
-  #     
-  #     YearlyTotal[ ,1,1] <- Recruits
-  #     
-  #   } else { }
-  #   # End Recruitment
-  #   
-  #   monthly.catch[1:30,MONTH] <- colSums(bio.catch)
-  #   
+
+    for(A in 1:dim(YearlyTotal)[3]){
+
+      if(MONTH==12 & 2<=A & A<30){
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+
+        YearlyTotal[ ,1, A+1] <- survived.catch[[1]]
+
+         # Calculate catch
+        n.catch <- survived.catch[[2]]
+
+        bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
+
+      } else if (MONTH!=12) {
+        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=fishing, Max.Cell = NCELL,
+                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=YEAR)
+
+        YearlyTotal[ ,MONTH+1, A] <- survived.catch[[1]]
+
+        # Calculate catch
+        n.catch <- survived.catch[[2]] # Fish caught in each cell of one age in one month
+
+        bio.catch[,A] <- n.catch * weight[(A*12)+1]
+
+      } else { }
+
+
+    } # End Mortality
+
+    # ## Recruitment
+    if(MONTH==10){
+      Recruits <- recruitment.func(Population=YearlyTotal, settlement=recruitment, Max.Cell=NCELL,
+                                   BHa=alpha, BHb=beta, Mature=maturity, Weight=weight, PF=0.5)
+
+      YearlyTotal[1:51 ,1,1] <- Recruits
+
+    } else { }
+    # End Recruitment
+
+    monthly.catch[1:30,MONTH] <- colSums(bio.catch)
+
   } #End bracket for months
-  # 
-  # PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
-  # 
-  # yearly.catch[YEAR,3] <- sum(monthly.catch)
-  # 
-  # print(YEAR)
-  # water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
-  # 
-  # ## Plotting ##
-  # Total[YEAR,1] <- sum(water$pop)
-  # print(Total[YEAR,1])
-  # 
-  # if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==50){
-  #   TotalPop <- as.data.frame(Total) %>%
-  #     rename(Tot.Pop="V1")
-  #   TotalPop$Year <- seq(1960, 2018, by=1)
-  #   TotalPlot <- total.plot.func(pop=TotalPop)
-  #   print(TotalPlot)
-  # } else { }
-  # 
-  # if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
-  #   TimesPlotted <- TimesPlotted+1
-  #   SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
-  #   AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
-  #   #LengthPlots[[TimesPlotted]] <- length.plot.func()
-  #   
-  # } else { }
-  # 
+
+  PopTotal[ , , YEAR] <- rowSums(YearlyTotal[,,Ages], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+
+  yearly.catch[YEAR,3] <- sum(monthly.catch)
+
+  print(YEAR)
+  water$pop <- PopTotal[ , 12, YEAR] # We just want the population at the end of the year
+
+  ## Plotting ##
+  Total[YEAR,1] <- sum(water$pop)
+  print(Total[YEAR,1])
+
+  if(BurnIn==F & YEAR==59|BurnIn==T & YEAR==50){
+    TotalPop <- as.data.frame(Total) %>%
+      rename(Tot.Pop="V1")
+    TotalPop$Year <- seq(1960, 2018, by=1)
+    TotalPlot <- total.plot.func(pop=TotalPop)
+    print(TotalPlot)
+  } else { }
+
+  if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==59){
+    TimesPlotted <- TimesPlotted+1
+    SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
+    AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+    #LengthPlots[[TimesPlotted]] <- length.plot.func()
+
+  } else { }
+
   # filename <- paste0(model.name, sep="_", "YearlyTotal", sep="_", YEAR)
   # saveRDS(YearlyTotal, file=filename)
   # 

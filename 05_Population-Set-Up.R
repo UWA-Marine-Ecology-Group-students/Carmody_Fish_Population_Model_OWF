@@ -24,37 +24,39 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
-model.name <- "small"
+model.name <- "ningaloo"
 
 #### PARAMETERS FOR THE FISH POPULATION #####
 
 ## Set timestep 
-step <- 1/12 # We're doing a monthly timestep here
+step = 1/12 # We're doing a monthly timestep here
 
 ## Von Bertalanffy Parameters
-Linf <- 664 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
-k <- 0.241 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
-t0 <- -0.375 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+Linf = 664 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+k = 0.241 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+t0 = -0.375 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 
 ## Weight-Length Relationship
-WLa <- 0.000028
-WLb <- 2.8761
+WLa = 0.000028
+WLb = 2.8761
 
 ## Proportion expected to be females
-prop.fem <- 0.5
+prop.fem = 0.5
 
 ## Natural Mortality
-M <- 0.146  #Marriot et al. 2011
+M = 0.146  #Marriot et al. 2011
 
 # Beverton-Holt Parameters
-h <- 0.76 # Steepness 0.76
-R0 <- 1 # Initial recruitment
+h = 0.76 # Steepness 0.76
+R0 = 1 # Initial recruitment
 
 # Selectivity
-A50 <- 0.7 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
-A95 <- 1.4 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+A50 = 3.5 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+A95 = 4.5 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+MaxAge = 30
+nYears= 59
 
-PRM <- 0.25 # Post release mortality for our retention function
+PRM = 0.25 # Post release mortality for our retention function
 
 # 270 in 1913 to 1961 from Fisheries Act Amendment
 # 202mm in 1961 - From the Fisheries Act Amendment
@@ -62,12 +64,12 @@ PRM <- 0.25 # Post release mortality for our retention function
 # Was 410mm in 1995 https://www.mediastatements.wa.gov.au/Pages/Court/1995/04/Revised-bag-and-size-limits-for-recreational-fishing-announced.aspx
 
 # Maturity
-M50 <- 3.62 # From Marriott et al. 2011
-M95 <- 5.97 # From Marriott et al. 2011
+M50 = 3.62 # From Marriott et al. 2011
+M95 = 5.97 # From Marriott et al. 2011
 
 # Fishing parameters
-eq.init.fish <- 0.025
-q <- 0.005 # Apparently this is what lots of stock assessments set q to be...
+eq.init.fish = 0.025
+q = 0.005 # Apparently this is what lots of stock assessments set q to be...
 
 #### SET UP LIFE HISTORY VALUES FOR L. NEBULOSUS ####
 
@@ -224,17 +226,47 @@ Starting.Pop.For.Model <- Starting.Pop.For.Model %>%
 ## Alpha and Beta need to be recorded for use in the next step of the model
 
 #### SELECTIVITY-RETENTION FOR THE FISHING IN THE MODEL ####
+
+# Set up selectivity in the right format for the model - 3D matrix 
+# This is selectivity just based on the equation, not taking into account the length rules
+selectivity = array(0,dim=c(MaxAge, 12, nYears))
+DecAge = 0
+Year = 1
+for(y in 1:nYears){
+  for (a in 1:MaxAge) {
+    for (m in 1:12) {
+      DecAge = DecAge + 1/12
+      selectivity[a,m,y] = 1/(1+exp(-log(19)*(DecAge-A50)/(A95-A50)))
+    }
+  }
+}
+
+
 ## Retention for each age group
 # This is for when you actually run the model you don't use this for setting up the initial population
 # Trying to account for the fact that fish that are below the legal size limit are likely to be thrown back and so won't necessarily die
 
-Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
+Retention <- Fished.Pop.SetUp %>% 
   mutate(Retention6091 = ifelse(Length<=200, 0, ifelse(Length > 200 & Length < 202, 0.5, ifelse(Length>=202, 0.95, 0)))) %>% 
   mutate(Retention9195 = ifelse(Length<=275, 0, ifelse(Length > 275 & Length < 280, 0.5, ifelse(Length>=280, 0.95, 0)))) %>% 
   mutate(Retention95 = ifelse(Length<=405, 0, ifelse(Length > 405 & Length < 410, 0.5, ifelse(Length>=410, 0.95, 0))))
 
 ## Landings and discards
 # This gives us the proportion of fish that are kept and the proportion that are thrown back
+Landings <- selectivity
+Change1 <- 31
+Change2 <- 35
+
+for(y in 1:nYears){
+  if(y<=Change1){
+    Landings[,,y] <- selectivity[,,y] * Fished.Pop.SetUp$Retention6091 
+  } else if (y>Change1 & y<=Change2){
+    Landings[,,y] <- selectivity[,,y] * Fished.Pop.SetUp$Retention9195 
+  } else if (y>Change2){
+    Landings[,,y] <- selectivity[,,y] * Fished.Pop.SetUp$Retention95 
+  }
+}
+
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
   mutate(Landings6091 = Selectivity*Retention6091) %>% 
   mutate(Discards6091 = Selectivity*(1-Landings6091)) %>% 
@@ -245,6 +277,7 @@ Fished.Pop.SetUp <- Fished.Pop.SetUp %>%
   
 
 ## Selectivity-Retention Values Including post-release mortality
+
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
   mutate(SelRet6091 = Landings6091+(PRM*Discards6091)) %>% 
   mutate(SelRet9195 = Landings9195+(PRM*Discards9195)) %>% 
@@ -262,7 +295,13 @@ Selectivity <- Fished.Pop.SetUp$Selectivity
 saveRDS(Selectivity, file="selectivity")
 
 SelRet <-  Fished.Pop.SetUp[,18:20]
-saveRDS(SelRet, file="selret")
+SelRetYears <- matrix(0, ncol=59, nrow=361)
+
+SelRetYears[,1:31] <- SelRet[,1]
+SelRetYears[,32:35] <- SelRet[,2]
+SelRetYears[,36:59] <- SelRet[,3]
+
+saveRDS(SelRetYears, file="selret")
 
 ## Similarly we don't want to have to keep calculating maturity
 

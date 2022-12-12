@@ -37,7 +37,7 @@ movement.func <- function (Max.Age, Month, Population, Max.Cell, Adult.Move){
     
     Moving <- NULL
     
-    Pop <- matrix(Population[ , Month, Age])
+    Pop <- matrix(Population[ , Month, 1])
     ## Adult Movement
     for(Cell in 1:Max.Cell){
       Pop2 <- Adult.Move[Cell, ] * Pop[Cell,1] #This should give you the number of fish that move from site s to all the other sites
