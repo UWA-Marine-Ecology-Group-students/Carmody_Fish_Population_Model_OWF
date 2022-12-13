@@ -227,61 +227,51 @@ Starting.Pop.For.Model <- Starting.Pop.For.Model %>%
 
 #### SELECTIVITY-RETENTION FOR THE FISHING IN THE MODEL ####
 
-# Set up selectivity in the right format for the model - 3D matrix 
-# This is selectivity just based on the equation, not taking into account the length rules
-selectivity = array(0,dim=c(MaxAge, 12, nYears))
-DecAge = 0
-Year = 1
-for(y in 1:nYears){
-  for (a in 1:MaxAge) {
-    for (m in 1:12) {
-      DecAge = DecAge + 1/12
-      selectivity[a,m,y] = 1/(1+exp(-log(19)*(DecAge-A50)/(A95-A50)))
-    }
-  }
-}
-
-
 ## Retention for each age group
 # This is for when you actually run the model you don't use this for setting up the initial population
 # Trying to account for the fact that fish that are below the legal size limit are likely to be thrown back and so won't necessarily die
-
 Retention <- Fished.Pop.SetUp %>% 
   mutate(Retention6091 = ifelse(Length<=200, 0, ifelse(Length > 200 & Length < 202, 0.5, ifelse(Length>=202, 0.95, 0)))) %>% 
   mutate(Retention9195 = ifelse(Length<=275, 0, ifelse(Length > 275 & Length < 280, 0.5, ifelse(Length>=280, 0.95, 0)))) %>% 
   mutate(Retention95 = ifelse(Length<=405, 0, ifelse(Length > 405 & Length < 410, 0.5, ifelse(Length>=410, 0.95, 0))))
 
+Retention6091 <- array(Retention$Retention6091, dim=c(30,12))
+Retention9195 <- array(Retention$Retention9195, dim=c(30,12))
+Retention95 <- array(Retention$Retention95, dim=c(30,12))
+
 ## Landings and discards
 # This gives us the proportion of fish that are kept and the proportion that are thrown back
-Landings <- selectivity
-Change1 <- 31
-Change2 <- 35
-
-for(y in 1:nYears){
-  if(y<=Change1){
-    Landings[,,y] <- selectivity[,,y] * Fished.Pop.SetUp$Retention6091 
-  } else if (y>Change1 & y<=Change2){
-    Landings[,,y] <- selectivity[,,y] * Fished.Pop.SetUp$Retention9195 
-  } else if (y>Change2){
-    Landings[,,y] <- selectivity[,,y] * Fished.Pop.SetUp$Retention95 
-  }
-}
-
-Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
-  mutate(Landings6091 = Selectivity*Retention6091) %>% 
-  mutate(Discards6091 = Selectivity*(1-Landings6091)) %>% 
-  mutate(Landings9195 = Selectivity*Retention9195) %>% 
-  mutate(Discards9195 = Selectivity*(1-Landings9195)) %>% 
-  mutate(Landings95 = Selectivity*Retention95) %>% 
-  mutate(Discards95 = Selectivity*(1-Landings95)) 
-  
-
 ## Selectivity-Retention Values Including post-release mortality
 
 Fished.Pop.SetUp <- Fished.Pop.SetUp %>% 
   mutate(SelRet6091 = Landings6091+(PRM*Discards6091)) %>% 
   mutate(SelRet9195 = Landings9195+(PRM*Discards9195)) %>% 
   mutate(SelRet95 = Landings95+(PRM*Discards95))
+
+Landings <- selectivity
+Change1 <- 31
+Change2 <- 35
+
+
+SelRet6091 <- Fished.Pop.SetUp$SelRet6091
+SelRet6091 <- array(SelRet6091, dim=c(30,12))
+
+SelRet9195 <- Fished.Pop.SetUp$SelRet9195
+SelRet9195 <- array(SelRet9195, dim=c(30,12))
+
+SelRet95 <- Fished.Pop.SetUp$SelRet95
+SelRet95 <- array(SelRet95, dim=c(30,12))
+
+SelRet <- NULL
+for(i in 1:Change1){
+  SelRet <- abind(SelRet, SelRet6091, along=3)
+}
+for(i in 1:4){
+  SelRet <- abind(SelRet, SelRet9195, along=3)
+}
+for(i in 1:24){
+  SelRet <- abind(SelRet, SelRet95, along=3)
+}
 
 #### SAVING FILES ####
 
@@ -293,25 +283,18 @@ saveRDS(Starting.Pop.For.Model, file=paste0(model.name, sep="_", "Starting_Pop")
 
 Selectivity <- Fished.Pop.SetUp$Selectivity
 saveRDS(Selectivity, file="selectivity")
-
-SelRet <-  Fished.Pop.SetUp[,18:20]
-SelRetYears <- matrix(0, ncol=59, nrow=361)
-
-SelRetYears[,1:31] <- SelRet[,1]
-SelRetYears[,32:35] <- SelRet[,2]
-SelRetYears[,36:59] <- SelRet[,3]
-
-saveRDS(SelRetYears, file="selret")
+saveRDS(SelRet, file="selret")
 
 ## Similarly we don't want to have to keep calculating maturity
 
-Maturity <- as.data.frame(Fished.Pop.SetUp$Fish.Mat) %>% 
-  slice(which(row_number() %% 12 == 1))
+Maturity <- Fished.Pop.SetUp$Fish.Mat 
+Maturity <- array(Maturity, dim=c(30,12))
 saveRDS(Maturity, file="maturity")
 
 ## We need the weights for each age group as well
 
 Weight <- Life.History$Weight
+Weight <- array(Weight, dim=c(30,12))
 saveRDS(Weight, file="weight")
 
 
