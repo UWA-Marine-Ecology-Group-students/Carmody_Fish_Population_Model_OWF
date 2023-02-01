@@ -61,7 +61,7 @@ arma::vec movementfunc_cpp(const int Age, const int Month, const int Max_Cell, a
 }
 
 // [[Rcpp::export]]
-Rcpp::List mortalityfunc_cpp(const int Age, const int Max_Cell, const int Month, const int Year, const double Nat_Mort,
+Rcpp::List mortalityfunc_cpp(const int YEAR, const int Age, const int Max_Cell, const int Month, const double Nat_Mort,
                  arma::cube Select, arma::cube Population, arma::cube Effort) {
 
   int Cell_rw;
@@ -133,7 +133,7 @@ arma::vec recruitmentfunc_cpp(const int Max_Cell, const int MaxAge, const double
 }
 
 // [[Rcpp::export]]
-Rcpp::List RunModelfunc_cpp(const int MaxAge, const int MaxYear, const int Max_Cell, const double Nat_Mort, const double BHa, const double BHb, const double PF, 
+Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear, const int Max_Cell, const double Nat_Mort, const double BHa, const double BHb, const double PF, 
                                    arma::mat Adult_Move, arma::vec Mature, arma::mat Weight, arma::vec settlement,
                                    arma::cube Population, arma::cube Select, arma::cube Effort) {
   

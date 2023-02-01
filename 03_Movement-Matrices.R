@@ -214,32 +214,6 @@ water_hab <- check_hab %>%
   mutate(difference = hab_sum-cell_area) %>% 
   ungroup()
   
-# 
-# for(i in 1:4){
-# 
-#   colname <- paste0(habitat.types[i], sep=".", "area")  
-#   
-#   centroids <- habitat_inter[[i]] %>% 
-#       st_make_valid(.) %>% 
-#       st_centroid()
-#     
-#     cell_ids <- st_intersects(water, centroids) %>% # rocky_cells is the column, water is the row - tells you which water cells contain which rocky points 
-#       as.data.frame() %>% 
-#       rename(inter.row.ID = "col.id",
-#              water.row.ID = "row.id") %>% 
-#       mutate(inter.row.ID = as.numeric(inter.row.ID)) # join it back to intersection to get the habitat percentages
-#     
-#     cells_hab_perc <- habitat_inter[[i]][as.numeric(c(cell_ids$inter.row.ID)), ] %>% 
-#       st_drop_geometry(.) %>% 
-#       mutate(water.row.ID = cell_ids$water.row.ID) %>% 
-#       group_by(water.row.ID) %>% 
-#       summarise(!!colname := as.numeric(sum(hab_area*0.000001, na.rm=T))) %>%  # sum of habitat by water ID 
-#       as.data.frame(.)
-#       
-#    water1 <- water1 %>% # join this back to the water dataframe
-#       mutate(ID = as.numeric(ID)) %>% 
-#       mutate(!!colname := ifelse(ID %in% as.numeric(cells_hab_perc$water.row.ID), cells_hab_perc[,colname], 0))
-#   }
 
 check <- water_hab %>% 
   filter(Lagoon>0)
@@ -365,13 +339,13 @@ pRocky <- readRDS(paste0(model.name, sep="_","pRocky"))
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-SwimSpeed <- 2.9
+SwimSpeed <- 2.5
 
 a = -SwimSpeed
-b = 0.9 #0.15
-c = 0.5 #0.1
-d = 0.7 #0.4
-e = 0.1 #0.01
+b =  1.5
+c =  0.7 
+d =  1.3
+e =  0.3 
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -403,7 +377,7 @@ rowSums(Pj)
 ## Want the recruits to be in the lagoons and then move out from there 
 dispersal <- lagoon_perc %>% 
   dplyr::select(perc_habitat, ID)
-dispersal$area <- as.vector(water$cell_area)
+dispersal$area <- as.vector(Water$cell_area)
 
 dispersal <- dispersal %>% 
   filter(perc_habitat!=0)

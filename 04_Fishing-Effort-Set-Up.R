@@ -18,6 +18,7 @@ library(forcats)
 library(RColorBrewer)
 library(geosphere)
 library(abind)
+library(sfnetworks)
 
 rm(list = ls())
 
@@ -171,9 +172,9 @@ for(M in 1:length(Months)){
     
     predictions <- predict(MonthModel, newdata = temp)
     
-    boat_days[rows[M], 7]
+    boat_days[rows[M], 7] <- predictions
     
-  } else if(M>3){
+  } else if(M>=3){
     Boat <- boat_days %>% 
       filter(Month %in% c(Months[M])) %>% 
       drop_na()
@@ -186,9 +187,10 @@ for(M in 1:length(Months)){
     
     predictions <- predict(MonthModel, newdata = temp)
     
-    boat_days[rows[M], 7]
+    boat_days[rows[M], 7] <- predictions
   }
 }
+
 
 
 total_plot <- boat_days %>% 
@@ -691,16 +693,15 @@ Fishing <- abind(Fishing, Fishing_0517_2, along=3)
 Fishing <- abind(Fishing, Fishing_1718_2, along=3)
 
 #### Determining catchability ####
-## Have estimated an increase in recreational efficiency of 30% from 1990 when colour sounders become more commonplace (GPS was 2002) according to Marriott et al. 2011
+## Have estimated an increase in recreational efficiency 2% per year 1990 when colour sounders become more commonplace (GPS was 2002) according to Marriott et al. 2011
 q <- as.data.frame(array(0, dim=c(59,1))) %>% 
   rename(Q = "V1")
 
 q[1:30, 1] <- 0.005
 
-# q has to now increase to 0.0065 in equal steps over 29 years 
 
 for (y in 31:59){
-  q[y,1] <- q[y-1,1] + 0.00022413793
+  q[y,1] <- q[y-1,1] * 1.02
 }
 
 Fishing2 <- Fishing
@@ -737,6 +738,67 @@ saveRDS(Fishing, file=paste0("ningaloo", sep="_", "fishing"))
 # 
 # setwd(sg_dir)
 # saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
+
+#### SETTING UP EFFOR FOR BURN IN ####
+## Need to set effort to be a consistent low level for the burn in, we can use the same value we're using to set up the initial population 
+
+# Fishing parameters
+eq.init.fish = 0.025
+q = 0.005 
+Effort = eq.init.fish/q # We assume the same level of nominal effort in each year
+
+## Split up this effort by the same proprtions as before and allocate it to the different access points
+# Months
+burn_in_effort <- Month_Prop_Ave[,2]*Effort
+
+burn_in_effort <- as.data.frame(burn_in_effort) %>% 
+  mutate(Tb_BR = 0,
+         Bd_BR = 0,
+         ExM_BR = 0,
+         CrB_BR = 0) %>% 
+  rename(Effort = "Ave_Month_Prop")
+
+
+## SPlit up by boat ramp
+for(M in 1:12){
+  burn_in_effort$Tb_BR = burn_in_effort$Effort*BR_Trips[1,6]
+  burn_in_effort$Bd_BR = burn_in_effort$Effort*BR_Trips[2,6]
+  burn_in_effort$ExM_BR = burn_in_effort$Effort*BR_Trips[3,6] 
+  burn_in_effort$CrB_BR = burn_in_effort$Effort*BR_Trips[4,6]
+}
+
+## Allocate to the cells using the same utilities that we set up earlier
+Burn_In_Fishing <- array(0, dim=c(NCELL, 12, 50)) #This array has a row for every cell, a column for every month, and a layer for every year
+Months <- array(0, dim=c(NCELL, 12))
+Ramps <- array(0, dim=c(NCELL, 4))
+layer <- 1
+
+for(YEAR in 1:50){
+  
+  for(MONTH in 1:12){
+    
+    for(RAMP in 1:4){
+      
+      temp <- burn_in_effort %>% 
+        dplyr::select(-c(Effort))
+      
+      temp <- as.matrix(temp) 
+      
+      for(CELL in 1:NCELL){
+        Ramps[CELL,RAMP] <- BR_U_6086[CELL,RAMP] * temp[MONTH,RAMP] # Use the same utility from before as nothing should have changed
+      }
+    }
+    
+    Months[,MONTH] <-  rowSums(Ramps)
+  }
+  Burn_In_Fishing[ , ,layer] <- Months 
+  layer <- layer+1
+}
+
+setwd(sg_dir)
+saveRDS(Burn_In_Fishing, file=paste0("ningaloo", sep="_", "burn_in_fishing"))
+
+
 
 
 

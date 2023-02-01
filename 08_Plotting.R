@@ -20,7 +20,7 @@ library(grid)
 library(gridExtra)
 library(gtable)
 library(purrr)
-library(ggsflabel)
+library(matrixStats)
 
 
 rm(list = ls())
@@ -62,7 +62,7 @@ st_centroid_within_poly <- function (poly) { #returns true centroid if inside po
 # Sim 2 NTZs and Temporal Closure
 # Sim 3 Just temporal closure, no sanctuary zones 
 
-model.name <- "small"
+model.name <- "ningaloo"
 #### READ IN DATA ####
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -138,11 +138,13 @@ TotalPop <- TotalPop %>%
   mutate(Year=seq(1960,2018,1)) %>% 
   rename(Tot.Pop="V2")
 
-numYear <- seq(1,59,1)
+numYear <- seq(0,58,1)
 
 for(Y in 1:59){
   
-  year <- readRDS(paste0(model.name, sep="_", "YearlyTotal_", numYear[Y]))
+  year <- readRDS(paste0(model.name, sep="_", "Rcpp_YearlyTotal_", numYear[Y])) %>% 
+    unlist()
+  year <- array(year, dim=c(1834,12,30))
   year <- rowSums(year[,,1:30], dim=2)
   year <- sum(year[,12])
   
@@ -157,12 +159,14 @@ FishedAges <- NoTakeAges
 
 
 numYears <- seq(0,59,5)
-numYears[1] <- 1
-numYears[13] <- 59
+numYears[1] <- 0
+numYears[13] <- 58
 
 for(YEAR in 1:13){
   
-  Population <-  readRDS(paste0(model.name, sep="_", "YearlyTotal_", numYears[YEAR]))
+  Population <-  readRDS(paste0(model.name, sep="_", "Rcpp_YearlyTotal_", numYears[YEAR])) %>% 
+    unlist()
+  Population <- array(Population, dim=c(1834, 12,30))
   
   Population.NT <- Population[c(as.numeric(shallow_NTZ_ID)),12, ] %>% 
     colSums(.)
@@ -210,11 +214,13 @@ s1_TotalPop <- s1_TotalPop %>%
   mutate(Year=seq(1960,2018,1)) %>% 
   rename(s1_Tot.Pop="V2")
 
-numYear <- seq(1,59,1)
+numYear <- seq(0,58,1)
 
 for(Y in 1:59){
   
-  year <- readRDS(paste0(model.name, sep="_", "S01_YearlyTotal_", numYear[Y]))
+  year <- readRDS(paste0(model.name, sep="_", "S01_Rcpp_YearlyTotal_", numYear[Y])) %>% 
+  unlist()
+  year <- array(year, dim=c(1834,12,30))
   year <- rowSums(year[,,1:30], dim=2)
   year <- sum(year[,12])
   
@@ -230,12 +236,14 @@ s1_FishedAges <- s1_NoTakeAges
 
 
 numYears <- seq(0,59,5)
-numYears[1] <- 1
-numYears[13] <- 59
+numYears[1] <- 0
+numYears[13] <- 58
 
 for(YEAR in 1:13){
   
-  Population <-  readRDS(paste0(model.name, sep="_", "S01_YearlyTotal_", numYears[YEAR]))
+  Population <-  readRDS(paste0(model.name, sep="_", "S01_Rcpp_YearlyTotal_", numYears[YEAR]))%>% 
+    unlist()
+  Population <- array(Population, dim=c(1834, 12,30))
   
   Population.NT <- Population[c(as.numeric(shallow_NTZ_ID)),12, ] %>% 
     colSums(.)
@@ -282,14 +290,15 @@ s2_TotalPop <- s2_TotalPop %>%
   mutate(Year=seq(1960,2018,1)) %>% 
   rename(s2_Tot.Pop="V2")
 
-numYear <- seq(1,59,1)
+numYear <- seq(0,58,1)
 
 for(Y in 1:59){
   
-  year <- readRDS(paste0(model.name, sep="_", "S02_YearlyTotal_", numYear[Y]))
+  year <- readRDS(paste0(model.name, sep="_", "S02_Rcpp_YearlyTotal_", numYear[Y])) %>% 
+  unlist()
+  year <- array(year, dim=c(1834,12,30))
   year <- rowSums(year[,,1:30], dim=2)
   year <- sum(year[,12])
-  
   s2_TotalPop[Y,2] <- year
   
 }
@@ -302,12 +311,14 @@ s2_FishedAges <- s2_NoTakeAges
 
 
 numYears <- seq(0,59,5)
-numYears[1] <- 1
-numYears[13] <- 59
+numYears[1] <- 0
+numYears[13] <- 58
 
 for(YEAR in 1:13){
   
-  Population <-  readRDS(paste0(model.name, sep="_", "S02_YearlyTotal_", numYears[YEAR]))
+  Population <-  readRDS(paste0(model.name, sep="_", "S02_Rcpp_YearlyTotal_", numYears[YEAR]))%>% 
+    unlist()
+  Population <- array(Population, dim=c(1834, 12,30))
   
   Population.NT <- Population[c(as.numeric(shallow_NTZ_ID)),12, ] %>% 
     colSums(.)
@@ -353,11 +364,13 @@ s3_TotalPop <- s3_TotalPop %>%
   mutate(Year=seq(1960,2018,1)) %>% 
   rename(s3_Tot.Pop="V2")
 
-numYear <- seq(1,59,1)
+numYear <- seq(0,58,1)
 
 for(Y in 1:59){
   
-  year <- readRDS(paste0(model.name, sep="_", "S03_YearlyTotal_", numYear[Y]))
+  year <- readRDS(paste0(model.name, sep="_", "S03_Rcpp_YearlyTotal_", numYear[Y]))%>% 
+    unlist()
+  year <- array(year, dim=c(1834,12,30))
   year <- rowSums(year[,,1:30], dim=2)
   year <- sum(year[,12])
   
@@ -373,12 +386,14 @@ s3_FishedAges <- s3_NoTakeAges
 
 
 numYears <- seq(0,59,5)
-numYears[1] <- 1
-numYears[13] <- 59
+numYears[1] <- 0
+numYears[13] <- 58
 
 for(YEAR in 1:13){
   
-  Population <-  readRDS(paste0(model.name, sep="_", "S03_YearlyTotal_", numYears[YEAR]))
+  Population <-  readRDS(paste0(model.name, sep="_", "S03_Rcpp_YearlyTotal_", numYears[YEAR]))%>% 
+    unlist()
+  Population <- array(Population, dim=c(1834, 12,30))
   
   Population.NT <- Population[c(as.numeric(shallow_NTZ_ID)),12, ] %>% 
     colSums(.)
@@ -509,15 +524,15 @@ line.recruits <- ScenarioWholePop %>%
                                                  labels = mylabels1)))+
   xlab(NULL)+
   ylab(NULL)+
-  ylim(0, 2)+
+  ylim(0, 0.025)+
   theme(#legend.key.size = unit(1, 'cm'), #change legend key size
         legend.key.height = unit(1, 'cm'), #change legend key height
         legend.key.width = unit(0.5, 'cm'), #change legend key width
         legend.title = element_text(size=14, face="bold"), #change legend title font size
         legend.text = element_text(size=12)) + #change legend text font size
   theme(axis.text=element_text(size=11),
-        axis.title=element_text(size=14,face="bold"))+
-  ggplot2::annotate("text", x=1.4, y=1.99, label="(a) Recruits", size = 3, fontface=2)
+        axis.title=element_text(size=14,face="bold"))
+  #ggplot2::annotate("text", x=1.4, y=1.99, label="(a) Recruits", size = 3, fontface=2)
 line.recruits
 
 
@@ -554,7 +569,7 @@ line.sublegal <- ScenarioWholePop %>%
                                                  fill = c("#69BE28",  "#005594", "#8AD2D8", "#53AF8B", "white",  "white", "white", "white","white"))))+
   xlab(NULL)+
   ylab(NULL)+
-  ylim(0, 0.5)+
+  ylim(0, 0.1)+
   theme(#legend.key.size = unit(1, 'cm'), #change legend key size
     legend.key.height = unit(1, 'cm'), #change legend key height
     legend.key.width = unit(0.1, 'cm'), #change legend key width
@@ -562,8 +577,8 @@ line.sublegal <- ScenarioWholePop %>%
     legend.text = element_text(size=12), #change legend text font size
     legend.text.align = 0,
     legend.title.align = 0) + 
-  theme(axis.text=element_text(size=11))+
-  ggplot2::annotate("text", x=2, y=0.499, label="(b) Sublegal sized", size = 3, fontface=2)
+  theme(axis.text=element_text(size=11))
+  # ggplot2::annotate("text", x=2, y=0.499, label="(b) Sublegal sized", size = 3, fontface=2)
 line.sublegal
 
 line.legal <- ScenarioWholePop %>% 
@@ -599,15 +614,15 @@ line.legal <- ScenarioWholePop %>%
                                                  fill = c("white",  "white", "white", "white","white","white","white", "white", "white"))))+
   xlab(NULL)+
   ylab(NULL)+
-  ylim(0, 0.6)+
+  ylim(0, 0.4)+
   theme(legend.key.height = unit(1, 'cm'), #change legend key height
     legend.key.width = unit(1, 'cm'), #change legend key width
     legend.title = element_text(size=12, face="italic"), #change legend title font size
     legend.text = element_text(size=12), #change legend text font size
     legend.text.align = 0,
     legend.title.align = 0) +
-  theme(axis.text=element_text(size=11))+
-  ggplot2::annotate("text", x=1.6, y=0.599, label="(a) Legal sized", size = 3, fontface=2)
+  theme(axis.text=element_text(size=11))
+  #ggplot2::annotate("text", x=1.6, y=0.599, label="(a) Legal sized", size = 3, fontface=2)
 line.legal
 
 
@@ -644,9 +659,9 @@ line.biglegal <- ScenarioWholePop %>%
                                                  fill = c("white",  "white", "white", "white","white","white","white", "white", "white"))))+
   ylab(NULL)+
   xlab(NULL)+
-  ylim(0, 0.4)+
-  theme(axis.text=element_text(size=11))+
-  ggplot2::annotate("text", x=1.95, y=0.399, label="(b) Large legal sized", size = 3, fontface=2)
+  ylim(0, 0.25)+
+  theme(axis.text=element_text(size=11))
+  # ggplot2::annotate("text", x=1.95, y=0.399, label="(b) Large legal sized", size = 3, fontface=2)
 line.biglegal
 
 #### PUT PLOTS TOGETHER FOR PUBLISHING ####
@@ -715,11 +730,13 @@ area_plot
 setwd(sp_dir)
 water <- readRDS(paste0(model.name, sep="_","water"))
 
-pop.groups <- c(0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10)
+pop.groups <- c(0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8)
 
-setwd(sg_dir)
+setwd(pop_dir)
 
-TotalPop_Normal <- readRDS("ningaloo_YearlyTotal_59") %>% 
+TotalPop_Normal <- readRDS("ningaloo_Rcpp_YearlyTotal_58") %>% 
+  unlist()
+TotalPop_Normal <- array(TotalPop_Normal, dim=c(1834,12,30)) %>% 
   rowSums(.[,,4:30], dim=2) 
 
 TotalPop_Normal <- as.numeric(TotalPop_Normal[,12]) 
@@ -732,7 +749,7 @@ SpatialPlots_Normal <- spatial.plot.func(area=water_WHA, pop=TotalPop_Normal, po
 
 setwd(sim_dir)
 
-TotalPop_S01 <- readRDS("ningaloo_S01_YearlyTotal_59") %>% 
+TotalPop_S01 <- readRDS("ningaloo_S01_Rcpp_YearlyTotal_59") %>% 
   rowSums(.[,,4:30], dim=2) 
 
 TotalPop_S01 <- as.numeric(TotalPop_S01[,12]) 
@@ -776,8 +793,7 @@ WholePop <- rbind(NoTakeAges, FishedAges) %>%
 
 
 check <- WholePop %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  #filter(Status %in% c("NTZ")) %>% 
+  filter(Stage %in% c("Recruit")) %>% 
   group_by(Scenario, Year, Status) %>% 
   mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Year>1985, "NTZs as normal", 
@@ -806,7 +822,7 @@ check <- WholePop %>%
                      , guide="none")+
   ylab(NULL)+
   xlab(NULL)
-  #ylim(-100,100)
+# ylim(0,0.2)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 check
 
@@ -817,3 +833,171 @@ for(Y in 13:59){
   saveRDS(year, file=paste0(model.name, sep="_", "S03_YearlyTotal_", numYear[Y]))
   
 }
+
+#### RECRUIT PLOTS FOR SHAUN ####
+setwd(pop_dir)
+
+# Whole Population 
+Recruits <- array(0, dim=c(59,3))
+Recruits <- as.data.frame(Recruits)
+Recruits <- Recruits %>% 
+  rename(Year = "V1") %>% 
+  mutate(Year = seq(1960,2018,1)) %>% 
+  rename(BH_Recruits = "V2") %>% 
+  rename(Var_Recruits = "V3")
+
+numYear <- seq(0,58,1)
+
+for(Y in 1:59){
+  
+  year <- readRDS(paste0(model.name, sep="_", "Rcpp_BHRecruits_", numYear[Y])) %>% 
+    unlist() %>% 
+    as.numeric()
+
+  Recruits[Y,2] <- sum(year)
+  
+}
+
+for(Y in 1:59){
+  
+  year <- readRDS(paste0(model.name, sep="_", "Rcpp_YearlyTotal_", numYear[Y])) %>% 
+    unlist()
+  year <- array(year, dim=c(1834,12,30))
+  year <- sum(year[,12,1])
+  
+  Recruits[Y,3] <- year
+  
+}
+
+Recruit_plot <- Recruits %>% 
+  ggplot()+
+  geom_line(aes(x=Year, y=BH_Recruits))+
+  geom_point(aes(x=Year, y=Var_Recruits))+
+  ylab("No. Recruits")+
+  theme_classic()+
+  ylim(0, 2100)
+Recruit_plot
+
+Recruits <- Recruits %>% 
+  mutate(Percent_change = (BH_Recruits-Var_Recruits)/((BH_Recruits+Var_Recruits)/2)*100)
+
+Recruit_perc_change <- Recruits %>% 
+  ggplot()+
+  geom_line(aes(x=Year, y=Percent_change))+
+  theme_classic()+
+  ylab("% Change in Recruits")
+Recruit_perc_change
+
+Recruit_box <- Recruits %>% # Need to change the columns around so that you can make two box plots
+  mutate(Age=" ") %>% 
+  pivot_longer(cols=c("BH_Recruits", "Var_Recruits"), names_to="Model", values_to="Recruits") %>% 
+  mutate(Model= ifelse(Model %in% c("BH_Recruits"), "Beverton-Holt", "Log-Normal Variation")) %>% 
+  ggplot()+
+  geom_boxplot(aes(y=Recruits, x=Model))+
+  theme_classic()+
+  ylab("No. Recruits")+
+  ylim(0, 2100)
+Recruit_box
+
+Recruit_hist <- Recruits %>% 
+  ggplot()+
+  geom_histogram(aes(BH_Recruits), binwidth=25) + 
+  theme_classic()+
+  #scale_x_discrete(drop=FALSE)+
+  ylab(NULL)+
+  xlab("No. Recruits")
+Recruit_hist
+
+
+Recruits <- Recruits %>% 
+  mutate(Percent_change_year = 0)
+
+for (Y in 2:59){
+  Recruits[Y,5] <- ((Recruits[Y,3]-Recruits[Y-1,3])/Recruits[Y-1,3])*100
+}
+
+Recruit_perc_change_year <- Recruits %>% 
+  ggplot()+
+  geom_line(aes(x=Year, y=Percent_change_year))+
+  theme_classic()+
+  ylab("% change in recruits relative to previous year")
+Recruit_perc_change_year
+
+
+#### PLOTTING SIMULATIONS ####
+setwd(pop_dir)
+
+total_pop <- readRDS("ningaloo_Total_Population_normal")
+ages <- readRDS("ningaloo_Age_Distribution_normal")
+catches <- readRDS("ningaloo_Yearly_Catch_normal")
+
+## Population
+total_pop <- as.data.frame(total_pop) %>% 
+  mutate(Mod_Year = seq(1,59,1)) %>% 
+  rename_with(stringr::str_replace, 
+              pattern = "V", replacement = "Sim", 
+              matches("V")) %>% 
+  mutate(Mean_Pop = rowMeans(.[,1:100])) %>% 
+  mutate(SD_Pop = rowSds(as.matrix(.[1:100])))
+
+total_pop_plot <- total_pop %>% 
+  ggplot() +
+  geom_line(aes(x=Mod_Year, y=Mean_Pop))+
+  geom_pointrange(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop))
+total_pop_plot
+
+## Catch
+
+catches <- as.data.frame(catches) %>% 
+  mutate(Mod_Year = seq(1,59,1)) %>% 
+  rename_with(stringr::str_replace, 
+              pattern = "V", replacement = "Sim", 
+              matches("V")) %>% 
+  mutate_at(vars(Sim1:Sim100), funs(./1000))%>% 
+  mutate(Mean_Catch = rowMeans(.[,1:100])) %>% 
+  mutate(SD_Catch = rowSds(as.matrix(.[1:100])))
+
+catches_plot <- catches %>% 
+  ggplot() +
+  geom_line(aes(x=Mod_Year, y=Mean_Catch))+
+  geom_pointrange(aes(x=Mod_Year, y=Mean_Catch, ymin=Mean_Catch-SD_Catch, ymax=Mean_Catch+SD_Catch))
+catches_plot
+
+## Age Distribution
+age_dist <- NULL
+for(L in 1:100){
+  
+  temp <- ages[,,L]
+  
+  temp2 <- as.data.frame(temp) %>% 
+    mutate(Mod_Year = seq(1,59,1)) %>% 
+    pivot_longer(cols=V1:V30, names_to="Age",values_to="Total") %>% 
+    mutate(Age = as.numeric(str_replace(Age, "V", ""))) %>% 
+    filter(Age>6) %>% 
+    mutate(Number = Age * Total) %>% 
+    group_by(Mod_Year) %>% 
+    summarise(Mean_Age = sum(Number)/sum(Total)) 
+    
+
+  age_dist <- cbind(age_dist, temp2$Mean_Age)
+  
+}
+
+age_dist <- as.data.frame(age_dist) %>% 
+  mutate(Mean_Age = rowMeans(.[,1:100])) %>% 
+  mutate(SD_Age = rowSds(as.matrix(.[1:100]))) %>% 
+  mutate(Mod_Year = seq(1,59,1)) 
+
+age_plot <- age_dist %>% 
+  ggplot() +
+  geom_line(aes(x=Mod_Year, y=Mean_Age))+
+  geom_pointrange(aes(x=Mod_Year, y=Mean_Age, ymin=Mean_Age-SD_Age, ymax=Mean_Age+SD_Age))
+age_plot
+
+
+
+
+
+
+
+
