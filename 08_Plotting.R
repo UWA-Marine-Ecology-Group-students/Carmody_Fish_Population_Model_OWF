@@ -40,22 +40,6 @@ sim_dir <-  paste(working.dir, "Simulations", sep="/")
 ## Functions
 source("X_Functions.R")
 
-# This returns the centre of the ploygon, but if it's on land it will create a new centroid
-
-st_centroid_within_poly <- function (poly) { #returns true centroid if inside polygon otherwise makes a centroid inside the polygon
-  
-  # check if centroid is in polygon
-  centroid <- poly %>% st_centroid() 
-  in_poly <- st_within(centroid, poly, sparse = F)[[1]] 
-  
-  # if it is, return that centroid
-  if (in_poly) return(centroid) 
-  
-  # if not, calculate a point on the surface and return that
-  centroid_in_poly <- st_point_on_surface(poly) 
-  return(centroid_in_poly)
-}
-
 
 # Normal
 # Sim 1 Nothing
@@ -170,7 +154,7 @@ for(YEAR in 1:13){
   
   Population.NT <- Population[c(as.numeric(shallow_NTZ_ID)),12, ] %>% 
     colSums(.)
-  Population.F <- Population[-c(as.numeric(shallow_NTZ_ID)),12, ] %>% 
+  Population.F <- Population[c(as.numeric(shallow_F_ID)),12, ] %>% 
     colSums(.)
   
   NoTakeAges[,YEAR] <- Population.NT
@@ -995,9 +979,92 @@ age_plot <- age_dist %>%
 age_plot
 
 
+## Inside outside by age class
+SP_Pop_NTZ <- readRDS("ningaloo_Sp_Population_NTZ")
+SP_Pop_F <- readRDS("ningaloo_Sp_Population_F")
 
+NoTakeAges <- array(0, dim=c(30,59))
+NoTakeAges <- as.data.frame(NoTakeAges)
+FishedAges <- NoTakeAges
 
+numYears <- seq(0,59,1)
 
+for(SIM in 1:1){
+  
+  for(YEAR in 1:59){
+    
+    Population.NT <- SP_Pop_NTZ[[SIM]]
+    
+    Population.NT <- Population.NT[] %>% 
+      colSums(.)
+    
+    
+    Population.F <- SP_Pop_F[[SIM]] %>% 
+      colSums(.)
+    
+    NoTakeAges[,YEAR] <- Population.NT
+    FishedAges[,YEAR] <- Population.F
+    
+    if (YEAR==60){
+      NoTakeAges <- NoTakeAges %>% 
+        mutate(Status = "NTZ") %>% 
+        mutate(Age = seq(1:30)) %>% 
+        mutate(Scenario = "Normal") %>% 
+        mutate(Scenario = as.factor(Scenario))
+      
+      FishedAges <- FishedAges %>% 
+        mutate(Status = "Fished") %>% 
+        mutate(Age = seq(1:30)) %>% 
+        mutate(Scenario = "Normal") %>% 
+        mutate(Scenario = as.factor(Scenario))
+      
+      WholePop <- rbind(NoTakeAges, FishedAges) %>%
+        pivot_longer(cols=-c(Age, Status, Scenario), names_to="Year", values_to="Number") %>%
+        mutate(Year = rep(1960:2018, length.out=nrow(.))) %>% 
+        mutate(Year = as.factor(Year)) %>%
+        mutate(Year = fct_reorder(Year, as.numeric(Year))) %>%
+        mutate(Status = as.factor(Status))
+      
+      NoRecruits <- WholePop %>%
+        filter(Age!=1)
+    }
+  }
+}
 
+WholePop <- WholePop %>%
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT)) %>% 
+  mutate(numYear = as.numeric(Year)) %>% 
+  mutate(Stage = ifelse(Age==1, "Recruit",
+                        ifelse(Age>1 & Age<=4, "Sublegal",
+                               ifelse(Age>4 & Age<=10, "Legal",
+                                      ifelse(Age>10, "Large Legal",NA)))))
 
-
+check <- WholePop %>% 
+  filter(Stage %in% c("Large Legal")) %>% 
+  group_by(Scenario, Year, Status) %>% 
+  mutate(Total = sum(Number)) %>% 
+  mutate(ColourGroup = ifelse(numYear<=24, "Pre 1987", "NTZs as normal")) %>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+  mutate(ShapeGroup = ifelse(numYear>24, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
+  mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
+  #mutate(PercChange = ifelse(Status %in% c("Fished"), ((Total-0.12931098)/0.12931098)*100, ((Total-0.3366771)/0.3366771)*100)) %>% 
+  ggplot(.)+
+  geom_point(aes(x=Year, y=Total, group=Status, colour=ShapeGroup)
+             #, colour=ColourGroup, fill=ColourGroup,  shape=ShapeGroup), size=2.5
+  )+
+  geom_line(aes(x=Year, y=Total, group=Status, colour=ShapeGroup
+                #, colour=ColourGroup
+  ))+
+  theme_classic()+
+  geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=10, colour="grey20")+
+  geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
+  #geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
+  scale_shape_manual(values= c(`Pre-1987`="circle",`NTZ.Normal`="square filled", `NTZ.Nothing`="triangle filled" ,`Pre-1987`="circle",
+                               `Fished.Normal`="square open", `Fished.Nothing`="triangle open"), name="Area and scenario",
+                     labels=c("Pre-1987", "Normal Scenario (NTZ)","Nothing (NTZ)",
+                              "Normal Scenario (Fished)", "Nothing (Fished)")
+                     , guide="none")+
+  ylab(NULL)+
+  xlab(NULL)
+check
