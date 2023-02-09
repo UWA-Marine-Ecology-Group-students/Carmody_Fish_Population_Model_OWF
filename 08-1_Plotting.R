@@ -370,34 +370,205 @@ Whole_Pop_Ages_F <- rbind(F_Ages_S00, F_Ages_S01, F_Ages_S02, F_Ages_S03) %>%
 
 Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
 
-
-check <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
+#### Recruits and Sublegal
+Recruit.NTZ <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Recruit")) %>% 
   filter(Zone %in% c("NTZ")) %>% 
-  #mutate(Total = sum(NumKM2)) %>%
-  # mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre 1987", ifelse(Scenario %in% c("Normal") & Mod_Year>1985, "NTZs as normal",
-  #                                                            ifelse(Scenario %in% c("Temp Closure") & Mod_Year>1985, "Temporal Closure Only",
-  #                                                                   ifelse(Scenario %in% c("Nothing"), "None", "Temporal Closure and NTZs"))))) %>%
-  # mutate(ColourGroup = as.factor(ColourGroup)) %>%
-  # mutate(ShapeGroup = ifelse(Mod_Year>1985, paste(Zone, Scenario, sep="."), "Pre-1987")) %>%
-  # mutate(ShapeGroup = as.factor(ShapeGroup)) %>%
-  #mutate(PercChange = ifelse(Status %in% c("Fished"), ((Total-0.12931098)/0.12931098)*100, ((Total-0.3366771)/0.3366771)*100)) %>% 
+  mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario2 = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                                "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
   ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Mean_Pop, group=Scenario, col=Scenario))+
-  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario, fill=Scenario), alpha=0.2)+
-  #facet_grid(cols = vars(Zone))+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario2))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario2), alpha=0.2)+
   theme_classic()+
-  # geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
-  # geom_vline(xintercept=10, colour="grey20")+
-  # geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
-  #geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
-  scale_colour_manual(values = c("#69BE28", "#005594", "#8AD2D8", "#53AF8B"))+
-  scale_fill_manual(values = c("#69BE28", "#005594", "#8AD2D8", "#53AF8B"))+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ggtitle("NTZ")+
+  theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+ 
+  theme(legend.text = element_text(size=11), legend.title = element_text(size=13))+
   ylab(NULL)+
   xlab(NULL)+
   xlim(1961,2019)
-# ylim(0,0.2)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
-check
+Recruit.NTZ 
 
+Recruit.F <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Recruit")) %>% 
+  filter(Zone %in% c("F")) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                                "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ggtitle("Fished")+
+  theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Recruit.F
+
+Sublegal.NTZ <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Sublegal")) %>% 
+  filter(Zone %in% c("NTZ")) %>% 
+  mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario2 = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                                "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario2))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario2), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Sublegal.NTZ 
+
+Sublegal.F <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Sublegal")) %>% 
+  filter(Zone %in% c("F")) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Recruit.F
+
+## Put it all together
+x.label <- textGrob("Year", gp=gpar(fontsize=14))
+y.label <- textGrob("No. Fish per"~km^2, gp=gpar(fontsize=12), rot=90)
+legend <- gtable_filter(ggplotGrob(Recruit.NTZ), "guide-box")
+
+LinePlotsxGroup.SL <-grid.arrange(arrangeGrob(Recruit.NTZ + theme(legend.position="none"),
+                                             Recruit.F + theme(legend.position="none"),
+                                             Sublegal.NTZ + theme(legend.position="none"),
+                                             Sublegal.F + theme(legend.position="none"),
+                                             left=y.label,
+                                             bottom=x.label,
+                                             right=legend))
+
+#### Legal and Large Legal
+Legal.NTZ <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Legal")) %>% 
+  filter(Zone %in% c("NTZ")) %>% 
+  mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario2 = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                                "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario2))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario2), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ggtitle("NTZ")+
+  theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+
+  theme(legend.text = element_text(size=11), legend.title = element_text(size=13))+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Legal.NTZ 
+
+Legal.F <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Legal")) %>% 
+  filter(Zone %in% c("F")) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ggtitle("Fished")+
+  theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Legal.F
+
+Large.NTZ <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Large Legal")) %>% 
+  filter(Zone %in% c("NTZ")) %>% 
+  mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario2 = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                                "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario2))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario2), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Large.NTZ 
+
+Large.F <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Large Legal")) %>% 
+  filter(Zone %in% c("F")) %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
+                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
+  theme_classic()+
+  scale_colour_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"),
+                      name = "Spatial and Temporal\nManagement Scenario")+
+  scale_fill_manual(values = c("#69BE28", "#53AF8B","#8AD2D8", "#005594"), 
+                    name = "Spatial and Temporal\nManagement Scenario")+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1961,2019)
+#ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
+Large.F
+
+## Put it all together
+x.label <- textGrob("Year", gp=gpar(fontsize=12))
+y.label <- textGrob("No. Fish per"~km^2, gp=gpar(fontsize=12), rot=90)
+legend <- gtable_filter(ggplotGrob(Legal.NTZ), "guide-box")
+
+LinePlotsxGroup.SL <-grid.arrange(arrangeGrob(Legal.NTZ + theme(legend.position="none"),
+                                              Legal.F + theme(legend.position="none"),
+                                              Large.NTZ + theme(legend.position="none"),
+                                              Large.F + theme(legend.position="none"),
+                                              left=y.label,
+                                              bottom=x.label,
+                                              right=legend))
 
