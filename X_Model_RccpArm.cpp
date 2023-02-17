@@ -66,7 +66,7 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
 
 // [[Rcpp::export]]
 Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double BHa, const double BHb, const double PF, 
-                              arma::vec Mature, arma::mat Weight, arma::vec Settlement, arma::cube YearlyTotal) {
+                              arma::mat Mature, arma::mat Weight, arma::vec Settlement, arma::cube YearlyTotal) {
   
   
   int AGE;
@@ -82,16 +82,17 @@ Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double
   TotFemSB = 0;
   for (AGE=0; AGE<MaxAge; AGE++) { 
     for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 
-      Fem_adults = YearlyTotal(Cell_rw,9,AGE) * PF;  // month=October
-      SB(Cell_rw) = Fem_adults * Mature(AGE) * (Weight(AGE,9)); // 
-      TotFemSB = TotFemSB + SB(Cell_rw); // adding up across the rows
+      Fem_adults = YearlyTotal(Cell_rw,9,AGE) * PF;  // month=October Female adults of that age class
+      SB(Cell_rw) = Fem_adults * (Mature(AGE,9)) * (Weight(AGE,9)); // Gives us biomass
     }
-    recs(AGE) = (TotFemSB / (BHa + BHb * TotFemSB)); // calculate the number of recs from that age group
-    recs_variable(AGE) = recs(AGE)*R::rlnorm(0.0, 0.6); // same thing but with variability
+    TotFemSB = sum(SB); // adding up across the rows - all biomass for one age group
+    
+    recs(AGE) = (TotFemSB / (BHa + BHb*TotFemSB)); // calculate the number of recs from that age group
+    recs_variable(AGE) = recs(AGE); //*R::rlnorm(0.0, 0.6); // same thing but with variability
   }
   //std::cout << "vec recruitmentfunc_cpp: TotFemSB " << TotFemSB << std::endl;
   
-  tot_recs = sum(recs_variable);
+  tot_recs = (sum(recs_variable) * R::rlnorm(0.0, 0.6));
   //std::cout << "vec recruitmentfunc_cpp: recs " << recs << std::endl;
     
     for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 
@@ -99,14 +100,18 @@ Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double
     }
     
     return Rcpp::List::create(Rcpp::Named("settle_recs") = settle_recs,
-                              Rcpp::Named("BH_recs") = recs);
+                              Rcpp::Named("BH_recs") = recs,
+                              Rcpp::Named("Fem_adults") = Fem_adults, // All these go once fixed
+                              Rcpp::Named("SB") = SB,
+                              Rcpp::Named("TotFemSB") = TotFemSB,
+                              Rcpp::Named("tot_recs") = tot_recs);
     
     //return settle_recs;
 }
 
 // [[Rcpp::export]]
 Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear, const int MaxCell, const double NatMort, const double BHa, const double BHb, const double PF, 
-                                   arma::mat AdultMove, arma::vec Mature, arma::mat Weight, arma::vec Settlement,
+                                   arma::mat AdultMove, arma::mat Mature, arma::mat Weight, arma::vec Settlement,
                                    arma::cube YearlyTotal, arma::cube Select, arma::cube Effort) {
   
   // int Year;
@@ -122,18 +127,18 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
   Rcpp::NumericVector settle_recs(MaxCell);
   Rcpp::NumericVector BH_recs(MaxCell);
   
-  arma::cube month_catch(MaxCell, 12, (MaxAge+1));
-  arma::cube age_catch(MaxCell, 12, (MaxAge+1));
+  arma::cube month_catch(MaxCell, 12, MaxAge);
+  arma::cube age_catch(MaxCell, 12, MaxAge);
   
   // for (Year=0; Year<MaxYear; Year++) { 
     for (MONTH=0; MONTH<12; MONTH++) { 
-      // std::cout << "movement: Year " << Year << " Month " << Month << std::endl; 
+      // std::cout << " Month " << MONTH << std::endl; 
       // move fish
       for (AGE=0; AGE<MaxAge; AGE++) { 
         
         All_Movers = movementfunc_cpp(AGE, MONTH, MaxCell, AdultMove, YearlyTotal);
         // std::cout << "CharlottesModelfunc_cpp: AGE " << AGE << "All_Movers " << All_Movers << std::endl;
-        
+
         for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
           YearlyTotal(Cell_rw,MONTH,AGE) = All_Movers(Cell_rw);
         } // Cell_rw
@@ -143,8 +148,8 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
       // kill fish
       for (AGE=0; AGE<MaxAge; AGE++) {
         if (MONTH==11) {
-          if (AGE<=1) {
-            if (AGE<MaxAge) {
+          // if (AGE<=1) {
+            if (AGE<(MaxAge-1)) {
               Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort);
               Fish_catch = Res["Fish_catch"];
               tot_survived = Res["tot_survived"];
@@ -156,8 +161,8 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
                 age_catch(Cell_rw,MONTH,AGE) = Fish_catch(Cell_rw);
               }
             } // AGE<MaxAge
-          } // AGE>1
-        } else { // Month==11
+          // } // AGE>1
+        } else if (MONTH<11){ // Month==11
           //tot_survived = mortalityfunc_cpp(AGE, MaxCell, Month, Year, NatMort, Select, YearlyTotal, Effort);
           Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort);
           Fish_catch = Res["Fish_catch"];

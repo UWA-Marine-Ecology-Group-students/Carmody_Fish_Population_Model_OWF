@@ -704,7 +704,6 @@ for (y in 31:59){
   q[y,1] <- q[y-1,1] * 1.02
 }
 
-Fishing2 <- Fishing
 
 # Now calculate F by multiplying our effort by q
 for (y in 1:59){

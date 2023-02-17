@@ -339,13 +339,13 @@ pRocky <- readRDS(paste0(model.name, sep="_","pRocky"))
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-SwimSpeed <- 2.5
+SwimSpeed <- 1.6 #2.5
 
 a = -SwimSpeed
-b =  1.5
-c =  0.7 
-d =  1.3
-e =  0.3 
+b =  0.15 #0.1 # Reef
+c =  0.09 #0.09 #Lagoon
+d =  0.003 #0.003 #Rocky Reef
+e =  0.001 #0.001 #Pelagic
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -377,32 +377,39 @@ rowSums(Pj)
 ## Want the recruits to be in the lagoons and then move out from there 
 dispersal <- lagoon_perc %>% 
   dplyr::select(perc_habitat, ID)
-dispersal$area <- as.vector(Water$cell_area)
+dispersal$area <- as.vector(Water$cell_area*0.000001)
 
 dispersal <- dispersal %>% 
-  filter(perc_habitat!=0)
+  filter(perc_habitat!=0) %>% 
+  mutate(area = area*0.1,
+         perc_habitat = perc_habitat*0.5)
 
-temp <- array(0, dim=c(NCELL, 1))
 recruitment <- array(0, dim=c(nrow(dispersal), 2))
 recruitment[ ,2] <- as.numeric(dispersal$ID) 
 
-for (CELL in 1:NCELL){
-  
-  for (cell in 1:NCELL){
-    temp[cell, 1] <- as.numeric((dispersal[cell,2]/dispersal[cell,1]))
-  }
-  
-  temp[which(!is.finite(temp))] <- 0
-  summed <- sum(temp)
-  
-  recruitment[CELL,1] <- as.numeric(temp[CELL,1]/summed) # This loop throws an error saying that the subscript is out of bounds but as far as I can tell it's not a problem, I just made the loop run for too long and haven't fixed it up yet because
+cellU <- matrix(0, ncol=2, nrow=(nrow(dispersal)))
+cellU[,2] <- as.numeric(dispersal$ID) 
+
+
+for(cell in 1:nrow(recruitment)){
+  U <- exp(dispersal[cell,1])
+  cellU[cell,1] <- as.numeric(U)
 }
 
-recruitment <- as.data.frame(recruitment)
-colnames(recruitment)[colnames(recruitment)=="V2"] <- "ID"
+rowU <- as.data.frame(sum(cellU[,1]))
+
+for (cell in 1:nrow(recruitment)){
+  recruitment[cell,1] <- cellU[cell, 1]/rowU[1,1]
+}
+colSums(recruitment)
+
+recruitment <- as.data.frame(recruitment) %>% 
+  rename(ID = "V2")
 
 recruitment <- merge(recruitment, lagoon_perc, by="ID", all=T) %>% #check that cells with no lagoon habitat have 0 probability of recruitment
   mutate_all(~replace(., is.na(.), 0)) #For cells where there was no lagoon habitat put probability of recruitment as 0
+
+recruitment <- as.vector(recruitment[,2])
 
 #### RECRUIT MOVEMENT ####
 ## Want the recruits to stay in the lagoon until they mature and move to the reef

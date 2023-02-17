@@ -38,6 +38,7 @@ sim_dir <-  paste(working.dir, "Simulations", sep="/")
 
 
 ## Functions
+setwd(working.dir)
 source("X_Functions.R")
 
 
@@ -95,7 +96,7 @@ shallow_F_ID <- as.numeric(shallow_cells_F$ID)
 
 #### CALCULATE TOTAL AREA OF FISHED AND NO-TAKE ####
 
-AreaFished <- water %>% 
+AreaFished <- Water_shallow %>% 
   mutate(cell_area = st_area(Spatial)) %>% 
   mutate(cell_area = as.numeric(cell_area)) %>% 
   mutate(Fished=as.factor(Fished_2017)) %>% 
@@ -103,7 +104,7 @@ AreaFished <- water %>%
 
 AreaFished <- (sum(AreaFished$cell_area))/100000
 
-AreaNT <- water %>% 
+AreaNT <- Water_shallow %>% 
   mutate(cell_area = st_area(Spatial)) %>% 
   mutate(cell_area = as.numeric(cell_area)) %>% 
   mutate(Fished=as.factor(Fished_2017)) %>% 
@@ -993,19 +994,16 @@ for(SIM in 1:1){
   
   for(YEAR in 1:59){
     
-    Population.NT <- SP_Pop_NTZ[[SIM]]
-    
-    Population.NT <- Population.NT[] %>% 
+    Population.NT <- Sp_Pop_NTZ[,,YEAR] %>% 
       colSums(.)
-    
-    
-    Population.F <- SP_Pop_F[[SIM]] %>% 
+
+    Population.F <- Sp_Pop_F[,,YEAR] %>% 
       colSums(.)
     
     NoTakeAges[,YEAR] <- Population.NT
     FishedAges[,YEAR] <- Population.F
     
-    if (YEAR==60){
+    
       NoTakeAges <- NoTakeAges %>% 
         mutate(Status = "NTZ") %>% 
         mutate(Age = seq(1:30)) %>% 
@@ -1027,26 +1025,27 @@ for(SIM in 1:1){
       
       NoRecruits <- WholePop %>%
         filter(Age!=1)
-    }
+    
   }
 }
 
 WholePop <- WholePop %>%
-  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT)) %>% 
+  mutate(NumKM2 = ifelse(Status %in% c("Fished"), Number/AreaFished, Number/AreaNT)) %>%
   mutate(numYear = as.numeric(Year)) %>% 
   mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<=4, "Sublegal",
-                               ifelse(Age>4 & Age<=10, "Legal",
+                        ifelse(Age>1 & Age<=3, "Sublegal",
+                               ifelse(Age>3 & Age<=10, "Legal",
                                       ifelse(Age>10, "Large Legal",NA)))))
 
-check <- WholePop %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
+check <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Legal")) %>% 
   group_by(Scenario, Year, Status) %>% 
-  mutate(Total = sum(Number)) %>% 
+  mutate(Total = sum(NumKM2)) %>% 
   mutate(ColourGroup = ifelse(numYear<=24, "Pre 1987", "NTZs as normal")) %>% 
   mutate(ColourGroup = as.factor(ColourGroup)) %>% 
   mutate(ShapeGroup = ifelse(numYear>24, paste(Status, Scenario, sep="."), "Pre-1987")) %>% 
   mutate(ShapeGroup = as.factor(ShapeGroup)) %>% 
+  #filter(Status %in% c("Fished")) %>% 
   #mutate(PercChange = ifelse(Status %in% c("Fished"), ((Total-0.12931098)/0.12931098)*100, ((Total-0.3366771)/0.3366771)*100)) %>% 
   ggplot(.)+
   geom_point(aes(x=Year, y=Total, group=Status, colour=ShapeGroup)
@@ -1056,9 +1055,9 @@ check <- WholePop %>%
                 #, colour=ColourGroup
   ))+
   theme_classic()+
-  geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=10, colour="grey20")+
-  geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
+  # geom_vline(xintercept=6.6, linetype="dashed", color="grey20")+
+  # geom_vline(xintercept=10, colour="grey20")+
+  # geom_vline(xintercept=12.5, linetype="dashed", colour="grey20")+
   #geom_vline(xintercept=10.6, linetype="dotted", colour="grey20")+
   scale_shape_manual(values= c(`Pre-1987`="circle",`NTZ.Normal`="square filled", `NTZ.Nothing`="triangle filled" ,`Pre-1987`="circle",
                                `Fished.Normal`="square open", `Fished.Nothing`="triangle open"), name="Area and scenario",
@@ -1068,3 +1067,5 @@ check <- WholePop %>%
   ylab(NULL)+
   xlab(NULL)
 check
+
+

@@ -32,7 +32,7 @@ sim_dir <- paste(working.dir, "Simulations", sep="/")
 
 ## Read in functions
 setwd(working.dir)
-sourceCpp("Model_RccpArm.cpp")
+sourceCpp("X_Model_RccpArm.cpp")
 source("X_Functions.R")
 
 #### PRE-SETS ####
@@ -62,10 +62,6 @@ Settlement <- as.vector(Settlement[,2]) # At some point should take this out and
 setwd(sp_dir)
 water <- readRDS(paste0(model.name, sep="_","water"))
 
-## Simulation Files
-# setwd(sim_dir)
-# Effort <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
-
 #### PARAMETER VALUES ####
 ## Natural Mortality
 # We have instantaneous mortality from Marriott et al 2011 and we need to convert that into monthly mortality
@@ -78,8 +74,8 @@ PF = 0.5
 
 # Model settings
 MaxCell = nrow(Water) # Number of cells in the model
-MaxAge = 29 # The max age of the fish in the model -1 to account for the fact that Rcpp functions start from 0
-MaxYear = 49 # Number of years the model should run for -1 to accout for the 
+MaxAge = 30 # The max age of the fish in the model -1 to account for the fact that Rcpp functions start from 0
+MaxYear = 50 # Number of years the model should run for 
 # PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
@@ -105,7 +101,7 @@ for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with th
   }
 }
 
-PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear+1)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
@@ -123,7 +119,7 @@ for (YEAR in 0:MaxYear){
   
   ## Save some outputs from the model 
   # Have to add 1 to all YEAR because the loop is now starting at 0
-  PopTotal[ , , YEAR+1] <- rowSums(ModelOutput$YearlyTotal[,,1:MaxAge+1], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+  PopTotal[ , , YEAR+1] <- rowSums(ModelOutput$YearlyTotal[,,1:MaxAge], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
   
   water$pop <- PopTotal[ , 12, YEAR+1] # We just want the population at the end of the year
   

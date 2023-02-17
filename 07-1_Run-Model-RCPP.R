@@ -48,7 +48,7 @@ model.name <- "ningaloo"
 ## Normal Model Files
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
-# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
 YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
@@ -63,8 +63,8 @@ Settlement <- as.vector(Settlement[,2]) # At some point should take this out and
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-setwd(sim_dir)
-Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+# setwd(sim_dir)
+# Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -104,8 +104,8 @@ shallow_cells_F <- Water_shallow %>%
   filter(Fished_2017 %in% c("Y")) %>% 
   st_drop_geometry(.)
 
-shallow_NTZ_ID <- as.numeric(shallow_cells_NTZ$ID)
-shallow_F_ID <- as.numeric(shallow_cells_F$ID)
+shallow_NTZ_ID <- as.numeric(levels(shallow_cells_NTZ$ID))[as.integer(shallow_cells_NTZ$ID)]
+shallow_F_ID <- as.numeric(levels(shallow_cells_F$ID))[as.integer(shallow_cells_F$ID)]
 
 #### PARAMETER VALUES ####
 ## Natural Mortality
@@ -123,8 +123,8 @@ PF = 0.5
 
 # Model settings
 MaxCell = nrow(Water) # Number of cells in the model
-MaxAge = 29 # The max age of the fish in the model -1 to account for the fact that Rcpp functions start from 0
-MaxYear = 58 # Number of years the model should run for -1 to account for the fact that Rcpp functions start from 0
+MaxAge = 30 # The max age of the fish in the model -1 to account for the fact that Rcpp functions start from 0
+MaxYear = 59 # Number of years the model should run for -1 to account for the fact that Rcpp functions start from 0
 # PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
@@ -136,18 +136,18 @@ AgePlots <- list()
 TimesPlotted = 0
 
 #### SET UP INITIAL POPULATION ####
-PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear+1)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
-Total <- array(NA, dim=c(MaxYear+1,1)) # For plotting
-bio.catch <- array(0, dim=c(MaxCell, MaxAge+1))
-yearly.catch <- array(0, dim=(c(MaxYear+1, 1)))
-catch.by.age <- array(0, dim=(c(MaxAge, MaxYear+1)))
+PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+Total <- array(NA, dim=c(MaxYear,1)) # For plotting
+bio.catch <- array(0, dim=c(MaxCell, MaxAge))
+yearly.catch <- array(0, dim=(c(MaxYear, 1)))
+catch.by.age <- array(0, dim=(c(MaxAge, MaxYear)))
 
-Sim_Pop <- array(0, dim=c(MaxYear+1, 100))
-Sim_Catches <- array(0, dim=c(MaxYear+1, 100))
-Sim_Ages <- array(0, dim=c(MaxYear+1, MaxAge+1, 100))
+Sim_Pop <- array(0, dim=c(MaxYear, 100))
+Sim_Catches <- array(0, dim=c(MaxYear, 100))
+Sim_Ages <- array(0, dim=c(MaxYear, MaxAge, 100))
  
-Sp_Pop_F <- array(0, dim=c(length(shallow_F_ID), MaxAge+1, MaxYear+1))
-Sp_Pop_NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge+1, MaxYear+1))
+Sp_Pop_F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
+Sp_Pop_NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
 
 SIM_Sp_F <- list()
 SIM_SP_NTZ <- list()
@@ -167,13 +167,13 @@ for (SIM in 1:1){
   
   #### SET UP INITIAL POPULATION ####
   YearlyTotal <- BurnInPop
-  PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear+1)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
-  Total <- array(NA, dim=c(MaxYear+1,1)) # For plotting
-  yearly.catch <- array(0, dim=(c(MaxYear+1, 1)))
+  PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+  Total <- array(NA, dim=c(MaxYear,1)) # For plotting
+  yearly.catch <- array(0, dim=(c(MaxYear, 1)))
   
   print(paste0("SIM", sep=" ", SIM))
   
-  for (YEAR in 0:MaxYear){
+  for (YEAR in 0:(MaxYear-1)){
     
     print(YEAR)
     
@@ -190,13 +190,13 @@ for (SIM in 1:1){
     monthly.catch <- ModelOutput$age_catch
     age.catch <- colSums(monthly.catch[,,1:MaxAge], dim=2) #This is the number of fish in each age class caught in each cell
 
-    yearly.catch[YEAR+1,1] <- sum(bio.catch)
+    yearly.catch[YEAR,1] <- sum(bio.catch)
     catch.by.age[,YEAR+1] <- age.catch
     
     Water$pop <- PopTotal[ , 12, YEAR+1] # We just want the population at the end of the year
     
-    Sp_Pop_F[,,YEAR] <- ModelOutput$YearlyTotal[c(as.numeric(shallow_F_ID)),12,] # Saving the population at the end of the year in cells <30m depth for plots
-    Sp_Pop_NTZ[,,YEAR] <- ModelOutput$YearlyTotal[c(as.numeric(shallow_NTZ_ID)),12,] # Saving the population at the end of the year in cells <30m depth for plots
+    Sp_Pop_F[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_F_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
+    Sp_Pop_NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
     
     ## Plotting ##
     Total[YEAR+1,1] <- sum(Water$pop)
@@ -237,19 +237,19 @@ for (SIM in 1:1){
   if(SIM==100){
     setwd(pop_dir)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S03")
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S00")
     saveRDS(SIM_SP_NTZ, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S03")
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S00")
     saveRDS(SIM_Sp_F, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S03")
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S00")
     saveRDS(Sim_Pop, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S03")
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S00")
     saveRDS(Sim_Ages, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S03")
+    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S00")
     saveRDS(Sim_Catches, file=filename)
   }
 
