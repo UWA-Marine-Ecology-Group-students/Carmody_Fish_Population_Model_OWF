@@ -42,22 +42,32 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
   Rcpp::NumericVector Fish_catch(MaxCell);
   Rcpp::NumericVector Weight_catch(MaxCell);
   
+  // Rcpp::NumericVector check(1);
+  // double check2;
+  // double check3;
+  
   // arma::vec tot_survived(MaxCell);
   // arma::vec sel_effort(MaxCell);
   // arma::vec temp_catch(MaxCell);
   // arma::vec Fish_catch(MaxCell);
   
   for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 
+   
     tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * exp(-Selectivity(AGE,MONTH,YEAR) * Effort(Cell_rw,MONTH,YEAR))*
                               exp(-(NatMort/12.0)); 
+  
     
     // Calculate catch
     sel_effort(Cell_rw) = Selectivity(AGE,MONTH,YEAR) * Effort(Cell_rw,MONTH,YEAR);
+    
     temp_catch(Cell_rw) = sel_effort(Cell_rw) / ((NatMort/12.0) + sel_effort(Cell_rw));
+    
     Fish_catch(Cell_rw) = (tot_survived(Cell_rw) * temp_catch(Cell_rw));
+    
     Weight_catch(Cell_rw) = (tot_survived(Cell_rw) * temp_catch(Cell_rw)) * Weight(AGE,MONTH);
-  }
 
+  } //cell row loop
+  
   return Rcpp::List::create(Rcpp::Named("Fish_catch") = Fish_catch,
                             Rcpp::Named("Weight_catch") = Weight_catch,
                             Rcpp::Named("tot_survived") = tot_survived);
@@ -129,6 +139,14 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
   
   arma::cube month_catch(MaxCell, 12, MaxAge);
   arma::cube age_catch(MaxCell, 12, MaxAge);
+  // 
+  // Rcpp::NumericVector check(1);
+  // double check2;
+  // 
+  // check = sum(blah);
+  // check2 = sum(check);
+  // 
+  // std::cout << "Checking Start" << check2 << std::endl;
   
   // for (Year=0; Year<MaxYear; Year++) { 
     for (MONTH=0; MONTH<12; MONTH++) { 
@@ -144,39 +162,42 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
         } // Cell_rw
         
       } // AGE
-      
-      // kill fish
-      for (AGE=0; AGE<MaxAge; AGE++) {
-        if (MONTH==11) {
-          // if (AGE<=1) {
-            if (AGE<(MaxAge-1)) {
-              Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort);
-              Fish_catch = Res["Fish_catch"];
-              tot_survived = Res["tot_survived"];
-              Weight_catch = Res["Weight_catch"];
-              
-              for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-                YearlyTotal(Cell_rw,0,AGE+1) = tot_survived(Cell_rw);
-                month_catch(Cell_rw,MONTH,AGE) = Weight_catch(Cell_rw);
-                age_catch(Cell_rw,MONTH,AGE) = Fish_catch(Cell_rw);
-              }
-            } // AGE<MaxAge
-          // } // AGE>1
-        } else if (MONTH<11){ // Month==11
-          //tot_survived = mortalityfunc_cpp(AGE, MaxCell, Month, Year, NatMort, Select, YearlyTotal, Effort);
-          Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort);
-          Fish_catch = Res["Fish_catch"];
-          tot_survived = Res["tot_survived"];
-          Weight_catch = Res["Weight_catch"];
-          
-          for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-            YearlyTotal(Cell_rw,MONTH+1,AGE) = tot_survived(Cell_rw);
-            month_catch(Cell_rw,MONTH,AGE) = Weight_catch(Cell_rw);
-            age_catch(Cell_rw,MONTH,AGE) = Fish_catch(Cell_rw);
-          }
-        } // if
-      } // AGE
-      
+      // check = sum(blah);
+      // check2 = sum(check);
+      // 
+      // std::cout << "Checking Start" << check2 << std::endl;
+      // // kill fish
+      // for (AGE=0; AGE<MaxAge; AGE++) {
+      //   if (MONTH==11) {
+      //     // if (AGE<=1) {
+      //       if (AGE<(MaxAge-1)) {
+      //         
+      //         Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort, blah);
+      //         Fish_catch = Res["Fish_catch"];
+      //         tot_survived = Res["tot_survived"];
+      //         Weight_catch = Res["Weight_catch"];
+      //         
+      //         for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
+      //           YearlyTotal(Cell_rw,0,AGE+1) = tot_survived(Cell_rw);
+      //           month_catch(Cell_rw,MONTH,AGE) = Weight_catch(Cell_rw);
+      //           age_catch(Cell_rw,MONTH,AGE) = Fish_catch(Cell_rw);
+      //         }
+      //       } // AGE<MaxAge
+      //     // } // AGE>1
+      //   } else if (MONTH<11){ // Month==11
+      //     
+      //     Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort, blah);
+      //     Fish_catch = Res["Fish_catch"];
+      //     tot_survived = Res["tot_survived"];
+      //     Weight_catch = Res["Weight_catch"];
+      //     
+      //     for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
+      //       YearlyTotal(Cell_rw,MONTH+1,AGE) = tot_survived(Cell_rw);
+      //       month_catch(Cell_rw,MONTH,AGE) = Weight_catch(Cell_rw);
+      //       age_catch(Cell_rw,MONTH,AGE) = Fish_catch(Cell_rw);
+      //     }
+      //   } // if
+      // } // AGE
       // recruit fish
       if (MONTH==9) { // October
         recruits = recruitmentfunc_cpp(MaxCell, MaxAge, BHa, BHb, PF, Mature, Weight, Settlement, YearlyTotal);
@@ -189,9 +210,17 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
           YearlyTotal(Cell_rw,0,0) = settle_recs(Cell_rw);
         }
       }
-      
+      // check = sum(blah);
+      // check2 = sum(check);
+      // 
+      // std::cout << "Checking after recruitment" << check2 << std::endl;
     } // Month
  // } // Year
+ // check = sum(blah);
+ //    check2 = sum(check);
+ //    
+ // std::cout << "Checking End" << check2 << std::endl;
+ 
   return Rcpp::List::create(Rcpp::Named("Month_catch") = month_catch,
                             Rcpp::Named("age_catch") = age_catch,
                             Rcpp::Named("tot_survived") = tot_survived,

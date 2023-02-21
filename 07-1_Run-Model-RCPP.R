@@ -48,23 +48,19 @@ model.name <- "ningaloo"
 ## Normal Model Files
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
+Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
 Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
-YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+blah <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
 Weight <- readRDS("weight")
 
-BurnInPop <- YearlyTotal
-
-Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-Settlement <- as.vector(Settlement[,2]) # At some point should take this out and put it into the movement file and save it correctly
-
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-# setwd(sim_dir)
-# Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+setwd(sim_dir)
+Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -152,12 +148,14 @@ Sp_Pop_NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
 SIM_Sp_F <- list()
 SIM_SP_NTZ <- list()
 
+YearlyTotal <- blah
+
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
 setwd(pop_dir)
 
 Start=Sys.time()
-for (SIM in 1:1){
+for (SIM in 1:2){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -166,20 +164,19 @@ for (SIM in 1:1){
   TimesPlotted = 0
   
   #### SET UP INITIAL POPULATION ####
-  YearlyTotal <- BurnInPop
   PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
   Total <- array(NA, dim=c(MaxYear,1)) # For plotting
   yearly.catch <- array(0, dim=(c(MaxYear, 1)))
   
   print(paste0("SIM", sep=" ", SIM))
   
-  for (YEAR in 0:(MaxYear-1)){
+  for (YEAR in 0:1){ # Start of model year loop
     
     print(YEAR)
     
     ## Loop over all the Rcpp functions in the model
     ModelOutput <- RunModelfunc_cpp(YEAR, MaxAge, MaxYear, MaxCell, NatMort, BHa, BHb, PF, AdultMove, Mature, Weight, Settlement, 
-                                    YearlyTotal, Selectivity, Effort)
+                                    YearlyTotal, Selectivity, Effort, blah)
     
     ## Save some outputs from the model 
     # Have to add 1 to all YEAR because the loop is now starting at 0
@@ -228,32 +225,42 @@ for (SIM in 1:1){
     # filename <- paste0(model.name, sep="_", "Rcpp_BHRecruits", sep="_", YEAR)
     # saveRDS(ModelOutput["BH_recs"], file=filename)
     
-  }
+  } # End of model year loop
+  
+  # Reset for the next simulation 
+  YearlyTotal <- blah
   
   SIM_Sp_F[[SIM]] <- Sp_Pop_F
   SIM_SP_NTZ[[SIM]] <- Sp_Pop_NTZ
   
-  ## NEED TO FIGURE OUT A WAY TO SAVE THE CELL REFERENCES AS WELL ##
-  if(SIM==100){
+  if(SIM==100){ # Saving if statement
     setwd(pop_dir)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S00")
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S01")
     saveRDS(SIM_SP_NTZ, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S00")
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S01")
     saveRDS(SIM_Sp_F, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S00")
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S01")
     saveRDS(Sim_Pop, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S00")
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S01")
     saveRDS(Sim_Ages, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S00")
+    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S01")
     saveRDS(Sim_Catches, file=filename)
-  }
+  } else { }# End saving if statement
 
-}
+} # End simulation loop
 End = Sys.time() 
 Runtime = End - Start
 Runtime
+
+## check
+AGE <- 5
+MONTH <- 6
+checking <- movementfunc_cpp(AGE,MONTH, MaxCell, AdultMove,YearlyTotal)
+
+
+

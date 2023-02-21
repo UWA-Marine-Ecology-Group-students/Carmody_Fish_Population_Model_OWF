@@ -38,6 +38,7 @@ sim_dir <-  paste(working.dir, "Simulations", sep="/")
 
 
 ## Functions
+setwd(working.dir)
 source("X_Functions.R")
 
 # Sim 0 Normal
@@ -142,11 +143,14 @@ total_pop_S03 <- readRDS("ningaloo_Total_Population_S03") %>%
 
 ## Population
 
-total_pop <- rbind(total_pop_S00, total_pop_S01, total_pop_S02, total_pop_S03)
+total_pop <- rbind(total_pop_S00, total_pop_S01
+                   #, total_pop_S02, total_pop_S03
+                   )
 
 total_pop_plot <- total_pop %>% 
-  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-                                "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                              #  ,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+                               )) %>% 
   ggplot() +
   geom_line(aes(x=Mod_Year, y=Mean_Pop, group=Scenario, color=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario,
@@ -265,7 +269,7 @@ NTZ_Ages_S01 <- as.data.frame(NTZ_Ages_S01) %>%
   group_by(Stage, Mod_Year) %>% 
   summarise(across(where(is.numeric) & !Age, sum)) %>% 
   ungroup() %>% 
-  #mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
   mutate(Mean_Pop = rowMeans(.[,3:ncol(.)])) %>% 
   mutate(SD_Pop = rowSds(as.matrix(.[,3:ncol(.)]))) %>% 
   mutate(Scenario = "S01") %>% 
@@ -282,7 +286,7 @@ F_Ages_S01 <- as.data.frame(F_Ages_S01) %>%
   group_by(Stage, Mod_Year) %>% 
   summarise(across(where(is.numeric) & !Age, sum)) %>% 
   ungroup() %>% 
-  #mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
   mutate(Mean_Pop = rowMeans(.[,3:ncol(.)])) %>% 
   mutate(SD_Pop = rowSds(as.matrix(.[,3:ncol(.)]))) %>% 
   mutate(Scenario = "S01") %>% 
@@ -399,13 +403,13 @@ F_Ages_S03 <- as.data.frame(F_Ages_S03) %>%
   filter(Mod_Year!=2019) %>% 
   dplyr::select(Mean_Pop, SD_Pop,Scenario, Stage, Mod_Year)
 
-Whole_Pop_Ages_NTZ <- rbind(NTZ_Ages_S00 
-                            #NTZ_Ages_S01, NTZ_Ages_S02, NTZ_Ages_S03
+Whole_Pop_Ages_NTZ <- rbind(NTZ_Ages_S00, NTZ_Ages_S01
+                            #, NTZ_Ages_S02, NTZ_Ages_S03
                             ) %>% 
   mutate(Zone = "NTZ")
 
-Whole_Pop_Ages_F <- rbind(F_Ages_S00 
-                          #F_Ages_S01, F_Ages_S02, F_Ages_S03
+Whole_Pop_Ages_F <- rbind(F_Ages_S00, F_Ages_S01
+                          #, F_Ages_S02, F_Ages_S03
                           ) %>% 
   mutate(Zone = "F")
 
@@ -417,8 +421,9 @@ Recruit.NTZ <- Whole_Pop_Ages %>%
   filter(Zone %in% c("NTZ")) %>% 
   mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               #,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+                               )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -432,7 +437,8 @@ Recruit.NTZ <- Whole_Pop_Ages %>%
   theme(legend.text = element_text(size=11), legend.title = element_text(size=13))+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0,0.15)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Recruit.NTZ 
 
@@ -440,8 +446,9 @@ Recruit.F <- Whole_Pop_Ages %>%
   filter(Stage %in% c("Recruit")) %>% 
   filter(Zone %in% c("F")) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               # , "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+                               )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -454,7 +461,8 @@ Recruit.F <- Whole_Pop_Ages %>%
   theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0,0.15)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Recruit.F
 
@@ -463,8 +471,9 @@ Sublegal.NTZ <- Whole_Pop_Ages %>%
   filter(Zone %in% c("NTZ")) %>% 
   mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                              # ,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+                               )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -475,7 +484,8 @@ Sublegal.NTZ <- Whole_Pop_Ages %>%
                     name = "Spatial and Temporal\nManagement Scenario")+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0, 0.125)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Sublegal.NTZ 
 
@@ -483,8 +493,9 @@ Sublegal.F <- Whole_Pop_Ages %>%
   filter(Stage %in% c("Sublegal")) %>% 
   filter(Zone %in% c("F")) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                              "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               #,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+                               )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -495,7 +506,8 @@ Sublegal.F <- Whole_Pop_Ages %>%
                     name = "Spatial and Temporal\nManagement Scenario")+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0, 0.125)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Recruit.F
 
@@ -518,8 +530,9 @@ Legal.NTZ <- Whole_Pop_Ages %>%
   filter(Zone %in% c("NTZ")) %>% 
   mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               #,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+  )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -533,7 +546,8 @@ Legal.NTZ <- Whole_Pop_Ages %>%
   theme(legend.text = element_text(size=11), legend.title = element_text(size=13))+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0,0.35)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Legal.NTZ 
 
@@ -541,8 +555,9 @@ Legal.F <- Whole_Pop_Ages %>%
   filter(Stage %in% c("Legal")) %>% 
   filter(Zone %in% c("F")) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                              "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               #,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+  )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -555,7 +570,8 @@ Legal.F <- Whole_Pop_Ages %>%
   theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0,0.35)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Legal.F
 
@@ -564,8 +580,9 @@ Large.NTZ <- Whole_Pop_Ages %>%
   filter(Zone %in% c("NTZ")) %>% 
   mutate(Mean_Pop = round(Mean_Pop, digits=4)) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                               "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               #,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+  )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -576,7 +593,8 @@ Large.NTZ <- Whole_Pop_Ages %>%
                     name = "Spatial and Temporal\nManagement Scenario")+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0,0.12)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Large.NTZ 
 
@@ -584,8 +602,9 @@ Large.F <- Whole_Pop_Ages %>%
   filter(Stage %in% c("Large Legal")) %>% 
   filter(Zone %in% c("F")) %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  # mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01",
-  #                              "Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03")) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Historical and\nCurrent Management"="S00", "No Spatial or\nTemporal Management"="S01"
+                               #,"Temporal and Spatial\nManagement"="S02", "Temporal Management Only"="S03"
+  )) %>%
   ggplot(.)+
   geom_line(aes(x=Mod_Year, y=Mean_Pop, colour=Scenario))+
   geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=Scenario), alpha=0.2)+
@@ -596,7 +615,8 @@ Large.F <- Whole_Pop_Ages %>%
                     name = "Spatial and Temporal\nManagement Scenario")+
   ylab(NULL)+
   xlab(NULL)+
-  xlim(1961,2019)
+  xlim(1961,2019)+
+  ylim(0,0.12)
 #ggplot2::annotate("text", x=1.7, y=0.016, label="(c) Legal sized", size = 3, fontface=2)
 Large.F
 
@@ -686,11 +706,11 @@ catches_plot
 setwd(sp_dir)
 water <- readRDS(paste0(model.name, sep="_","water"))
 
-pop.groups <- c(0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9)
+pop.groups <- c(0,0.01,0.05,0.1,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8)
 
 setwd(pop_dir)
 
-water_WHA_ID <- cbind(shallow_F_ID, shallow_NTZ_ID)
+water_WHA_ID <- c(shallow_F_ID, shallow_NTZ_ID)
 
 TotalPop_Normal <- readRDS("ningaloo_Rcpp_YearlyTotal_58") %>% 
   unlist()
@@ -698,12 +718,12 @@ TotalPop_Normal <- ModelOutput$YearlyTotal %>%
   rowSums(.[,,3:30], dim=2) 
 
 TotalPop_Normal <- as.numeric(TotalPop_Normal[,12]) 
-#TotalPop_Normal <- TotalPop_Normal[c(as.numeric(water_WHA$ID))]
+TotalPop_Normal <- TotalPop_Normal[c(Water_WHA$ID)]
 TotalPop_Normal <- TotalPop_Normal+1
 TotalPop_Normal <- log(TotalPop_Normal)
 TotalPop_Normal.df <- as.data.frame(TotalPop_Normal)
 
-SpatialPlots_Normal <- spatial.plot.func(area=Water, pop=TotalPop_Normal, pop.breaks=pop.groups, colours="YlGnBu")
+SpatialPlots_Normal <- spatial.plot.func(area=Water_WHA, pop=TotalPop_Normal, pop.breaks=pop.groups, colours="YlGnBu")
 
 setwd(sim_dir)
 
@@ -823,18 +843,20 @@ reef <- full_join(Water, reef_perc, by="ID")
 rocky <- full_join(Water, rocky_perc, by="ID")
 lagoon <- full_join(Water, lagoon_perc, by="ID")
 
-reef_plot <- reef[c(shallow_F_ID), ] %>% 
+reef_plot <- reef[c(water_WHA_ID), ] %>% 
   ggplot(.)+
   geom_sf(aes(fill=perc_habitat))
   
-rocky_plot <- rocky[c(shallow_F_ID), ] %>% 
+rocky_plot <- rocky[c(water_WHA_ID), ] %>% 
   ggplot(.)+
   geom_sf(aes(fill=perc_habitat))
 
-lagoon_plot <- lagoon[c(shallow_NTZ_ID), ] %>% 
+lagoon_plot <- lagoon[c(water_WHA_ID), ] %>% 
   ggplot(.)+
   geom_sf(aes(fill=perc_habitat))
 
-
+recruit_plot <- full_join(Water, recruitment, by="ID") %>% 
+  ggplot(.)+
+  geom_sf(aes(fill=V1))
 
 
