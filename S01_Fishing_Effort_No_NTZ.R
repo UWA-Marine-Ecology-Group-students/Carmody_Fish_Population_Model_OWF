@@ -504,4 +504,27 @@ for (y in 1:59){
 setwd(sim_dir)
 saveRDS(Fishing, file=paste0(model.name, sep="_", "S01_fishing"))
 
+#### FOR SMALL MODEL ####
+## Small model burn in
+model.name <- "small"
+
+setwd(sp_dir)
+small_water <- readRDS(paste0(model.name, sep="_", "water"))
+water <- readRDS("water")
+
+small_water_id <- st_intersects(small_water, water) %>%
+  as.data.frame(.) %>%
+  distinct(row.id, .keep_all = T)
+
+## Don't want to redo fishing effort because then we'd have an insane amount of fishing effort in this small area, just want to take the appropriate cells and keep the fishing effort as if it was the larger model
+
+setwd(sg_dir)
+Fishing <- readRDS("ningaloo_S01_fishing")
+
+small_fishing <- Fishing[as.numeric(small_water_id$col.id),,]
+small_fishing <- small_fishing/10
+
+setwd(sim_dir)
+saveRDS(small_fishing, file=paste0(model.name, sep="_", "S01_fishing"))
+
 

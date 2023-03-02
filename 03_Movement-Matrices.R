@@ -42,7 +42,7 @@ model.name <- "small"
 
 #### READ FILES ####
 setwd(sp_dir)
-water <- readRDS(paste0(model.name, sep="_", "water"))
+Water <- readRDS(paste0(model.name, sep="_", "water"))
 
 # Habitat Layers
 setwd(sp_dir)

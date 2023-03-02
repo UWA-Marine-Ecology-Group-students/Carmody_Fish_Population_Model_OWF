@@ -717,27 +717,6 @@ saveRDS(Fishing, file=paste0("ningaloo", sep="_", "fishing"))
 # saveRDS(NoTake, file="NoTake")
 # saveRDS(NoTake, file="NoTakeList")
 
-#### FOR SMALL MODEL ####
-## Don't want to redo fishing effort because then we'd have an insane amount of fishing effort in this small area, just want to take the appropriate cells and keep the fishing effort as if it was the larger model
-# model.name <- "small"
-# 
-# setwd(sp_dir)
-# small_water <- readRDS(paste0(model.name, sep="_", "water"))
-# water <- readRDS("water")
-# 
-# setwd(sg_dir)
-# Fishing <- readRDS("ningaloo_fishing")
-# 
-# small_water_id <- st_intersects(small_water, water) %>%
-#   as.data.frame(.) %>%
-#   distinct(row.id, .keep_all = T)
-# 
-# small_fishing <- Fishing[as.numeric(small_water_id$col.id),,]
-# small_fishing <- small_fishing
-# 
-# setwd(sg_dir)
-# saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
-
 #### SETTING UP EFFOR FOR BURN IN ####
 ## Need to set effort to be a consistent low level for the burn in, we can use the same value we're using to set up the initial population 
 
@@ -758,7 +737,7 @@ burn_in_effort <- as.data.frame(burn_in_effort) %>%
   rename(Effort = "Ave_Month_Prop")
 
 
-## SPlit up by boat ramp
+## Split up by boat ramp
 for(M in 1:12){
   burn_in_effort$Tb_BR = burn_in_effort$Effort*BR_Trips[1,6]
   burn_in_effort$Bd_BR = burn_in_effort$Effort*BR_Trips[2,6]
@@ -797,7 +776,35 @@ for(YEAR in 1:50){
 setwd(sg_dir)
 saveRDS(Burn_In_Fishing, file=paste0("ningaloo", sep="_", "burn_in_fishing"))
 
+#### FOR SMALL MODEL ####
+## Small model burn in
+model.name <- "small"
 
+setwd(sp_dir)
+small_water <- readRDS(paste0(model.name, sep="_", "water"))
+water <- readRDS("water")
+
+setwd(sg_dir)
+burn_in <- readRDS("ningaloo_burn_in_fishing")
+
+small_water_id <- st_intersects(small_water, water) %>%
+  as.data.frame(.) %>%
+  distinct(row.id, .keep_all = T)
+
+small_burn_in <- burn_in[as.numeric(small_water_id$col.id),,]
+
+setwd(sg_dir)
+saveRDS(small_burn_in, file=paste0(model.name, sep="_", "burn_in_fishing"))
+## Don't want to redo fishing effort because then we'd have an insane amount of fishing effort in this small area, just want to take the appropriate cells and keep the fishing effort as if it was the larger model
+
+setwd(sg_dir)
+Fishing <- readRDS("ningaloo_fishing")
+
+small_fishing <- Fishing[as.numeric(small_water_id$col.id),,]
+small_fishing <- small_fishing/10
+
+setwd(sg_dir)
+saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
 
 
 

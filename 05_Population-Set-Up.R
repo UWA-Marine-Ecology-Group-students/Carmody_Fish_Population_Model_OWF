@@ -13,6 +13,7 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(abind)
 
 
 #### SET DIRECTORIES ####
@@ -181,7 +182,7 @@ Equil.Rec <- (Fish.Fem.SSB-alpha)/(beta*Fish.Fem.SSB)
 ## the proportion of females at age
 ## We also need to decide on an initial level of recruitment (in thousands)
 
-init.recruit <- 5000 # in thousands - normally 5000 for big model, 50 for small model
+init.recruit <- 50000 # in thousands - normally 5000 for big model, 5 for small model
 
 ## Calculate initial fished recruitment
 

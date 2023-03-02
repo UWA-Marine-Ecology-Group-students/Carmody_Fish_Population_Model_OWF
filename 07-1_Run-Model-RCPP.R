@@ -49,10 +49,10 @@ model.name <- "ningaloo"
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
-blah <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
 Weight <- readRDS("weight")
@@ -60,7 +60,7 @@ Weight <- readRDS("weight")
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
 setwd(sim_dir)
-Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -114,7 +114,7 @@ NatMort = 0.146
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 BHa = 0.4344209 #0.4344209
-BHb =	0.01889882
+BHb =	0.1889882 #0.01889882
 PF = 0.5
 
 # Model settings
@@ -142,20 +142,22 @@ Sim_Pop <- array(0, dim=c(MaxYear, 100))
 Sim_Catches <- array(0, dim=c(MaxYear, 100))
 Sim_Ages <- array(0, dim=c(MaxYear, MaxAge, 100))
  
-Sp_Pop_F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
-Sp_Pop_NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
+#Sp_Pop_F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
+#Sp_Pop_NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
+
+Sp_Pop_F <- array(0, dim=c(MaxCell, MaxAge, MaxYear))
+Sp_Pop_NTZ <- array(0, dim=c(MaxCell, MaxAge, MaxYear))
 
 SIM_Sp_F <- list()
 SIM_SP_NTZ <- list()
 
-YearlyTotal <- blah
 
 #### RUN MODEL ####
 BurnIn = F #This is to swap the model between burn in and running the model properly
 setwd(pop_dir)
 
 Start=Sys.time()
-for (SIM in 1:2){ # Simulation loop
+for (SIM in 1:100){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -170,17 +172,20 @@ for (SIM in 1:2){ # Simulation loop
   
   print(paste0("SIM", sep=" ", SIM))
   
-  for (YEAR in 0:1){ # Start of model year loop
+  setwd(sg_dir)
+  YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+  
+  for (YEAR in 0:(MaxYear-1)){ # Start of model year loop
     
     print(YEAR)
     
     ## Loop over all the Rcpp functions in the model
     ModelOutput <- RunModelfunc_cpp(YEAR, MaxAge, MaxYear, MaxCell, NatMort, BHa, BHb, PF, AdultMove, Mature, Weight, Settlement, 
-                                    YearlyTotal, Selectivity, Effort, blah)
+                                    YearlyTotal, Selectivity, Effort)
     
     ## Save some outputs from the model 
     # Have to add 1 to all YEAR because the loop is now starting at 0
-    PopTotal[ , , YEAR+1] <- rowSums(ModelOutput$YearlyTotal[,,1:30], dim=2) # This flattens the matrix to give you the number of fish present in the population each month in each cell, with layers representing the year
+    PopTotal[ , ,YEAR+1] <- rowSums(ModelOutput$YearlyTotal[,,1:30], dim=2) # This flattens the matrix to give you the number of fish present in the population each month in each cell, with layers representing the year
     
     total.catch <- ModelOutput$Month_catch # This gives you catch by weight in each cell for each month, which each layer representing an age class
     bio.catch <- colSums(total.catch[,,1:MaxAge], dim=2) # Biomass of fish caught in each age group (there are no fish caught in age 30 because at this point they would be dead)
@@ -228,7 +233,6 @@ for (SIM in 1:2){ # Simulation loop
   } # End of model year loop
   
   # Reset for the next simulation 
-  YearlyTotal <- blah
   
   SIM_Sp_F[[SIM]] <- Sp_Pop_F
   SIM_SP_NTZ[[SIM]] <- Sp_Pop_NTZ
@@ -236,19 +240,19 @@ for (SIM in 1:2){ # Simulation loop
   if(SIM==100){ # Saving if statement
     setwd(pop_dir)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S01")
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S03")
     saveRDS(SIM_SP_NTZ, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S01")
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S03")
     saveRDS(SIM_Sp_F, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S01")
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S03")
     saveRDS(Sim_Pop, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S01")
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S03")
     saveRDS(Sim_Ages, file=filename)
     
-    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S01")
+    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S03")
     saveRDS(Sim_Catches, file=filename)
   } else { }# End saving if statement
 
@@ -256,11 +260,5 @@ for (SIM in 1:2){ # Simulation loop
 End = Sys.time() 
 Runtime = End - Start
 Runtime
-
-## check
-AGE <- 5
-MONTH <- 6
-checking <- movementfunc_cpp(AGE,MONTH, MaxCell, AdultMove,YearlyTotal)
-
 
 

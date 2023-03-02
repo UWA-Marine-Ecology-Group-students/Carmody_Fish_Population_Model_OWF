@@ -39,7 +39,7 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
-model.name <- "small"
+model.name <- "ningaloo"
 
 
 #### LOAD FILES ####
@@ -107,15 +107,15 @@ NTZ <- st_make_valid(NTZ)
 
 plot(NTZ$geometry) # Check
 
-#### SETTING UP SMALLER MODEL ####
-small_model <- st_read("mangrove.gpkg") %>% 
-  st_transform(4283)%>%
-  st_make_valid(.)
-plot(small_model$geometry)
-
-NTZ <- NTZ %>% 
-  filter(Name %in% c("Mangrove Sanctuary Zone")| Name %in% c("Old Mangrove"))
-plot(NTZ$geometry, add=T)
+# #### SETTING UP SMALLER MODEL ####
+# small_model <- st_read("mangrove.gpkg") %>% 
+#   st_transform(4283)%>%
+#   st_make_valid(.)
+# plot(small_model$geometry)
+# 
+# NTZ <- NTZ %>% 
+#   filter(Name %in% c("Mangrove Sanctuary Zone")| Name %in% c("Old Mangrove"))
+# plot(NTZ$geometry, add=T)
 
 
 #* Habitat Files ####
@@ -129,7 +129,7 @@ for (i in 1:4){
   hab.file <- st_read(paste0(habitat.types[i], "Habitat.gpkg", sep="")) %>% 
     st_transform(4283)%>%
     st_make_valid%>%
-    st_crop(xmin=113.8826, xmax=113.9967, ymin=-22.0725, ymax=-21.84793)%>% # Has to match the area you are modelling
+    st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)%>% # Has to match the area you are modelling
     mutate(type = habitat.types[i]) %>% 
     dplyr::select(type, geom)
   
@@ -150,7 +150,7 @@ habitat.union <- habitat %>%
 
 # Make grid cells for fish to live in
 grd <- st_make_grid(habitat.union, cellsize=0.05, square=FALSE) %>%
-  st_crop(xmin=113.8826, xmax=113.9967, ymin=-22.0725, ymax=-21.84793) %>% #make sure extent of grid is the same as the polygon
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5) %>% #make sure extent of grid is the same as the polygon
   st_make_valid()
 plot(grd)
 
@@ -160,7 +160,7 @@ plot(water, border="#8ec3ca")
 
 # Make a smaller grid for the cells that are closer to the shore
 GrdSmall <- st_make_grid(habitat.union, cellsize=0.025, square=FALSE) %>%
-  st_crop(xmin=113.8826, xmax=113.9967, ymin=-22.0725, ymax=-21.84793)%>%  #make sure extent of grid is the same as the polygon
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)%>%  #make sure extent of grid is the same as the polygon
   st_make_valid()
 plot(GrdSmall)
 

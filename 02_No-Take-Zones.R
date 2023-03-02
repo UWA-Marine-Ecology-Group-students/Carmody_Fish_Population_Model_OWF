@@ -39,7 +39,7 @@ fig_dir <- paste(working.dir, "Figures", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/") # For spatial dataframes that we're still working on
 sg_dir <- paste(working.dir, "Staging", sep="/") # For finished dataframes that we aren't going to change any more
 
-model.name <- "small"
+model.name <- "ningaloo"
 
 
 #### LOAD FILES ####
@@ -228,7 +228,7 @@ ggplot(water)+
 water <- st_make_valid(water) %>% 
   st_as_sf()
 
-#water <- water[-299, ] # SPECIFIC FOR WHOLE NINGALOO MODEL
+water <- water[-299, ] # SPECIFIC FOR WHOLE NINGALOO MODEL
 
 ## Remove cells that are greater than a certain depth
 buffer_85m2 <- st_crop(buffer_85m, xmin=112.5, xmax=114.65, ymin=-24, ymax=-21.1)
