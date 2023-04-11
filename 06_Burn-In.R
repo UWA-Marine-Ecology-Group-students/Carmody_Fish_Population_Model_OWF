@@ -57,9 +57,16 @@ Mature <- readRDS("maturity")
 Weight <- readRDS("weight")
 
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-Settlement <- as.vector(Settlement[,2]) # At some point should take this out and put it into the movement file and save it correctly
 
-setwd(sp_dir)
+## Fix selectivity so you have the most up to date selectivity and you have enough layers for the model to run
+Selectivity <- Selectivity[,,45:59]
+
+for(i in 1:3){
+  Selectivity <- abind(Selectivity, Selectivity, along=3)
+}
+
+
+setwd(sg_dir)
 water <- readRDS(paste0(model.name, sep="_","water"))
 
 #### PARAMETER VALUES ####
@@ -69,7 +76,7 @@ NatMort = 0.146
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 BHa = 0.4344209 #0.4344209
-BHb =	0.01889882
+BHb = 0.003759261 #0.0009398152 #0.01889882
 PF = 0.5
 
 # Model settings
@@ -135,7 +142,7 @@ Runtime
 
 ## PLOTTING
 Total <- as.data.frame(Total)
-plot(x=seq(1,50,1), y=Total$V1)
+plot(x=seq(1,51,1), y=Total$V1)
 
 ## Save burn in population for use in the actual model
 setwd(sg_dir)

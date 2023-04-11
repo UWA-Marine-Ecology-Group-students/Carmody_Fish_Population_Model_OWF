@@ -106,37 +106,31 @@ recruitment.func <- function(Population, settlement, Max.Cell, BHa, BHb, Mature,
 # We need number survived in each age class, fishing mort. and total mort. and weight at age
 ypr.func <- function(Survived, Fishing.Mort, Nat.Mort, Weight, Age, Select){
   
-  Survived.age <- Survived[Age,12]
+  Survived.age <- Survived[Age]
   
-  fishing.mort <- Fishing.Mort[FM]*Select[(((Age-1)*12)+1),3]
+  fishing.mort <- Fishing.Mort[FM]*Select[Age,12,1]
   total.mort <- fishing.mort+Nat.Mort
   
-  ypr <- Survived.age*(fishing.mort/total.mort)*(1-exp(-total.mort))*Weight[(Age*12)+1]
+  ypr <- Survived.age*(fishing.mort/total.mort)*(1-exp(-total.mort))*Weight[Age,12]
   
   return(ypr)
   
 }
 
 bio.func <- function(Survived, Weight, Population){
-  
-  for (A in 1:30){
-    adults <- Survived[ ,12]
-    TotBio<- lapply(1:dim(Population)[3], function(Age){
-      SB <- adults[Age] * Weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
-      Bio <- sum(SB) #Gives us total biomass
-    })
-    TotalBio <- do.call(rbind, TotBio)
-  }
+    adults <- Survived
+      SB <- adults * Weight[ ,12] 
+      TotalBio <- sum(SB) #Gives us total biomass
   return(TotalBio)
 }
   
 SB.func <- function(Survived, Weight, Population, Maturity){
   for (A in 1:30){
-    adults <- Survived[ ,10]
+    adults <- Survived
     adults <- adults * 0.5
     
     MatBio<- lapply(1:dim(Population)[3], function(Age){
-      SB <- adults[Age] * Maturity[Age,1] * weight[(Age*12)+1] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
+      SB <- adults[Age] * Maturity[Age,12] * Weight[Age,12] #Gives us spawning biomass in each age group at the end of the year, hence the x 12+1 as it starts at 1 not zero
       TotMatBio <- sum(SB) #Gives us total mature spawning biomass
     })
     MatBio <- do.call(rbind, MatBio)

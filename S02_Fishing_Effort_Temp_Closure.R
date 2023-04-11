@@ -65,8 +65,6 @@ boat_days <- boat_days%>%
 ## Spatial Data
 setwd(sp_dir)
 
-water <- readRDS(paste0(model.name, sep="_","water"))
-NCELL <- nrow(water)
 network <- st_read(paste0(model.name, sep="_","network.shapefile.shp"))
 
 # Locations of the boat ramps
@@ -74,10 +72,14 @@ setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid()
+BR <- BR[1:4,]
 
 # No Take Zones
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
+
+water <- readRDS(paste0(model.name, sep="_","water"))
+NCELL <- nrow(water)
 
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
@@ -698,14 +700,14 @@ Fishing <- abind(Fishing, Fishing_1718_2, along=3)
 q <- as.data.frame(array(0, dim=c(59,1))) %>% 
   rename(Q = "V1")
 
-q[1:30, 1] <- 0.005
+q[1:30, 1] <- 0.01 # 0.035
 
 
-for (y in 31:59){
+for (y in 31:51){
   q[y,1] <- q[y-1,1] * 1.02
 }
 
-Fishing2 <- Fishing
+q[52:59,1] <- q[51,1]
 
 # Now calculate F by multiplying our effort by q
 for (y in 1:59){
@@ -714,8 +716,6 @@ for (y in 1:59){
 
 #### SAVE DATA ####
 setwd(sg_dir)
-
-saveRDS(Fishing, file=paste0("ningaloo", sep="_", "fishing"))
 
 # Remove fishing effort for six months out of the year to simulate a temporal closure from 2008 which covers the spawning season
 Fishing[ ,c(1,2,3,10,11,12), 28:59] <- 0

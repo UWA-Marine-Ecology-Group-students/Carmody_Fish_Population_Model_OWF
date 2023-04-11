@@ -7,7 +7,7 @@
 ###################################################
 
 
-## NEED TO CHANGE THE INITIAL FISHING MORTALITY AT 1965 TO BE THE SAME AS THE EQLUILIBRIUM LEVEL ##
+## NEED TO CHANGE THE INITIAL FISHING MORTALITY AT 1960 TO BE THE SAME AS THE EQLUILIBRIUM LEVEL ##
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
@@ -62,17 +62,20 @@ boat_days <- boat_days%>%
   mutate(Month = fct_relevel(Month, c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
 
 ## Spatial Data
-setwd(sp_dir)
+setwd(sg_dir)
 
 water <- readRDS(paste0(model.name, sep="_","water"))
 NCELL <- nrow(water)
+
+setwd(sp_dir)
 network <- st_read(paste0(model.name, sep="_","network.shapefile.shp"))
 
 # Locations of the boat ramps
 setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
-  st_make_valid()
+  st_make_valid() 
+BR <- BR[1:4,]
 
 # No Take Zones
 setwd(sg_dir)
@@ -299,6 +302,75 @@ MonthPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_point(aes(x=Unique, y=Total_Boat_Days))
 
+temp <- Full_Boat_Days %>% 
+  group_by(Year) %>% 
+  summarise(., sum(Total_Boat_Days))
+
+#### CALCULATE CATCHABILITY VARYING BY CELL SIZE ####
+water <- water %>% 
+  mutate(Area = as.vector((water$cell_area)/1000000))
+
+water_area <- water %>% 
+  dplyr::select(Fished_1960, Fished_1987, Fished_2005, Fished_2017, Area) %>% 
+  mutate(Area_60 = ifelse(Fished_1960 %in% c("N"), 0, Area)) %>% 
+  mutate(Area_87 = ifelse(Fished_1987 %in% c("N"), 0, Area)) %>% 
+  mutate(Area_05 = ifelse(Fished_2005 %in% c("N"), 0, Area)) %>% 
+  mutate(Area_17 = ifelse(Fished_2017 %in% c("N"), 0, Area)) %>% 
+  dplyr::select(Area_60, Area_87, Area_05, Area_17) %>% 
+  mutate(Sum_60 = sum(Area_60)) %>% 
+  mutate(Sum_87 = sum(Area_87)) %>% 
+  mutate(Sum_05 = sum(Area_05)) %>% 
+  mutate(Sum_17 = sum(Area_17)) %>% 
+  st_drop_geometry() %>% 
+  mutate(q_60 = Area_60/Sum_60) %>% 
+  mutate(q_87 = Area_87/Sum_87) %>% 
+  mutate(q_05 = Area_05/Sum_05) %>% 
+  mutate(q_17 = Area_17/Sum_17) %>% 
+  mutate(ID = row_number())
+
+spatial_q <- array(0.000005, dim=c(NCELL, 59))
+
+for (y in 31:51){
+  spatial_q[ ,y] <- spatial_q[ ,y-1] * 1.02
+}
+
+spatial_q[,52:59] <- spatial_q[,51]
+
+for(COL in 1:27){
+  for (ROW in 1:NCELL){
+    
+    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,9])
+    
+  }
+}
+
+for(COL in 28:45){
+  for (ROW in 1:NCELL){
+    
+    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,10])
+    
+  }
+}
+
+for(COL in 46:57){
+  for (ROW in 1:NCELL){
+    
+    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,11])
+    
+  }
+}
+
+for(COL in 58:59){
+  for (ROW in 1:NCELL){
+    
+    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,12])
+    
+  }
+}
+
+spatial_q[spatial_q == Inf] <- 0
+
+max(spatial_q)
 ## Save the monthly allocations for use in later things 
 setwd(sg_dir)
 
@@ -311,6 +383,11 @@ saveRDS(Month_Prop_Ave, file="Average_Monthly_Effort")
 #   mutate(Total_Boat_Days = Total_Boat_Days*2)
 
 #### ALLOCATION EFFORT TO BOAT RAMPS ####
+
+## NEED TO CHANGE TOTAL BOAT DAYS TO FISHING MORTALITY
+
+# Full_Boat_Days <- Full_Boat_Days %>% 
+#   mutate(Total_Boat_Days = Total_Boat_Days*(0.005/12))
 
 # Split up the effort to Boat Ramps according to the information we have collected from Exmouth about how often people
 # Use the boat ramps - the Exmouth Marina wasn't constructed until 1997 but there was a ramp at town beah from the 60s 
@@ -398,7 +475,7 @@ DistBR <- as.data.frame(t(network_matrix)) %>%
 #### SETTING UP UTILITY FUNCTION ####
 # Create a data frame with both the distances and the areas of the cells
 Cell_Vars <- DistBR %>% 
-  mutate(Area = as.vector((water$cell_area)/100000))#Cells are now in km^2 but with no units
+  mutate(Area = as.vector((water$cell_area)/1000000))#Cells are now in km^2 but with no units
 
 ## Now need to create a separate fishing surface for each month of each year based on distance to boat ramp, size of each
 ## cell and multiply that by the effort in the cell to spatially allocate the effort across the area
@@ -410,11 +487,11 @@ NCELL_0517 <- NCELL-length(NoTake[[2]])
 NCELL_1718 <- NCELL-length(NoTake[[3]])
 
 # Add coefficients to each variable - all the BRs are the same but make them negative because the further away they are the less likely people are to visit
-a = 0.1
-b = -0.1 
-c = -0.1 
-d = -0.1
-e = -0.1
+a = 0.0005
+b = -0.001
+c = -0.001
+d = -0.001
+e = -0.001
 
 Vj <- Cell_Vars %>% 
   mutate(Bd_BR = Bd_BR*b,
@@ -572,8 +649,7 @@ for(YEAR in 1:27){
         Ramps[CELL,RAMP] <- BR_U_6086[CELL,RAMP] * temp[MONTH,RAMP]
       }
     }
-    
-    Months[,MONTH] <-  rowSums(Ramps)
+    Months[,MONTH] <- rowSums(Ramps)
   }
   Fishing_6086[ , ,layer] <- Months 
   layer <- layer+1
@@ -692,22 +768,9 @@ Fishing <- abind(Fishing_6086, Fishing_8705_2, along=3)
 Fishing <- abind(Fishing, Fishing_0517_2, along=3)
 Fishing <- abind(Fishing, Fishing_1718_2, along=3)
 
-#### Determining catchability ####
-## Have estimated an increase in recreational efficiency 2% per year 1990 when colour sounders become more commonplace (GPS was 2002) according to Marriott et al. 2011
-q <- as.data.frame(array(0, dim=c(59,1))) %>% 
-  rename(Q = "V1")
-
-q[1:30, 1] <- 0.005
-
-
-for (y in 31:59){
-  q[y,1] <- q[y-1,1] * 1.02
-}
-
-
-# Now calculate F by multiplying our effort by q
-for (y in 1:59){
-  Fishing[,,y] <- Fishing[,,y]*q[y,1]
+### ADD CATCHABILITY ####
+for (YEAR in 1:59){
+  Fishing[,,YEAR] <- Fishing[,,YEAR] * spatial_q[,YEAR]
 }
 
 #### SAVE DATA ####
@@ -720,10 +783,19 @@ saveRDS(Fishing, file=paste0("ningaloo", sep="_", "fishing"))
 #### SETTING UP EFFOR FOR BURN IN ####
 ## Need to set effort to be a consistent low level for the burn in, we can use the same value we're using to set up the initial population 
 
+BR_Trips <- data.frame(BoatRamp = c("Tantabiddi", "Bundegi", "ExmouthMar", "CoralBay"),
+                       Effort = c(194.48, 133.9, 166.15, 146.07),
+                       Trips = c(224, 157, 198, 151))
+
+BR_Trips <- BR_Trips %>% 
+  mutate(Trip_per_Hr = as.numeric(unlist((Trips/Effort)))) %>% # Standardise the no. trips based on how much time you spent sampling
+  mutate(BR_Prop = Trip_per_Hr/sum(Trip_per_Hr)) %>% #Then work out the proportion of trips each hour that leave from each boat ramp
+  mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008 as the boat ramp pretty much didn't exist, have allocated 10% of its boats to the other Exmouth Boat Ramps
+
 # Fishing parameters
-eq.init.fish = 0.025
-q = 0.005 
-Effort = eq.init.fish/q # We assume the same level of nominal effort in each year
+eq.init.fish = 0.025 
+q = 0.0005
+Effort = (-log(1-eq.init.fish))/q # We assume the same level of nominal effort in each year
 
 ## Split up this effort by the same proprtions as before and allocate it to the different access points
 # Months
@@ -746,7 +818,7 @@ for(M in 1:12){
 }
 
 ## Allocate to the cells using the same utilities that we set up earlier
-Burn_In_Fishing <- array(0, dim=c(NCELL, 12, 50)) #This array has a row for every cell, a column for every month, and a layer for every year
+Burn_In_Fishing <- array(0, dim=c(NCELL, 12, 75)) #This array has a row for every cell, a column for every month, and a layer for every year
 Months <- array(0, dim=c(NCELL, 12))
 Ramps <- array(0, dim=c(NCELL, 4))
 layer <- 1
@@ -770,6 +842,7 @@ for(YEAR in 1:50){
     Months[,MONTH] <-  rowSums(Ramps)
   }
   Burn_In_Fishing[ , ,layer] <- Months 
+  Burn_In_Fishing[ , ,layer] <- Burn_In_Fishing[ , ,layer] * spatial_q[,1]
   layer <- layer+1
 }
 

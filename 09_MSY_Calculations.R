@@ -1,3 +1,9 @@
+###################################################
+
+# Script for trying to figure out the MSY of the 
+# population and then creating Kobe plots 
+
+###################################################
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
@@ -5,6 +11,11 @@ library(sf)
 library(forcats)
 library(RColorBrewer)
 library(MQMF)
+library(Rcpp)
+library(RcppArmadillo)
+library(raster)
+library(sfnetworks)
+library(abind)
 
 rm(list = ls())
 #### SET DIRECTORIES ####
@@ -17,17 +28,25 @@ sg_dir <- paste(working.dir, "Staging", sep="/")
 pop_dir <-  paste(working.dir, "Output_Population", sep="/")
 sim_dir <- paste(working.dir, "Simulations", sep="/")
 
-model.name <- "small"
+model.name <- "ningaloo"
+
+## Read in functions
+setwd(working.dir)
+sourceCpp("X_Model_RccpArm.cpp")
+source("X_Functions.R")
 
 #### READ IN DATA ####
 setwd(sg_dir)
-
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
+Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
+Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water"))
-StartPop <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
-selectivity <- readRDS("selret")
-maturity <- readRDS("maturity")
-weight <- readRDS("weight")
+YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+Selectivity <- readRDS("selret")
+Mature <- readRDS("maturity")
+Weight <- readRDS("weight")
+
 
 # Fishing effort surface
 month.ave <- readRDS("Average_Monthly_Effort")
@@ -37,9 +56,7 @@ BR <- st_read("Boat_Ramps.shp") %>%
   st_transform(4283)%>%
   st_make_valid()
 
-## Read in functions
-setwd(working.dir)
-source("X_Functions.R")
+network <- st_read(paste0(model.name, sep="_","network.shapefile.shp"))
 
 NCELL <- nrow(water)
 
@@ -47,42 +64,41 @@ NCELL <- nrow(water)
 #* PARAMETER VALUES ####
 ## Natural Mortality
 # We have instantaneous mortality from Marriott et al 2011 and we need to convert that into monthly mortality
-M <- 0.146
+NatMort <- 0.146
 step <- 1/12 # We're doing a monthly time step here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
-alpha <- 0.4344209 #0.4344209
-beta <-	0.01889882 #0.01889882
+BHa = 0.4344209 #0.4344209
+BHb = 0.0009398152 #0.01889882
+PF = 0.5
 
-NCELL <- nrow(water)
-Ages <- seq(1,30) #These are the ages you want to plot 
-Time <- seq(1,59) #This is how long you want the model to run for
 # PlotTotal <- T #This is whether you want a line plot of the total or the map
 
 Pop.Groups <- seq(1,12)
 
 #### SET UP FISHING EFFORT FOR EACH LEVEL OF F ####
 
-q <- 0.005 # Value often used when we don't know what our value of q is meant to be
+q <- 0.01 # Value often used when we don't know what our value of q is meant to be
 
 ## Effort values 
-F_values <- seq(0, 0.5, 0.05) # These are the values of F that we want to cycle through to see where our MSY is
-E_values <- as.data.frame(array(0, dim = c(11, 13))) %>% 
-  mutate(V1 = F_values/q) # These are my yearly effort values that come from catchability and the level F we want 
+F_finite_values <- seq(0, 0.9, 0.05) # These are the values of F that we want to cycle through to see where our MSY is
+E_values <- as.data.frame(array(0, dim = c(19, 13))) %>% 
+  mutate(V1 = -log(1-F_finite_values)) %>%  # These are my big F instantaneous values
+  mutate(V1 = V1/q)
 
 names(E_values)[1:13] <- c("Yearly_Total", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 ## Allocation to months
 Monthly_effort <- E_values[,2:13]
 
-for(E in 1:11){
+for(E in 1:19){
   for(M in 1:12){
     Monthly_effort[E,M] <- month.ave[M,2] * E_values[E,1] 
   }
 }
 
 Monthly_effort <- Monthly_effort %>% 
-  mutate(FM = F_values)
+  mutate(FM = F_finite_values)
 
 ## Allocation to boat ramps
 BR_Trips <- data.frame(BoatRamp = c("Tantabiddi", "Bundegi", "ExmouthMar", "CoralBay"),
@@ -111,33 +127,38 @@ check <- Full_Effort %>%
 ## Allocating effort to the cells
 
 ## Work out the probability of visiting a cell from each boat ramp based on distance and size
-BR <- st_sf(BR)
+## Work out the probability of visiting a cell from each boat ramp based on distance and size
+BR <- st_as_sf(BR)
+st_crs(BR) <- NA 
 
-water <- water %>% 
-  mutate(DistBR = 0) %>% 
-  mutate(cell_area = st_area(Spatial))
+BR <- BR[1:4, ] %>% 
+  mutate(name = c("Bundegi","Exmouth","Tantabiddi","CoralBay"))
 
 centroids <- st_centroid_within_poly(water)
+points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the bottom left and then work their way their way right
+  mutate(ID=row_number()) 
+points_sf <- st_as_sf(points, coords = c("X", "Y")) 
+st_crs(points_sf) <- NA
 
-# Working out distance from each BR to each cell
-DistBR <- as.data.frame(array(0, dim = c(NCELL,3))) # This will contain the distance from each boat ramp to every cell
 
-for(CELL in 1:NCELL){
-  
-  for(RAMP in 1:4){
-    x <- st_distance(centroids[CELL,1], BR[RAMP,3])
-    DistBR[CELL,RAMP] <- (x/1000) #to get the distance in km
-    
-  }
-}
+network <- as_sfnetwork(network, directed = FALSE) %>%
+  activate("edges") %>%
+  mutate(weight = edge_length())
 
-# Create a data frame with both the distances and the areas of the cells
-Cell_Vars <- DistBR %>% 
-  mutate(Area = as.vector((water$cell_area)/100000)) %>% #Cells are now in km^2 but with no units
+net <- activate(network, "nodes")
+network_matrix <- st_network_cost(net, from=BR, to=points_sf)
+network_matrix <- network_matrix*111
+dim(network_matrix)
+
+DistBR <- as.data.frame(t(network_matrix)) %>% 
   rename("Bd_BR"=V1) %>% 
   rename("ExM_BR" = V2) %>% 
   rename("Tb_BR" = V3) %>% 
   rename("CrB_BR"=V4)
+
+# Create a data frame with both the distances and the areas of the cells
+Cell_Vars <- DistBR %>% 
+  mutate(Area = as.vector((water$cell_area)/100000)) #Cells are now in km^2 but with no units
 
 ## Work out the utilities for each cell
 BR_U <- as.data.frame(matrix(0, nrow=NCELL, ncol=4)) #Set up data frame to hold utilities of cells
@@ -184,19 +205,19 @@ for (RAMP in 1:4){
 colSums(Pj)
 
 # Allocate effort to cells
-Fishing_MSY <- array(0, dim=c(NCELL, 12,11)) #This array has a row for every cell, a column for every month, and a layer for every value of F
+Fishing_MSY <- array(0, dim=c(NCELL, 12,19)) #This array has a row for every cell, a column for every month, and a layer for every value of F
 Months <- array(0, dim=c(NCELL, 12))
 Ramps <- array(0, dim=c(NCELL, 4))
 layer <- 1
 
-for(fm in 1:11){
+for(fm in 1:19){
   
   for(MONTH in 1:12){
     
     for(RAMP in 1:4){
       
       temp <- Full_Effort %>% 
-        filter(FM == as.numeric(F_values[fm])) %>% 
+        filter(FM == as.numeric(F_finite_values[fm])) %>% 
         dplyr::select(-c(Month, FM, Effort))
       
       temp <- as.matrix(temp) 
@@ -213,88 +234,119 @@ for(fm in 1:11){
 }
 
 Fishing_MSY <- Fishing_MSY*q
+Effort <- Fishing_MSY
+
+sum(Effort[,,8])
 
 #### SET UP INITIAL POPULATION ####
-YearlyTotal <- StartPop
-survived.age <- array(0, dim=c(length(Ages),12))
-YPR <- array(0, dim=c(length(Ages), 1))
-Biomass <- array(0, dim=c(length(Ages), 1))
-SB <- array(0, dim=c(length(Ages), 1))
-YPR.F <- array(0, dim=c(11, 2))
-YPR.F[,1] <- seq(0,0.5,0.05)
-Biomass.F <- array(0, dim=c(11, 2))
-Biomass.F[,1] <- seq(0,0.5,0.05)
-SB.F <- array(0, dim=c(11, 2))
-SB.F[,1] <- seq(0,0.5,0.05)
-
-bio.catch <- array(0, dim=c(NCELL, length(Ages)))
-monthly.catch <- array(0, dim=c(length(Ages), 12))
-Flevel.catch <- array(0, dim=c(11, 1))
-
 NCELL <- nrow(water)
 Ages <- seq(1,30) #These are the ages you want to plot 
+MaxAge <- 30
+MaxYear <- 59
+MaxCell <- NCELL
+PF <- 0.5
+
+survived.age <- array(0, dim=c(MaxAge,19))
+YPR <- array(0, dim=c(MaxAge, 1))
+Biomass <- array(0, dim=c(MaxAge, 1))
+SB <- array(0, dim=c(MaxAge, 1))
+YPR.F <- array(0, dim=c(19, 2))
+YPR.F[,1] <- seq(0,0.9,0.05)
+Biomass.F <- array(0, dim=c(19, 2))
+Biomass.F[,1] <- seq(0,0.9,0.05)
+SB.F <- array(0, dim=c(19, 2))
+SB.F[,1] <- seq(0,0.9,0.05)
+
+bio.catch <- array(0, dim=c(MaxAge, 19))
+yearly.catch <- array(0, dim=(c(MaxYear, 1)))
+catch.by.age <- array(0, dim=(c(MaxAge, 19)))
+Flevel.catch <- array(0, dim=c(19, 1))
+
+Selectivity <- Selectivity[,,45:59] # Have to modify this to just be years where selectivity is the same as it is now, otherwise we get the selectivity where everything gets fished
 
 ##### RUN MODEL #####
-# Need a loop that iterates over the values of F (start with 0 - 0.5 in 0.05 increments)
 # Need to get it to produce the plots we want as well 
-# I think the only function I'll be using from the main model is the mortality function
-for(FM in 1:11){
-  for(MONTH in 1:11){
-    for(A in 1:dim(StartPop)[3]){
-      
-      if(MONTH==12 & 2<=A & A<30){
-        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=Fishing_MSY, Max.Cell = NCELL,
-                                         Month=MONTH, Select=selectivity, Population=StartPop, Year=FM)
-        
-        YearlyTotal[ ,1, A+1] <- survived.catch[[1]]
-        
-        
-        # Calculate catch
-        n.catch <- survived.catch[[2]]
-        
-        bio.catch[ ,A] <- n.catch * weight[(A*12)+1]
-      } else if (MONTH!=12) {
-        survived.catch <- mortality.func(Age=A, Nat.Mort=M, Effort=Fishing_MSY, Max.Cell = NCELL,
-                                         Month=MONTH, Select=selectivity, Population=YearlyTotal, Year=FM) # Changing Year to be the level of fishing mortality
-        
-        YearlyTotal[ ,MONTH+1,A] <- survived.catch[[1]]
-        
-        # Calculate catch
-        n.catch <- survived.catch[[2]]
-        
-        bio.catch[ ,A] <- n.catch * weight[(A*12)+1] # Catch of each age class in each month
-      }
-     
-       survived.age[A,MONTH+1] <- sum(survived.catch[[1]]) # Gives us one value for all fish of that age group that survived
+# Want it to run for a year and then get the values for the population at the end of the year 
+setwd(sg_dir)
+
+for(FM in 1:19){
+  
+  print(FM)
+  
+  start.pop <- readRDS(paste0(model.name, sep="_","Starting_Pop"))
+  Total <- array(0, dim=c(MaxYear,1))
+  
+  YearlyTotal <- array(0, dim = c(MaxCell,12,30)) #This is our yearly population split by age category (every layer is an age group)
+  
+  start.pop.year <- start.pop %>% 
+    slice(which(row_number() %% 12 == 1)) # Gives you the total in each age group at the end of the year
+  
+  for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with the fish in age group summing to the total we calculated above - beware the numbers change slightly due to rounding errors
+    for(N in 1:start.pop.year[d,1]){
+      cellID <- ceiling((runif(n=1, min = 0, max = 1))*MaxCell)
+      YearlyTotal[cellID,1,d] <- YearlyTotal[cellID,1,d]+1
+    }
+  }
+  
+  
+  Effort <- abind(Fishing_MSY[,,FM],Fishing_MSY[,,FM], along=3)
+  Effort <- abind(Effort, Effort, along=3)
+  Effort <- abind(Effort, Effort, along=3)
+  Effort <- abind(Effort, Effort, along=3)
+  
+  
+  for (YEAR in 1:10){ # Start of model year loop - set it as 45 to make sure the selectivity is the same as present day
     
-       }
-    # This is where we just take the values last month of the year
-    if(MONTH==11){
-      for(A in 1:dim(YearlyTotal)[3])
-        
-      YPR <- ypr.func(survived.age, F_values, M, weight, Age=A, selectivity)
-      Biomass <- bio.func(survived.age, weight, YearlyTotal)
-      SB <- SB.func(survived.age, weight, YearlyTotal, maturity)
+    ## Loop over all the Rcpp functions in the model
+    
+    ModelOutput <- RunModelfunc_cpp(YEAR, MaxAge, MaxYear, MaxCell, NatMort, BHa, BHb, PF, 
+                                    AdultMove, Mature, Weight, Settlement, 
+                                    YearlyTotal, Selectivity, Effort)
+    
+    survived.age[,FM] <- colSums(ModelOutput$YearlyTotal[,12,]) #No. fish that survived the year in each age class
+    
+    
+    total.catch <- ModelOutput$Month_catch # This gives you catch by *weight* in each cell for each month, which each layer representing an age class
+    bio.catch[,FM] <- colSums(total.catch[,,1:MaxAge], dim=2) # Biomass of fish caught in each age group 
+    monthly.catch <- ModelOutput$age_catch #This is the *number* of fish in each age class caught in each cell
+    catch.by.age[,FM] <- colSums(monthly.catch[,,1:MaxAge], dim=2) 
+    
+    
+  } # End of model year loop
+  
+  for(A in 1:30){
+    YPR[A,1] <- ypr.func(survived.age[,FM], F_finite_values, M, Weight, Age=A, Selectivity)
+    YPR.F[FM,2] <- sum(YPR)
+  }      
+      
+      Biomass <- bio.func(survived.age[,FM], Weight, YearlyTotal)
+      
+      ## Currently not right because you're using month 12 but you need to change how you get survived.age to get month 10 as well
+      SB <- SB.func(survived.age[,FM], Weight, YearlyTotal, Mature)
       
       
-      YPR.F[FM,2] <- sum(YPR)
+      
       Biomass.F[FM,2] <- sum(Biomass)
       SB.F[FM,2] <- sum(SB)
-    } else { }
+
     
-    monthly.catch[1:30,MONTH] <- colSums(bio.catch) # Total catch in each month
-    
-  }
+
   Flevel.catch[FM,1] <- sum(monthly.catch) # Total catch across the year for each level of F
   
   # Create plots at the very end of the loop with all of the different values of F
-  if(A==30 & MONTH==11){
     MSY.plots <- msy.plot.func(YPR.F, Biomass.F, SB.F) # List with my three different plots in it
-  } else { }
 }
+
 MSY.plots[[1]]
 MSY.plots[[2]]
 MSY.plots[[3]]
+
+dead <- ModelOutput$age_died
+dead30 <- sum(dead[,,30])
+survived <- ModelOutput$age_survived
+survived30 <- sum(survived[,,30])
+catch <- ModelOutput$age_catch
+catch30 <- sum(catch[,,30])
 
 
 #### KOBE PLOT ####
@@ -314,3 +366,70 @@ F_SB_Plot <- F_SB %>%
   theme_classic()+
   xlab("Total Spawning Biomass")+
   ylab("Yearly Fishing Effort")
+
+
+
+##### SORTING THIS OUT #####
+tot_survived_monthly <- array(0, dim=c(30,12))
+tot_survived <- array(0, dim=c(30,19))
+
+MONTH <- 1
+YEAR <- 1
+FM <- 19
+
+start.pop <- readRDS(paste0(model.name, sep="_","Starting_Pop"))
+Total <- array(0, dim=c(MaxYear,1))
+
+YearlyTotal <- array(0, dim = c(MaxCell,12,30)) #This is our yearly population split by age category (every layer is an age group)
+
+start.pop.year <- start.pop %>% 
+  slice(which(row_number() %% 12 == 1)) # Gives you the total in each age group at the end of the year
+
+for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with the fish in age group summing to the total we calculated above - beware the numbers change slightly due to rounding errors
+  for(N in 1:start.pop.year[d,1]){
+    cellID <- ceiling((runif(n=1, min = 0, max = 1))*MaxCell)
+    YearlyTotal[cellID,1,d] <- YearlyTotal[cellID,1,d]+1
+  }
+}
+
+Month_effort_cehck <- Monthly_effort*q
+
+for(FM in 1:19){
+  for(AGE in 1:30){
+    tot_survived[AGE, 2] = sum(exp(-(Selectivity[15, ,45]*Effort[, ,45])))
+  }
+}
+
+
+temp <- Selectivity[15, ,45]*Effort[, ,45]
+
+sum(temp)
+
+MONTH <- 6
+YEAR <- 58
+
+for(AGE in 0:29){
+  ModelOutput <- mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort,
+                                   Weight, Selectivity, YearlyTotal, Effort)
+}
+
+temp <- array(0, dim=c(MaxCell,1))
+for(CELL in 1:MaxCell){
+  temp[CELL,1] <- 1 - (exp(-Selectivity[AGE,6,40]*Effort[CELL,6,40]))
+}
+
+sum(PopTotal[,6,59])
+sum(ModelOutput$tot_survived)
+sum(ModelOutput$tot_died)
+sum(ModelOutput$Fish_catch)
+sum(ModelOutput$finite_f)
+
+survived <- sum(ModelOutput$tot_survived) #14046.86
+died <- sum(ModelOutput$tot_died) #173.1827
+start <- survived + died #14220.04
+caught <- sum(ModelOutput$Fish_catch) #0.0177405 but should be = to died.from.fish which is 1.235338
+natural <- start *(1-exp(-(NatMort/12.0))) #171.9623
+died.from.fish <- sum(ModelOutput$Pop_check)
+
+
+

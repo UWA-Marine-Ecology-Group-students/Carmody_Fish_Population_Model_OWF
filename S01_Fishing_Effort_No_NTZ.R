@@ -65,9 +65,6 @@ boat_days <- boat_days%>%
 
 ## Spatial Data
 setwd(sp_dir)
-
-water <- readRDS(paste0(model.name, sep="_","water"))
-NCELL <- nrow(water)
 network <- st_read(paste0(model.name, sep="_","network.shapefile.shp"))
 
 # Locations of the boat ramps
@@ -75,10 +72,13 @@ setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid()
+BR <- BR[1:4,]
 
 # No Take Zones
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
+water <- readRDS(paste0(model.name, sep="_","water"))
+NCELL <- nrow(water)
 
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####
 
@@ -486,13 +486,14 @@ for(YEAR in 1:59){
 q <- as.data.frame(array(0, dim=c(59,1))) %>% 
   rename(Q = "V1")
 
-q[1:30, 1] <- 0.005
+q[1:30, 1] <- 0.01
 
 
-for (y in 31:59){
+for (y in 31:51){
   q[y,1] <- q[y-1,1] * 1.02
 }
 
+q[52:59,1] <- q[51,1]
 Fishing2 <- Fishing
 
 # Now calculate F by multiplying our effort by q

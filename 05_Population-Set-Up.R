@@ -70,7 +70,6 @@ M95 = 5.97 # From Marriott et al. 2011
 
 # Fishing parameters
 eq.init.fish = 0.025
-q = 0.005 # Apparently this is what lots of stock assessments set q to be...
 
 #### SET UP LIFE HISTORY VALUES FOR L. NEBULOSUS ####
 
@@ -182,7 +181,7 @@ Equil.Rec <- (Fish.Fem.SSB-alpha)/(beta*Fish.Fem.SSB)
 ## the proportion of females at age
 ## We also need to decide on an initial level of recruitment (in thousands)
 
-init.recruit <- 50000 # in thousands - normally 5000 for big model, 5 for small model
+init.recruit <- 250 # in thousands - normally 5000 for big model, 5 for small model
 
 ## Calculate initial fished recruitment
 
