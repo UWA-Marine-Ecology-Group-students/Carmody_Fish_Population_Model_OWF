@@ -198,7 +198,8 @@ for (SIM in 1:1){ # Simulation loop
     age.catch[,,YEAR+1] <- colSums(monthly.catch) #This is the number of fish in each age class caught in each month
 
     # yearly.catch[YEAR+1,1] <- sum(bio.catch)
-    catch.by.age[,YEAR+1] <- sum(age.catch[,,YEAR+1])
+    catch.by.age[,YEAR+1] <- rowSums(age.catch[,,YEAR+1])
+    colSums(catch.by.age)
     
     # fish.died <- ModelOutput$age_died
     # monthly.death[ , , YEAR] <- t(colSums(fish.died[,,1:MaxAge], dim=1))

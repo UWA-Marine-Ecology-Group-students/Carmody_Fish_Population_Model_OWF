@@ -339,7 +339,7 @@ spatial_q[,52:59] <- spatial_q[,51]
 for(COL in 1:27){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,9])
+    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,9])
     
   }
 }
@@ -347,7 +347,7 @@ for(COL in 1:27){
 for(COL in 28:45){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,10])
+    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,10])
     
   }
 }
@@ -355,7 +355,7 @@ for(COL in 28:45){
 for(COL in 46:57){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,11])
+    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,11])
     
   }
 }
@@ -363,7 +363,7 @@ for(COL in 46:57){
 for(COL in 58:59){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.25*(spatial_q[ROW,COL]/water_area[ROW,12])
+    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,12])
     
   }
 }
