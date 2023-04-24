@@ -302,6 +302,21 @@ MonthPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_point(aes(x=Unique, y=Total_Boat_Days))
 
+EffortPlot <- Full_Boat_Days %>%
+  group_by(Year) %>% 
+  summarise(., sum(Total_Boat_Days)) %>% 
+  ggplot() +
+  geom_line(aes(x=Year, y=`sum(Total_Boat_Days)`)) + 
+  theme_classic()+
+  ylab("Effort (Boat Days)")+
+  geom_vline(xintercept=1991, linetype="dotted", color="#302383")+
+  geom_vline(xintercept=1995, linetype="dashed", colour="#66CCEE")
+EffortPlot
+
+setwd(fig_dir)
+a4.width <- 160
+ggsave(EffortPlot, filename="Effort_Plot.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 temp <- Full_Boat_Days %>% 
   group_by(Year) %>% 
   summarise(., sum(Total_Boat_Days))

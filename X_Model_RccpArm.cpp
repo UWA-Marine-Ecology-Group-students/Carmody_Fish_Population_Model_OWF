@@ -40,6 +40,7 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
   arma::vec tot_died(MaxCell);
   arma::vec caught(MaxCell);
   arma::vec finite_f(MaxCell);
+  arma::vec caught_weight(MaxCell);
   
   // arma::vec tot_survived(MaxCell);
   // arma::vec sel_effort(MaxCell);
@@ -52,6 +53,7 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
     caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-(exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))));
     tot_died(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) - tot_survived(Cell_rw);
     finite_f(Cell_rw) = (exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR)));
+    caught_weight(Cell_rw) = caught(Cell_rw) * Weight(AGE, MONTH);
   }
     //tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) - tot_died(Cell_rw);
 
@@ -60,7 +62,8 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
   return Rcpp::List::create(Rcpp::Named("tot_survived") = tot_survived,
                             Rcpp::Named("tot_died") = tot_died,
                             Rcpp::Named("Catch") = caught,
-                            Rcpp::Named("finite_f") = finite_f);
+                            Rcpp::Named("finite_f") = finite_f,
+                            Rcpp::Named("Catch_weight") = caught_weight);
 }
 
 
@@ -123,6 +126,7 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
   Rcpp::NumericVector Fish_catch(MaxCell);
   Rcpp::NumericVector tot_mort(MaxCell);
   Rcpp::NumericVector caught(MaxCell);
+  Rcpp::NumericVector caught_weight(MaxCell);
   Rcpp::NumericVector tot_survived(MaxCell);
   Rcpp::NumericVector finite_f(MaxCell);
   Rcpp::NumericVector tot_died(MaxCell);
@@ -132,6 +136,7 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
   Rcpp::NumericVector BH_recs(MaxCell);
   
   arma::cube month_catch(MaxCell, 12, MaxAge);
+  arma::cube month_catch_weight(MaxCell, 12, MaxAge);
   arma::cube age_catch(MaxCell, 12, MaxAge);
   arma::cube tot_mort_all(MaxCell, 12, MaxAge);
   arma::cube age_dead(MaxCell, 12, MaxAge);
@@ -163,6 +168,8 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
               tot_survived = Res["tot_survived"];
               tot_died = Res["tot_died"];
               caught = Res["Catch"];
+              caught_weight = Res["Catch_weight"];
+              
               
               for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
                 YearlyTotal(Cell_rw,0,AGE+1) = tot_survived(Cell_rw);
@@ -176,6 +183,7 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
           tot_survived = Res["tot_survived"];
           tot_died = Res["tot_died"];
           caught = Res["Catch"];
+          caught_weight = Res["Catch_weight"];
           
           for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
             YearlyTotal(Cell_rw,MONTH+1,AGE) = tot_survived(Cell_rw);
@@ -184,6 +192,7 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
         // setting other outputs 
         for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
           month_catch(Cell_rw,MONTH,AGE) = caught(Cell_rw);
+          month_catch_weight(Cell_rw,MONTH,AGE) = caught_weight(Cell_rw);
           age_dead(Cell_rw,MONTH,AGE) = tot_died(Cell_rw);
           age_survived(Cell_rw,MONTH,AGE) = tot_survived(Cell_rw);
         }
@@ -207,6 +216,7 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
                             Rcpp::Named("settle_recs") = settle_recs,
                             Rcpp::Named("BH_recs") = BH_recs,
                             Rcpp::Named("month_catch") = month_catch,
+                            Rcpp::Named("month_catch_weight") = month_catch_weight,
                             Rcpp::Named("age_died") = age_dead,
                             Rcpp::Named("age_survived") = age_survived);
   

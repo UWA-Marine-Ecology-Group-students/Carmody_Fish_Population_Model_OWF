@@ -49,7 +49,7 @@ model.name <- "ningaloo"
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
 BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
@@ -59,8 +59,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-# setwd(sim_dir)
-# Effort <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
+setwd(sim_dir)
+Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+Scenario <- "S01"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -132,37 +133,36 @@ AgePlots <- list()
 TimesPlotted = 0
 
 #### SET UP INITIAL POPULATION ####
+
+## To save population information
 PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 Total <- array(NA, dim=c(MaxYear,1)) # For plotting
-bio.catch <- array(0, dim=c(MaxCell, MaxAge))
-yearly.catch <- array(0, dim=(c(MaxYear, 1)))
+Pop.Total.Dist <- array(0, dim=c(MaxCell, MaxYear))
+
+## To save catch information
+age.catch <- array(0, dim=c(12, MaxAge, MaxYear))
+catch.by.cell <- array(0, dim=c(MaxCell, MaxYear))
 catch.by.age <- array(0, dim=(c(MaxAge, MaxYear)))
-monthly.death <- array(0, dim=(c(MaxAge, 12, MaxYear)))
-monthly.survived <- array(0, dim=(c(MaxAge, 12, MaxYear)))
-monthly.finite <- array(0, dim=(c(MaxAge, 12, MaxYear)))
-monthly.caught <- array(0, dim=(c(MaxAge, 12, MaxYear)))
-age.catch <- array(0, dim=(c(MaxAge, 12, MaxYear)))
+catch.by.weight <- array(0, dim=(c(MaxCell, MaxYear)))
 
-Sim_Pop <- array(0, dim=c(MaxYear, 100))
-Sim_Catches <- array(0, dim=c(MaxYear, 100))
-Sim_Ages <- array(0, dim=c(MaxYear, MaxAge, 100))
+## Save all information by simulation
+Sim.Pop <- array(0, dim=c(MaxYear, 100))
+Sim.Ages <- array(0, dim=c(MaxAge, MaxYear, 100))
  
-Sp_Pop_F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
-Sp_Pop_NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
+Sp.Pop.F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
+Sp.Pop.NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
 
-# Sp_Pop_F <- array(0, dim=c(MaxCell, MaxAge, MaxYear))
-# Sp_Pop_NTZ <- array(0, dim=c(MaxCell, MaxAge, MaxYear))
-
-SIM_Sp_F <- list()
-SIM_SP_NTZ <- list()
+SIM.Sp.F <- list()
+SIM.SP.NTZ <- list()
+SIM.N.Dist <- list()
+SIM.N.Catches <- list()
+SIM.Age.Catches <- list()
+SIM.Weight.Catches <- list()
 
 
 #### RUN MODEL ####
-BurnIn = F #This is to swap the model between burn in and running the model properly
-setwd(pop_dir)
-
 Start=Sys.time()
-for (SIM in 1:1){ # Simulation loop
+for (SIM in 1:100){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -173,7 +173,6 @@ for (SIM in 1:1){ # Simulation loop
   #### SET UP INITIAL POPULATION ####
   PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
   Total <- array(NA, dim=c(MaxYear,1)) # For plotting
-  yearly.catch <- array(0, dim=(c(MaxYear, 1)))
   
   print(paste0("SIM", sep=" ", SIM))
   
@@ -188,41 +187,34 @@ for (SIM in 1:1){ # Simulation loop
     ModelOutput <- RunModelfunc_cpp(YEAR, MaxAge, MaxYear, MaxCell, NatMort, BHa, BHb, PF, AdultMove, Mature, Weight, Settlement, 
                                     YearlyTotal, Selectivity, Effort)
     
-    ## Save some outputs from the model 
+    ## Get outputs from the model
     # Have to add 1 to all YEAR because the loop is now starting at 0
+    ## Abundance in different areas
+    
     PopTotal[ , ,YEAR+1] <- rowSums(ModelOutput$YearlyTotal[,,1:30], dim=2) # This flattens the matrix to give you the number of fish present in the population each month in each cell, with layers representing the year
     
-    #f.mort <- ModelOutput$F_mort # This gives you catch by weight in each cell for each month, which each layer representing an age class
-    #fishing.mort <- colSums(f.mort[,,1:MaxAge]) # Biomass of fish caught in each age group (there are no fish caught in age 30 because at this point they would be dead)
-    monthly.catch <- ModelOutput$month_catch
-    age.catch[,,YEAR+1] <- colSums(monthly.catch) #This is the number of fish in each age class caught in each month
-
-    # yearly.catch[YEAR+1,1] <- sum(bio.catch)
-    catch.by.age[,YEAR+1] <- rowSums(age.catch[,,YEAR+1])
-    colSums(catch.by.age)
-    
-    # fish.died <- ModelOutput$age_died
-    # monthly.death[ , , YEAR] <- t(colSums(fish.died[,,1:MaxAge], dim=1))
-    # 
-    # fish.survived <- ModelOutput$age_survived
-    # monthly.survived[ , , YEAR] <- t(colSums(fish.survived[,,1:MaxAge], dim=1))
-    # 
-    # fish.caught <- ModelOutput$age_catch
-    # monthly.caught[ , , YEAR] <- t(colSums(fish.caught[,,1:MaxAge], dim=1))
-    # 
-    # finite.F <- ModelOutput$F_mort
-    # monthly.finite[ , , YEAR] <- t(colSums(finite.F))
-    
+    # Whole area
     Water$pop <- PopTotal[ , 12, YEAR+1] # We just want the population at the end of the year
+    Total[YEAR+1,1] <- sum(Water$pop) # Add this to a dataframe we can then use later 
     
-    Sp_Pop_F[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_F_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
-    Sp_Pop_NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
+    # By zone
+    Sp.Pop.F[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_F_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
+    Sp.Pop.NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
     
-    ## Plotting ##
-    Total[YEAR+1,1] <- sum(Water$pop)
-    #print(Total[YEAR+1,1])
+    # By cell so we can get distances to boat ramps
+    Pop.Total.Dist[ ,YEAR+1] <- PopTotal[,12,YEAR+1]
+  
+    ## Catch data
+    monthly.catch <- ModelOutput$month_catch
+    age.catch[,,YEAR+1] <- colSums(ModelOutput$month_catch) #This is the number of fish in each age class caught in each month
     
-    if(BurnIn==F & YEAR==58|BurnIn==T & YEAR==58){ # Have to subtract one because the loop now starts at 0
+    catch.by.cell[,YEAR+1] <- rowSums(monthly.catch[,,3:30], dims=1) # Number of legal size fish caught in each cell 
+    catch.by.age[,YEAR+1] <- colSums(age.catch[,,YEAR+1]) # number of fish caught at by the end of the year in each age class
+    
+    monthly.catch.weight <- ModelOutput$month_catch_weight
+    catch.by.weight[ ,YEAR+1] <- rowSums(monthly.catch.weight[,,3:30], dims=1)
+    
+    if(YEAR==58){ # Have to subtract one because the loop now starts at 0
       TotalPop <- as.data.frame(Total) %>%
         rename(Tot.Pop="V1")
       TotalPop$Year <- seq(1960, 2018, by=1)
@@ -230,48 +222,62 @@ for (SIM in 1:1){ # Simulation loop
       print(TotalPlot)
     } else { }
     
-    if(BurnIn==F & YEAR %%5==0|BurnIn==F & YEAR==58){
+    if(YEAR %%5==0|YEAR==58){
       TimesPlotted <- TimesPlotted+1
       SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=Water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
       AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
-      #LengthPlots[[TimesPlotted]] <- length.plot.func()
       
     } else { }
     
-    Sim_Pop[YEAR+1, SIM] <- Total[YEAR+1,1]
-    Sim_Ages[YEAR+1, ,SIM] <- colSums(ModelOutput$YearlyTotal[,12,1:30])
-    Sim_Catches[YEAR+1,SIM] <- yearly.catch[YEAR+1,1]
-    
-    # filename <- paste0(model.name, sep="_", "Rcpp_YearlyTotal", sep="_", YEAR)
-    # saveRDS(ModelOutput["YearlyTotal"], file=filename)
-
-    # filename <- paste0(model.name, sep="_", "Rcpp_BHRecruits", sep="_", YEAR)
-    # saveRDS(ModelOutput["BH_recs"], file=filename)
-    
+    Sim.Pop[YEAR+1, SIM] <- Total[YEAR+1,1] 
+    Sim.Ages[ ,YEAR+1,SIM] <- colSums(ModelOutput$YearlyTotal[,12,1:30]) #Number of fish present in age age group at the end of the year
   } # End of model year loop
   
-  # Reset for the next simulation 
+  ## Population in different zones
+  SIM.Sp.F[[SIM]] <- Sp.Pop.F
+  SIM.SP.NTZ[[SIM]] <- Sp.Pop.NTZ
+  SIM.N.Dist[[SIM]] <- Pop.Total.Dist
   
-  SIM_Sp_F[[SIM]] <- Sp_Pop_F
-  SIM_SP_NTZ[[SIM]] <- Sp_Pop_NTZ
+  ## Catches
+  SIM.N.Catches[[SIM]] <- catch.by.cell # Catches in each cell
+  SIM.Age.Catches[[SIM]] <- catch.by.age # Catches by age in each month of the year in each year
+  SIM.Weight.Catches[[SIM]] <- catch.by.weight
   
   if(SIM==100){ # Saving if statement
     setwd(pop_dir)
     
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S02")
-    saveRDS(SIM_SP_NTZ, file=filename)
+    ## Population
+    # Total population
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario)
+    saveRDS(Sim.Pop, file=filename)
+    
+    # Numbers of each age that make it to the end of each year
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario)
+    saveRDS(Sim.Ages, file=filename)
+    
+    # Numbers of fish of each age, inside and outside sanctuary zones
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario)
+    saveRDS(SIM.SP.NTZ, file=filename)
 
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S02")
-    saveRDS(SIM_Sp_F, file=filename)
-
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", "S02")
-    saveRDS(Sim_Pop, file=filename)
-
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", "S02")
-    saveRDS(Sim_Ages, file=filename)
-
-    filename <- paste0(model.name, sep="_", "Yearly_Catch", sep="_", "S02")
-    saveRDS(Sim_Catches, file=filename)
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario)
+    saveRDS(SIM.Sp.F, file=filename)
+    
+    # Number of fish in each cell at the end of each year
+    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario)
+    saveRDS(SIM.N.Dist, file=filename)
+    
+    ## Catches
+    # Catch in each year by age
+    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario)
+    saveRDS(SIM.Age.Catches, file=filename)
+    
+    # catch in each cell across the year
+    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario)
+    saveRDS(SIM.N.Catches, file=filename)
+    
+    # Catch in each cell by weight across the year
+    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario)
+    saveRDS(SIM.Weight.Catches, file=filename)
     
   } else { }# End saving if statement
 
@@ -279,55 +285,4 @@ for (SIM in 1:1){ # Simulation loop
 End = Sys.time() 
 Runtime = End - Start
 Runtime
-
-temp <- TotalPop %>% 
-  filter(Year>1970)
-
-ggplot(temp)+
-  geom_line(aes(x=Year, y=Tot.Pop))
-
-
-FishingMort <- ModelOutput$Finite_f
-sum(FishingMort)
-YEAR = 40
-
-temp <- array(0, dim=c(MaxCell,12,30))
-
-for(AGE in 1:30){
-  for(MONTH in 1:12){
-    for(CELL in 1:MaxCell){
-      temp[CELL,6,10] <- (exp(-Selectivity[10,6,40]*Effort[CELL,6,40]))
-    }
-  }
-}
-for(AGE in 0:29){
-  ModelOutput <- mortalityfunc_cpp(7, MaxCell, 6, YEAR, NatMort,
-                                   Weight, Selectivity, YearlyTotal, Effort)
-}
-survived <- sum(ModelOutput$tot_survived) #439.747
-died <- sum(ModelOutput$tot_died) #5.42141
-start <- survived + died #445.1685
-caught <- sum(ModelOutput$Catch) #0.03847463 but should be = to died.from.fish which is 1.235338
-natural <- 445.1685 *(1-exp(-(NatMort/12.0))) #5.383401
-died.from.fish <- sum(ModelOutput$Catch)
-sum(ModelOutput$finite_f)
-sum(YearlyTotal[,7,8])
-
-sum(Effort[,7,58])
-
-temp <- array(0, dim=c(MaxCell,3))
-
-for(Cell in 1:MaxCell){
-  temp[Cell, 1] <- YearlyTotal[Cell,7,8]
-  temp[Cell, 2] <- (Effort[Cell,7,58])
-  temp[Cell, 3] <- temp[Cell,1]*temp[Cell,2]
-}
-sum(temp[,3])
-sum(temp[,1])*sum(temp[,2])
-sum(temp[,1])
-sum(temp[,2])
-
-sum(2615.756*((Effort[,8,58])^Selectivity[7,8,58]))
-
-sum(((Effort[,8,58])^Selectivity[7,8,58]))
 
