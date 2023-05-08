@@ -80,11 +80,11 @@ Water_bathy <- raster::extract(bathy, Water_points, fun=mean, df=TRUE)
 Water_bathy <- Water_bathy %>% 
   mutate(ID = as.factor(ID))
 
-model_WHA <- Water %>% 
+model_WHA <- water %>% 
   st_intersects(., WHA) %>% 
   as.data.frame()
 
-Water_WHA <-Water[c(as.numeric(model_WHA$row.id)), ]
+Water_WHA <-water[c(as.numeric(model_WHA$row.id)), ]
 
 Water_shallow <- Water_WHA %>% 
   mutate(ID = as.factor(ID)) %>% 

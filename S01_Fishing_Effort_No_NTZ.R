@@ -226,7 +226,7 @@ Year2011_1990 <- Year2011_1990 %>%
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
+effort <- seq(500, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
 years <- seq(1960, 2000, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
@@ -370,6 +370,10 @@ for(COL in 58:59){
 }
 
 spatial_q[spatial_q == Inf] <- 0
+
+## Save catchability for later
+setwd(sg_dir)
+saveRDS(spatial_q, file=paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
 
 
 #### ALLOCATION EFFORT TO BOAT RAMPS ####

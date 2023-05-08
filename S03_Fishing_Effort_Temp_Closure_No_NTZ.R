@@ -226,7 +226,7 @@ Year2011_1990 <- Year2011_1990 %>%
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(0, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
+effort <- seq(500, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
 years <- seq(1960, 2000, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
@@ -305,6 +305,32 @@ MonthPlot <- Full_Boat_Days %>%
 setwd(sg_dir)
 
 saveRDS(Month_Prop_Ave, file="Average_Monthly_Effort")
+
+#### REMOVE EFFORT FOR TEMPORAL CLOSURE ####
+## Want to reduce fishing effort by 50% from 1987 because it's way too high
+Boat_Days_Year <- Full_Boat_Days %>% 
+  group_by(Year) %>% 
+  summarise(Yearly.Total = sum(Total_Boat_Days)) %>% 
+  mutate(Target = ifelse(Year>=1987, Yearly.Total*0.5, Yearly.Total)) %>% 
+  mutate(Difference = Yearly.Total-Target)
+
+# Closed May, June, Aug, Sept, Oct 
+Boat_Days_Closed <- Full_Boat_Days %>% 
+  mutate(Total_Boat_Days = ifelse(Year>=1987 & NumMonth>4 & NumMonth <7|Year>=1987 & NumMonth>7 & NumMonth<11, 0, Total_Boat_Days)) %>% 
+  group_by(Year) %>% 
+  summarise(Yearly.Total.Closed = sum(Total_Boat_Days))
+
+Boat_Days_Year <- Boat_Days_Year %>% 
+  mutate(Closure.Total = Boat_Days_Closed$Yearly.Total.Closed) %>% 
+  mutate(Diff.Closed = Target-Closure.Total)
+
+Boat_Days_Closed <- Full_Boat_Days %>% 
+  mutate(Total_Boat_Days = ifelse(Year>=1987 & NumMonth>4 & NumMonth <7|Year>=1987 & NumMonth>7 & NumMonth<11, 0, Total_Boat_Days)) 
+
+Full_Boat_Days <- Full_Boat_Days %>% 
+  ungroup() %>% 
+  mutate(Total_Boat_Days = Boat_Days_Closed$Total_Boat_Days)
+
 #### CALCULATE CATCHABILITY VARYING BY CELL SIZE ####
 water <- water %>% 
   mutate(Area = as.vector((water$cell_area)/1000000))
