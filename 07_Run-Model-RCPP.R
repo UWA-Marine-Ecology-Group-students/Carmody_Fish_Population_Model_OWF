@@ -49,7 +49,7 @@ model.name <- "ningaloo"
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
 BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
@@ -59,9 +59,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-setwd(sim_dir)
-Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
-Scenario <- "S01"
+# setwd(sim_dir)
+# Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+Scenario <- "S00"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -162,7 +162,7 @@ SIM.Weight.Catches <- list()
 
 #### RUN MODEL ####
 Start=Sys.time()
-for (SIM in 1:100){ # Simulation loop
+for (SIM in 1:1){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -235,7 +235,7 @@ for (SIM in 1:100){ # Simulation loop
   
   ## Population in different zones
   SIM.Sp.F[[SIM]] <- Sp.Pop.F
-  SIM.SP.NTZ[[SIM]] <- Sp.Pop.NTZ
+  SIM.Sp.NTZ[[SIM]] <- Sp.Pop.NTZ
   SIM.N.Dist[[SIM]] <- Pop.Total.Dist
   
   ## Catches
@@ -257,7 +257,7 @@ for (SIM in 1:100){ # Simulation loop
     
     # Numbers of fish of each age, inside and outside sanctuary zones
     filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario)
-    saveRDS(SIM.SP.NTZ, file=filename)
+    saveRDS(SIM.Sp.NTZ, file=filename)
 
     filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario)
     saveRDS(SIM.Sp.F, file=filename)

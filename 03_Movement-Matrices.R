@@ -38,11 +38,11 @@ m_dir <- paste(working.dir, "Matrices", sep="/")
 sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 
-model.name <- "small"
+model.name <- "ningaloo"
 
 #### READ FILES ####
-setwd(sp_dir)
-Water <- readRDS(paste0(model.name, sep="_", "water"))
+setwd(sg_dir)
+water <- readRDS(paste0(model.name, sep="_", "water"))
 
 # Habitat Layers
 setwd(sp_dir)
@@ -55,7 +55,7 @@ for (i in 1:4){
   hab.file <- st_read(paste0(habitat.types[i], "Habitat.gpkg", sep="")) %>% 
     st_transform(4283)%>%
     st_make_valid%>%
-    st_crop(xmin=113.8826, xmax=113.9967, ymin=-22.0725, ymax=-21.84793)%>% # This needs to be the same as in the first script
+    st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)%>% # This needs to be the same as in the first script
     mutate(type = habitat.types[i]) %>% 
     dplyr::select(type, geom)
   
@@ -240,7 +240,16 @@ for(i in 1:length(habitat.types)){
   
   perc_by_hab[[i]] <- temp
 }
-check <- cbind(perc_by_hab[[1]], perc_by_hab[[2]], perc_by_hab[[3]], perc_by_hab[[4]])
+# check <- cbind(perc_by_hab[[1]], lagoon_perc=perc_by_hab[[2]]$perc_habitat, rocky_perc=perc_by_hab[[3]]$perc_habitat, pelagic_perc=perc_by_hab[[4]]$perc_habitat)
+# 
+# check.all <- check %>% 
+#   full_join(., check.pop, by="ID") %>% 
+#   dplyr::select(ID, perc_habitat, lagoon_perc, rocky_perc, pop, Spatial) %>% 
+#   filter(pop>20)
+# 
+# ggplot()+
+#   geom_sf(data=check.all, aes(fill=pop, geometry=Spatial))
+
 
 #### SAVE FILES FOR USE IN NEXT STEP ####
 setwd(sp_dir)
@@ -343,8 +352,8 @@ SwimSpeed <- 1.6 #2.5
 
 a = -SwimSpeed
 b =  0.15 #0.1 # Reef
-c =  0.09 #0.09 #Lagoon
-d =  0.003 #0.003 #Rocky Reef
+c =  0.12 #0.09 #Lagoon
+d =  0.1 #0.003 #Rocky Reef
 e =  0.001 #0.001 #Pelagic
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)

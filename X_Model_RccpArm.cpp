@@ -36,7 +36,7 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
                              arma::mat Weight, arma::cube Selectivity, arma::cube YearlyTotal, arma::cube Effort) {
 
   int Cell_rw;
-  double Nat_Mort;
+  //double NatMort;
   arma::vec tot_survived(MaxCell);
   arma::vec tot_died(MaxCell);
   arma::vec caught(MaxCell);
@@ -50,12 +50,12 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
   // arma::vec temp_catch(MaxCell);
   // arma::vec Fish_catch(MaxCell);
   
-  Nat_Mort = 1-exp(-NatMort/12);
+  //Nat_Mort = 1-exp(-NatMort/12);
   for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-    //tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * ((exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))) * exp(-NatMort/12));
-    //caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-(exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))));
-    tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-((Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR)) + Nat_Mort));
-    caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR));
+    tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * ((exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))) * exp(-NatMort/12));
+    caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-(exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))));
+    // tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-((Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR)) + Nat_Mort));
+    // caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR));
     tot_died(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) - tot_survived(Cell_rw);
     finite_f(Cell_rw) = (exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR)));
     caught_weight(Cell_rw) = caught(Cell_rw) * Weight(AGE, MONTH);
@@ -104,7 +104,7 @@ Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double
   }
   //std::cout << "vec recruitmentfunc_cpp: TotFemSB " << TotFemSB << std::endl;
   
-  tot_recs = (sum(recs_variable)); // * R::rlnorm(0.0, 0.6));
+  tot_recs = (sum(recs_variable)) * (R::rlnorm(0.0, 0.6));
   //std::cout << "vec recruitmentfunc_cpp: recs " << recs << std::endl;
     
     for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 

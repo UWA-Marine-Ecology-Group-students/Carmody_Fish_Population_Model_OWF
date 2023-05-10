@@ -1549,10 +1549,128 @@ CPUE.plot <- CPUE %>%
 CPUE.plot
 
 
+#### PLOT JUST ONE SCENARIO/SIMULATION FOR CHECKING ####
+NTZ_Ages_S00 <- NULL
+F_Ages_S00 <- NULL
+
+for(SIM in 1:length(SP_Pop_NTZ_S00)){
+  
+  temp <- as.data.frame(colSums(SIM.SP.NTZ[[1]])) %>% 
+    mutate(Age = seq(1:30)) %>% 
+    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+  
+  NTZ_Ages_S00 <- cbind(NTZ_Ages_S00, temp$Number)
+  
+  temp <- as.data.frame(colSums(SIM.Sp.F[[1]])) %>% 
+    mutate(Age = seq(1:30)) %>% 
+    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+  
+  F_Ages_S00 <- cbind(F_Ages_S00,temp$Number)
+}
+
+NTZ_Ages_S00 <- as.data.frame(NTZ_Ages_S00) %>% 
+  mutate(Age = rep(1:30, each=59)) %>% 
+  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+  mutate(Stage = ifelse(Age==1, "Recruit",
+                        ifelse(Age>1 & Age<3, "Sublegal",
+                               ifelse(Age>=3 & Age<=10, "Legal",
+                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
+  group_by(Stage, Mod_Year) %>% 
+  summarise(across(where(is.numeric) & !Age, sum)) %>% 
+  ungroup() %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
+  mutate(Mean_Pop = rowMeans(.[,3:ncol(.)])) %>%
+  mutate(SD_Pop = rowSds(as.matrix(.[,3:ncol(.)]))) %>%
+  mutate(Scenario = "S00") %>% 
+  dplyr::select(Mean_Pop, SD_Pop,Scenario, Stage, Mod_Year)
 
 
+F_Ages_S00 <- as.data.frame(F_Ages_S00) %>% 
+  mutate(Age = rep(1:30, each=59)) %>% 
+  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+  mutate(Stage = ifelse(Age==1, "Recruit",
+                        ifelse(Age>1 & Age<3, "Sublegal",
+                               ifelse(Age>=3 & Age<=10, "Legal",
+                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
+  group_by(Stage, Mod_Year) %>% 
+  summarise(across(where(is.numeric) & !Age, sum)) %>% 
+  ungroup() %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
+  mutate(Mean_Pop = rowMeans(.[,3:ncol(.)])) %>%
+  mutate(SD_Pop = rowSds(as.matrix(.[,3:ncol(.)]))) %>%
+  mutate(Scenario = "S00") %>% 
+  dplyr::select(Mean_Pop, SD_Pop,Scenario, Stage, Mod_Year)
+
+Whole_Pop_Ages_NTZ <- NTZ_Ages_S00 %>% 
+  mutate(Zone = "NTZ")
+
+Whole_Pop_Ages_F <- F_Ages_S00 %>% 
+  mutate(Zone = "F")
+
+Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
 
 
+Pre_1987_NTZ <- Whole_Pop_Ages %>% 
+  filter(Mod_Year<1987) %>% 
+  filter(Zone %in% c("NTZ")) %>% 
+  filter(Stage %in% c("Legal"))
+
+Pre_1987_F <- Whole_Pop_Ages %>% 
+  filter(Mod_Year<1987) %>% 
+  filter(Zone %in% c("F")) %>% 
+  filter(Stage %in% c("Legal")) 
+# mutate(Mean_Pop = ifelse(Mod_Year==1960, Mean_Pop*40, Mean_Pop),
+#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop*(10^16), SD_Pop))
+
+Recruit_F <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Legal")) %>% 
+  filter(Zone %in% c("F")) %>% 
+  filter(Mod_Year >=1986) %>% 
+  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
+                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
+                                                                        ifelse(Scenario %in% c("S01"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  mutate(ColourGroup = as.factor(ColourGroup)) 
+
+line.recruit <- Whole_Pop_Ages %>% 
+  filter(Stage %in% c("Legal")) %>% 
+  filter(Zone %in% c("NTZ")) %>% 
+  filter(Mod_Year >=1986) %>% 
+  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
+                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
+                                                                        ifelse(Scenario %in% c("S01"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  mutate(ColourGroup = as.factor(ColourGroup))%>% 
+  ggplot(.)+
+  geom_line(aes(x=Mod_Year, y=Mean_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
+  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
+  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Mean_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
+  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
+  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                              "Temporal\nmanagement only"="#BBCC33"),
+                    guide="none")+
+  scale_colour_manual(values = c("Pre-1987"="grey20", "Historical and\ncurrent NTZs"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                                 "Temporal\nmanagement only"="#BBCC33"), name= "Spatial and temporal\nmanagement scenario")+ 
+  geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
+  geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
+  geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
+  geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
+  theme_classic()+
+  xlab(NULL)+
+  ylab(NULL)+
+  xlim(1960,2020)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always fished", "NTZ area"), name="Model area")+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1964.5, y=7.3, label="(a) <1 year old", size = 2.5, fontface=1)
+line.recruit
 
 
 

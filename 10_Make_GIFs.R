@@ -198,14 +198,15 @@ for(S in 1:4){
   
   Pop <- Pop %>% 
     mutate(across(X1:X59, ~./cell_area)) %>% 
-    mutate(across(X1:X59, ~log(.+1)))
+    #mutate(across(X1:X59, ~log(.+1))) %>% 
+    mutate(ID = row_number())
   
   Pop <- Pop[c(as.numeric(model_WHA$row.id)), ]
   
   if(S==1|S==3){
     for(YEAR in 1:59){
       
-      pop.to.plot <- Pop[,c(2,3,4,5,YEAR+8)]%>% 
+      pop.to.plot <- Pop[,c(2,3,4,5,7,YEAR+8)]%>% 
         rename_at(vars(starts_with('X')), function(.){'pop'}) %>% 
         mutate(pop_level = cut(pop, pop.breaks, include.lowest=T))
       
@@ -392,18 +393,6 @@ for(S in 1:4){
   
 }
 
-map <- pop.to.plot %>% 
-  mutate(ID = row_number()) %>% 
-  mutate(ID = ifelse(pop>5, ID, "")) %>% 
-  ggplot(.)+
-  geom_sf(aes(fill=pop_level), color = NA, lwd=0)+
-  scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-  geom_sf_text(aes(label=ID))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-
-i
 
 
 
