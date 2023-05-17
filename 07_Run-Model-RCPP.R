@@ -49,7 +49,7 @@ model.name <- "ningaloo"
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
 BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
@@ -59,9 +59,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-# setwd(sim_dir)
-# Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
-Scenario <- "S00"
+setwd(sim_dir)
+Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+Scenario <- "S03"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -80,11 +80,11 @@ Water_bathy <- raster::extract(bathy, Water_points, fun=mean, df=TRUE)
 Water_bathy <- Water_bathy %>% 
   mutate(ID = as.factor(ID))
 
-model_WHA <- water %>% 
+model_WHA <- Water %>% 
   st_intersects(., WHA) %>% 
   as.data.frame()
 
-Water_WHA <-water[c(as.numeric(model_WHA$row.id)), ]
+Water_WHA <-Water[c(as.numeric(model_WHA$row.id)), ]
 
 Water_shallow <- Water_WHA %>% 
   mutate(ID = as.factor(ID)) %>% 
@@ -153,7 +153,7 @@ Sp.Pop.F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
 Sp.Pop.NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
 
 SIM.Sp.F <- list()
-SIM.SP.NTZ <- list()
+SIM.Sp.NTZ <- list()
 SIM.N.Dist <- list()
 SIM.N.Catches <- list()
 SIM.Age.Catches <- list()
@@ -162,7 +162,7 @@ SIM.Weight.Catches <- list()
 
 #### RUN MODEL ####
 Start=Sys.time()
-for (SIM in 1:1){ # Simulation loop
+for (SIM in 1:100){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()

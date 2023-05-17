@@ -1334,7 +1334,7 @@ abundance.10_50.plot <- abundance.10_50 %>%
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1960, y=5000, label="(a)", size = 2.5, fontface=1)
+  ggplot2::annotate("text", x=1960, y=6000, label="(a)", size = 2.5, fontface=1)
 abundance.10_50.plot
 
 
@@ -1497,14 +1497,10 @@ for(S in 1:4){
   
 }
 
-correct.effort <- CPUE %>% 
-  filter(Scenario %in% c("No Spatial Management"))
-
 CPUE <- Boat_Days_sum %>% 
   mutate(Catch = Pop.Catch.Mean$Mean_Catch) %>% 
   mutate(SD.Catch = Pop.Catch.SD$SD_Catch) %>% 
   mutate(Year = rep(seq(1960,2018), 4)) %>% 
-  mutate(Effort = ifelse(Scenario %in% c("Historical and Current Management"), correct.effort$Effort, Effort)) %>% 
   mutate(cpue = Catch/Effort) %>% 
   mutate(cpue = ifelse(is.nan(cpue), 0, cpue))
 
@@ -1512,14 +1508,14 @@ CPUE <- Boat_Days_sum %>%
 
 CPUE.Pre_1987 <- CPUE %>% 
   filter(Year<=1986) %>%  
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and current management") & Year>1985, "Historical and\ncurrent management", 
-                                                             ifelse(Scenario %in% c("Temporal management only") & Year>1985, "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("No Spatial Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent management", 
+                                                             ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
+                                                                    ifelse(Scenario %in% c("No NTZs or Temporal Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))
 
 CPUE.plot <- CPUE %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current Management"), "Historical and\ncurrent management", 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent management", 
                                                              ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("No Spatial Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+                                                                    ifelse(Scenario %in% c("No NTZs or Temporal Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))%>% 
   filter(Year>1985) %>% 
   ggplot(.)+
   geom_line(aes(x=Year, y=cpue, group=Scenario, colour=ColourGroup), size=0.7)+
@@ -1672,8 +1668,29 @@ line.recruit <- Whole_Pop_Ages %>%
   ggplot2::annotate("text", x=1964.5, y=7.3, label="(a) <1 year old", size = 2.5, fontface=1)
 line.recruit
 
+#### MAP OF THE NINGALOO MODEL ####
+water <- water %>% 
+  mutate(WHA = ifelse(ID %in% c(model_WHA$row.id), "Y", "N")) %>% 
+  mutate(Map_Colour = ifelse(Fished_2017=="N", "NTZ", ifelse(WHA=="Y", "WHA", "None")))
+  
 
 
 
+map <- water %>% 
+  filter(!ID==387) %>% # Weird cell on the side that makes things look odd
+  ggplot(.)+
+  geom_sf(aes(fill=Map_Colour), colour="grey20", lwd=0.2)+
+  scale_fill_manual(values=c("NTZ"= "#48A02D", "WHA"="#D6CF7D", "None"="skyblue1"),
+                    labels = c("No-take zone", "World heritage area", "Outside world heritage\nand marine park area"),
+                    name="Zone type")+
+  theme_void() +
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(1.5,"line")) 
+map
+
+setwd(fig_dir)
+ggsave(map, filename="Whole_map.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 

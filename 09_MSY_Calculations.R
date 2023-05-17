@@ -347,11 +347,11 @@ FM.YPR.NTZ <- list()
 FM.YPR.F <- list()
 
 # Inside outside plots
-Sp.Pop.F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
-Sp.Pop.NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
-
-SIM.Sp.F <- list()
-SIM.SP.NTZ <- list()
+# Sp.Pop.F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
+# Sp.Pop.NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
+# 
+# SIM.Sp.F <- list()
+# SIM.SP.NTZ <- list()
 
 Selectivity <- Selectivity[,,45:59] # Have to modify this to just be years where selectivity is the same as it is now, otherwise we get the selectivity where everything gets fished
 Selectivity <- abind(Selectivity, Selectivity, along=3)
@@ -383,8 +383,8 @@ for(FM in 1:10){
     survived.age.bio[ ,YEAR+1] <- survived.age[,YEAR+1] * Weight[,12]
     
     ## For BMSY plots inside and outside NTZ
-    Sp.Pop.F[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_F_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
-    Sp.Pop.NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
+    # Sp.Pop.F[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_F_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
+    # Sp.Pop.NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
     
     ## Catch data
     monthly.catch.weight <- ModelOutput$month_catch_weight
@@ -397,94 +397,94 @@ for(FM in 1:10){
     Fem_SB[, YEAR+1] <- ModelOutput$Fem_SB
     
     ## Yield Per Recruit 
-    monthly.YPR.NTZ <- colSums(ModelOutput$Monthly_YPR_age[c(shallow_NTZ_ID),, ])
-    monthly.YPR.F <- colSums(ModelOutput$Monthly_YPR_age[c(shallow_F_ID),, ])
+    # monthly.YPR.NTZ <- colSums(ModelOutput$Monthly_YPR_age[c(shallow_NTZ_ID),, ])
+    # monthly.YPR.F <- colSums(ModelOutput$Monthly_YPR_age[c(shallow_F_ID),, ])
 
     monthly.YPR <- colSums(ModelOutput$Monthly_YPR_age)
     YPR.by.age[ ,YEAR+1] <- colSums(monthly.YPR[,1:30])
     
-    YPR.by.age.NTZ[ ,YEAR+1] <- colSums(monthly.YPR.NTZ[,1:30])
-    YPR.by.age.F[ ,YEAR+1] <- colSums(monthly.YPR.F[,1:30])
+    # YPR.by.age.NTZ[ ,YEAR+1] <- colSums(monthly.YPR.NTZ[,1:30])
+    # YPR.by.age.F[ ,YEAR+1] <- colSums(monthly.YPR.F[,1:30])
     
 
   } # End of model year loop
   
-  SIM.Sp.F[[FM]] <- Sp.Pop.F
-  SIM.SP.NTZ[[FM]] <- Sp.Pop.NTZ
+  # SIM.Sp.F[[FM]] <- Sp.Pop.F
+  # SIM.SP.NTZ[[FM]] <- Sp.Pop.NTZ
   
   FM.Weight.Catches[[FM]] <- catch.by.weight
   FM.Age.Catches[[FM]] <- catch.by.age
   FM.Spawning.Bio[[FM]] <- Fem_SB
   FM.Tot.Bio[[FM]] <- survived.age.bio
   FM.YPR[[FM]] <- YPR.by.age
-  FM.YPR.NTZ[[FM]] <- YPR.by.age.NTZ
-  FM.YPR.F[[FM]] <- YPR.by.age.F
+  # FM.YPR.NTZ[[FM]] <- YPR.by.age.NTZ
+  # FM.YPR.F[[FM]] <- YPR.by.age.F
 
 }
 
-MSY.Plot.Data <- as.data.frame(array(0, dim=c(20,5))) %>% 
+MSY.Plot.Data <- as.data.frame(array(0, dim=c(10,5))) %>% 
   rename(Fishing.Mort = "V1",
          YPR = "V2",
          Total.Bio = "V3",
          Spawn.Bio = "V4",
          Zone = "V5") %>% 
-  mutate(Fishing.Mort = rep(seq(0,0.45, 0.05), 2))
+  mutate(Fishing.Mort = seq(0,0.45, 0.05))
 
 
 ## Yield Per Recruit plot
-# for(FM in 1:19){
-#   temp <- FM.YPR[[FM]]
-#   temp <- sum(temp[,50]) 
-#   
-#   MSY.Plot.Data[FM,YPR] <- as.data.frame(temp) 
-# }
-
 for(FM in 1:10){
-  temp <- FM.YPR.NTZ[[FM]]
-  temp <- sum(temp[,50]) %>% 
-    as.data.frame() %>% 
-    mutate(Zone="NTZ")
-  
-  MSY.Plot.Data[FM,c("YPR", "Zone")] <- as.data.frame(temp) 
-  
-  temp <- FM.YPR.F[[FM]]
-  temp <- sum(temp[,50]) %>% 
-    as.data.frame() %>% 
-    mutate(Zone="F")
-  
-  MSY.Plot.Data[FM+10,c("YPR", "Zone")] <- as.data.frame(temp) 
+  temp <- FM.YPR[[FM]]
+  temp <- sum(temp[,50])
+
+  MSY.Plot.Data[FM,"YPR"] <- as.data.frame(temp)
 }
+
+# for(FM in 1:10){
+#   temp <- FM.YPR.NTZ[[FM]]
+#   temp <- sum(temp[,50]) %>% 
+#     as.data.frame() %>% 
+#     mutate(Zone="NTZ")
+#   
+#   MSY.Plot.Data[FM,c("YPR", "Zone")] <- as.data.frame(temp) 
+#   
+#   temp <- FM.YPR.F[[FM]]
+#   temp <- sum(temp[,50]) %>% 
+#     as.data.frame() %>% 
+#     mutate(Zone="F")
+#   
+#   MSY.Plot.Data[FM+10,c("YPR", "Zone")] <- as.data.frame(temp) 
+# }
 ggplot(MSY.Plot.Data)+
-  geom_line(aes(x=Fishing.Mort, y=YPR, group=Zone))+
+  geom_line(aes(x=Fishing.Mort, y=YPR))+
   theme_classic()
 
 
 ## Biomass Plot
-# for(FM in 1:19){
-#   temp <- FM.Tot.Bio[[FM]]
+for(FM in 1:10){
+  temp <- FM.Tot.Bio[[FM]]
+  temp <- sum(temp[,50])
+
+  MSY.Plot.Data[FM,"Total.Bio"] <- temp
+}
+
+# for(FM in 1:10){
+#   temp <- colSums(SIM.SP.NTZ[[FM]]) * Weight[,12]
 #   temp <- sum(temp[,50])
 #   
 #   MSY.Plot.Data[FM,"Total.Bio"] <- temp
+#   
+#   temp <- colSums(SIM.Sp.F[[FM]]) * Weight[,12]
+#   temp <- sum(temp[,50])
+#   
+#   MSY.Plot.Data[FM+10,"Total.Bio"] <- temp
 # }
 
-for(FM in 1:10){
-  temp <- colSums(SIM.SP.NTZ[[FM]]) * Weight[,12]
-  temp <- sum(temp[,50])
-  
-  MSY.Plot.Data[FM,"Total.Bio"] <- temp
-  
-  temp <- colSums(SIM.Sp.F[[FM]]) * Weight[,12]
-  temp <- sum(temp[,50])
-  
-  MSY.Plot.Data[FM+10,"Total.Bio"] <- temp
-}
-
 ggplot(MSY.Plot.Data)+
-  geom_line(aes(x=Fishing.Mort, y=Total.Bio, group=Zone))+
+  geom_line(aes(x=Fishing.Mort, y=Total.Bio))+
   theme_classic()
 
 ## Spawning Biomass Plot
-for(FM in 1:19){
+for(FM in 1:10){
   temp <- FM.Spawning.Bio[[FM]]
   temp <- sum(temp[,50])
   
@@ -626,8 +626,8 @@ for(S in 1:4){
 
 #### Make Kobe Plots ####
 F.MSY = 0.1
-Bio.MSY = 29941.3493
-SB.MSY = 12585.43585
+Bio.MSY = 30449.206
+SB.MSY = 12818.6052
 
 Kobe.Data <- Kobe.Data %>% 
   mutate(Rel.FM = as.numeric(FM/F.MSY)) %>% 
