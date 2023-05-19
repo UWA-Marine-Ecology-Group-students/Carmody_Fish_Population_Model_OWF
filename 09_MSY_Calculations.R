@@ -65,8 +65,9 @@ NCELL <- nrow(water)
 ## Effort values 
 q <- 0.000005
 
-F_finite_values <- seq(0, 0.9, 0.05) # These are the values of F that we want to cycle through to see where our MSY is
-E_values <- as.data.frame(array(0, dim = c(19, 13))) %>% 
+# F_finite_values <- seq(0, 0.9, 0.05) # These are the values of F that we want to cycle through to see where our MSY is
+F_finite_values <- seq(0, 0.15, 0.01)
+E_values <- as.data.frame(array(0, dim = c(16, 13))) %>% 
   mutate(V1 = F_finite_values) 
   # mutate(V1 = V1/q)
 
@@ -75,7 +76,7 @@ names(E_values)[1:13] <- c("Yearly_Total", "Jan", "Feb", "Mar", "Apr", "May", "J
 ## Allocation to months
 Monthly_effort <- E_values[,2:13]
 
-for(E in 1:19){
+for(E in 1:16){
   for(M in 1:12){
     Monthly_effort[E,M] <- month.ave[M,2] * E_values[E,1] 
   }
@@ -253,7 +254,7 @@ for (RAMP in 1:4){
 colSums(Pj)
 
 # Allocate effort to cells
-Fishing_MSY <- array(0, dim=c(NCELL, 12,19)) #This array has a row for every cell, a column for every month, and a layer for every value of F
+Fishing_MSY <- array(0, dim=c(NCELL, 12,16)) #This array has a row for every cell, a column for every month, and a layer for every value of F
 Months <- array(0, dim=c(NCELL, 12))
 Ramps <- array(0, dim=c(NCELL, 4))
 layer <- 1
@@ -287,7 +288,7 @@ for(fm in 1:19){
 
 Effort.List <- list()
 
-for(FM in 1:19){
+for(FM in 1:16){
   
   for(M in 1:12){
     
@@ -362,7 +363,7 @@ Selectivity <- abind(Selectivity, Selectivity, along=3)
 # Want it to run for a year and then get the values for the population at the end of the year 
 setwd(sg_dir)
 
-for(FM in 1:10){
+for(FM in 1:16){
   
   print(FM)
   
