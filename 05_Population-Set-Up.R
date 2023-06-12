@@ -38,7 +38,7 @@ k = 0.241 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=
 t0 = -0.375 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 
 ## Weight-Length Relationship
-WLa = 0.000028
+WLa = 0.000028 # This is for mm and g
 WLb = 2.8761
 
 ## Proportion expected to be females

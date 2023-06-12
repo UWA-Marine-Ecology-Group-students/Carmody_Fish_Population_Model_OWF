@@ -64,7 +64,7 @@ for (i in 1:4){
 }
 
 
-#### CREATE THE DISTANCE MATRIX ####
+#### CREATE BASIC DISTANCE MATRIX ####
 ## This method allows us to create a distance matrix that takes into account the land and forces the fish to swim around
 
 # Get centroids for the grid cells 
@@ -112,7 +112,7 @@ for (i in 1:n.closest){
   
 }
 
-### CONNECT THE POINTS TO THEIR NEIGHBOURS TO FORM A NETWORK ###
+#### CONNECT THE POINTS TO THEIR NEIGHBOURS TO FORM A NETWORK ####
 n <- nrow(points)
 
 ## Form linestrings and then multilinestrings
@@ -140,7 +140,7 @@ connected <- st_cast(connected, "LINESTRING") # Needs to be a line string rather
 setwd(working.dir)
 st_write(connected, paste0(model.name, sep="_", "network.shapefile.shp"))
 
-### SET UP THE SF NETWORK AND CREATE A DISTANCE MATRIX ###
+#### SET UP THE SF NETWORK AND CREATE FULL DISTANCE MATRIX ####
 network <- as_sfnetwork(connected, directed = FALSE) %>%
   activate("edges") %>%
   mutate(weight = edge_length())
