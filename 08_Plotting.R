@@ -127,7 +127,7 @@ water <- water_WHA %>%
   filter(bathy >= c(-30)) %>% 
   filter(!is.na(bathy))
 
-AreaFished <- water %>% 
+AreaFished <- water_WHA %>% 
   mutate(cell_area = st_area(Spatial)) %>% 
   mutate(cell_area = as.numeric(cell_area)) %>% 
   mutate(Fished=as.factor(Fished_2017)) %>% 
@@ -546,7 +546,7 @@ line.recruit <- Whole_Pop_Ages %>%
   xlab(NULL)+
   ylab(NULL)+
   xlim(1987,2020)+
-  ylim(0,7)+
+  ylim(0,4)+
   scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -612,7 +612,7 @@ line.sublegal <- Whole_Pop_Ages %>%
   xlab(NULL)+
   ylab(NULL)+
   xlim(1987,2020)+
-  ylim(0,6)+
+  ylim(0,3)+
   scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -682,7 +682,7 @@ line.legal <- Whole_Pop_Ages %>%
   xlab(NULL)+
   ylab(NULL)+
   xlim(1987,2020)+
-  ylim(0,10.5)+
+  ylim(0,6)+
   scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -752,7 +752,7 @@ line.largeLegal <- Whole_Pop_Ages %>%
   xlab(NULL)+
   ylab(NULL)+
   xlim(1987,2020)+
-  ylim(0,3)+
+  ylim(0,1.5)+
   scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
