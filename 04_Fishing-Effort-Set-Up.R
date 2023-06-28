@@ -441,7 +441,7 @@ for(Y in 1:708){
     Full_Boat_Days$CrB_BR = Full_Boat_Days$Total_Boat_Days*BR_Trips[4,5]
   }
 }
-
+ 
 check <- Full_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
 
@@ -503,11 +503,11 @@ NCELL_0517 <- NCELL-length(NoTake[[2]])
 NCELL_1718 <- NCELL-length(NoTake[[3]])
 
 # Add coefficients to each variable - all the BRs are the same but make them negative because the further away they are the less likely people are to visit
-a = 0.0005
-b = -0.001
-c = -0.001
-d = -0.001
-e = -0.001
+a = 1
+b = -0.01
+c = -0.01
+d = -0.01
+e = -0.01
 
 Vj <- Cell_Vars %>% 
   mutate(Bd_BR = Bd_BR*b,
@@ -537,7 +537,7 @@ cellU <- matrix(NA, ncol=4, nrow=NCELL_6086)
 
 for(RAMP in 1:4){
   for(cell in 1:NCELL_6086){
-    U <- exp(Vj_6086[cell,5]/Vj_6086[cell,RAMP])
+    U <- exp(Vj_6086[cell,RAMP]+log(Vj_6086[cell,5]))
     cellU[cell, RAMP] <- U
   }
 }
@@ -546,7 +546,7 @@ rowU <- as.data.frame(colSums(cellU))
 
 for (RAMP in 1:4){
   for (cell in 1:NCELL_6086){
-    BR_U_6086[cell,RAMP] <- (exp(Vj_6086[cell,5]/Vj_6086[cell,RAMP]))/rowU[RAMP,1]
+    BR_U_6086[cell,RAMP] <- (exp(Vj_6086[cell,RAMP]+log(Vj_6086[cell,5])))/rowU[RAMP,1]
   }
 }
 colSums(BR_U_6086)
@@ -566,7 +566,7 @@ cellU <- matrix(NA, ncol=4, nrow=NCELL_8705)
 
 for(RAMP in 1:4){
   for(cell in 1:NCELL_8705){
-    U <- exp(Vj_8705[cell,5]/Vj_8705[cell,RAMP])
+    U <- exp(Vj_8705[cell,RAMP]+log(Vj_8705[cell,5]))
     cellU[cell, RAMP] <- U
   }
 }
@@ -575,7 +575,7 @@ rowU <- as.data.frame(colSums(cellU))
 
 for (RAMP in 1:4){
   for (cell in 1:NCELL_8705){
-    BR_U_8705[cell,RAMP] <- (exp(Vj_8705[cell,5]/Vj_8705[cell,RAMP]))/rowU[RAMP,1]
+    BR_U_8705[cell,RAMP] <- (exp(Vj_8705[cell,RAMP]+log(Vj_8705[cell,5])))/rowU[RAMP,1]
   }
 }
 colSums(BR_U_8705)
@@ -594,7 +594,7 @@ cellU <- matrix(NA, ncol=4, nrow=NCELL_0517)
 
 for(RAMP in 1:4){
   for(cell in 1:NCELL_0517){
-    U <- exp(Vj_0517[cell,5]/Vj_0517[cell,RAMP])
+    U <- exp(Vj_0517[cell,RAMP]+log(Vj_0517[cell,5]))
     cellU[cell, RAMP] <- U
   }
 }
@@ -603,7 +603,7 @@ rowU <- as.data.frame(colSums(cellU))
 
 for (RAMP in 1:4){
   for (cell in 1:NCELL_0517){
-    BR_U_0517[cell,RAMP] <- (exp(Vj_0517[cell,5]/Vj_0517[cell,RAMP]))/rowU[RAMP,1]
+    BR_U_0517[cell,RAMP] <- (exp(Vj_0517[cell,RAMP]+log(Vj_0517[cell,5])))/rowU[RAMP,1]
   }
 }
 colSums(BR_U_0517)
@@ -622,7 +622,7 @@ cellU <- matrix(NA, ncol=4, nrow=NCELL_1718)
 
 for(RAMP in 1:4){
   for(cell in 1:NCELL_1718){
-    U <- exp(Vj_1718[cell,5]/Vj_1718[cell,RAMP])
+    U <- exp(Vj_1718[cell,RAMP]+log(Vj_1718[cell,5]))
     cellU[cell, RAMP] <- U
   }
 }
@@ -631,7 +631,7 @@ rowU <- as.data.frame(colSums(cellU))
 
 for (RAMP in 1:4){
   for (cell in 1:NCELL_1718){
-    BR_U_1718[cell,RAMP] <- (exp(Vj_1718[cell,5]/Vj_1718[cell,RAMP]))/rowU[RAMP,1]
+    BR_U_1718[cell,RAMP] <- (exp(Vj_1718[cell,RAMP]+log(Vj_1718[cell,5])))/rowU[RAMP,1]
   }
 }
 colSums(BR_U_1718)

@@ -22,6 +22,7 @@ library(gtable)
 library(purrr)
 library(matrixStats)
 library(sfnetworks)
+library(rcartocolor)
 
 
 rm(list = ls())
@@ -421,7 +422,8 @@ total_pop_S00 <- readRDS(paste0(model.name, sep="_","Total_Population_S00")) %>%
               matches("V")) %>% 
   mutate(Mean_Pop = rowMeans(.[,1:100])) %>% 
   mutate(SD_Pop = rowSds(as.matrix(.[1:100]))) %>% 
-  mutate(SE_Pop = SD_Pop/sqrt(100))
+  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
+  mutate(Median_Pop = rowMedians(as.matrix(.[,1:100]))) 
 total_pop_S01 <- readRDS(paste0(model.name, sep="_","Total_Population_S01")) %>% 
   as.data.frame() %>% 
   mutate(Scenario = "S01") %>% 
@@ -431,7 +433,8 @@ total_pop_S01 <- readRDS(paste0(model.name, sep="_","Total_Population_S01")) %>%
               matches("V")) %>% 
   mutate(Mean_Pop = rowMeans(.[,1:100])) %>% 
   mutate(SD_Pop = rowSds(as.matrix(.[1:100]))) %>% 
-  mutate(SE_Pop = SD_Pop/sqrt(100))
+  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
+  mutate(Median_Pop = rowMedians(as.matrix(.[,1:100]))) 
 total_pop_S02 <- readRDS(paste0(model.name, sep="_","Total_Population_S02")) %>% 
   as.data.frame() %>% 
   mutate(Scenario = "S02") %>% 
@@ -441,7 +444,8 @@ total_pop_S02 <- readRDS(paste0(model.name, sep="_","Total_Population_S02")) %>%
               matches("V")) %>% 
   mutate(Mean_Pop = rowMeans(.[,1:100])) %>% 
   mutate(SD_Pop = rowSds(as.matrix(.[1:100]))) %>% 
-  mutate(SE_Pop = SD_Pop/sqrt(100))
+  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
+  mutate(Median_Pop = rowMedians(as.matrix(.[,1:100]))) 
 total_pop_S03 <- readRDS(paste0(model.name, sep="_","Total_Population_S03")) %>% 
   as.data.frame() %>% 
   mutate(Scenario = "S03") %>% 
@@ -451,26 +455,42 @@ total_pop_S03 <- readRDS(paste0(model.name, sep="_","Total_Population_S03")) %>%
               matches("V")) %>% 
   mutate(Mean_Pop = rowMeans(.[,1:100])) %>% 
   mutate(SD_Pop = rowSds(as.matrix(.[1:100]))) %>% 
-  mutate(SE_Pop = SD_Pop/sqrt(100))
+  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
+  mutate(Median_Pop = rowMedians(as.matrix(.[,1:100]))) 
 
 
 ## Population
+total_pop <- rbind(total_pop_S00, total_pop_S01, total_pop_S02, total_pop_S03) 
 
-# Calculate the t-score for the confidence interval
-alpha = 0.05
-degrees.freedom = 100 - 1
-t.score = qt(p=alpha/2, df=degrees.freedom,lower.tail=F)
+temp <- as.matrix(total_pop) 
+temp <- as.numeric(temp[ ,1:100])
+dim(temp) <- c(nrow(total_pop),100)
 
-total_pop <- rbind(total_pop_S00, total_pop_S01, total_pop_S02, total_pop_S03) %>% 
-  mutate(CI = SE_Pop*t.score)
+
+Quantiles <- array(0, dim=c(nrow(total_pop), 2))
+
+for(Y in 1:nrow(total_pop)){
+  
+  temp2 <- temp[Y, 1:100]
+  Quantiles[Y, ] <-quantile(temp2, probs=c(0.025, 0.975))
+  
+}
+Quantiles <- as.data.frame(Quantiles)
+
+total_pop <- total_pop %>% 
+  dplyr::select(Mean_Pop, Median_Pop, SD_Pop,SE_Pop, Scenario, Mod_Year) %>% 
+  mutate(P_0.025 = Quantiles$V1,
+         P_0.975 = Quantiles$V2)
+
+
 
 total_pop_plot <- total_pop %>% 
   mutate(Scenario = fct_recode(Scenario, "Historical and\ncurrent NTZs"="S00", "Neither NTZs nor\ntemporal management"="S01",
                               "NTZs and\ntemporal management"="S02", "Temporal\nmanagement only"="S03"
                                )) %>% 
   ggplot() +
-  geom_line(aes(x=Mod_Year, y=Mean_Pop, group=Scenario, color=Scenario), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-CI, ymax=Mean_Pop+CI, group=Scenario,
+  geom_line(aes(x=Mod_Year, y=Median_Pop, group=Scenario, color=Scenario), size=0.7)+
+  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, group=Scenario,
                   fill=Scenario), alpha=0.2)+
   theme_classic()+
   scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
@@ -478,10 +498,10 @@ total_pop_plot <- total_pop %>%
                     guide="none")+
   scale_colour_manual(values = c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
                                  "Temporal\nmanagement only"="#BBCC33"), name= "Spatial and temporal\nmanagement scenario")+ 
-  ylab("Average total population")+
+  ylab("Median total population")+
   xlab("Year")+
-  xlim(1987, 2020)+
-  ylim(0,20000)+
+  xlim(1960, 2020)+
+  ylim(0,57500)+
   theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+ 
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -1712,7 +1732,7 @@ Effort_Scen <- list()
 Spatial_Qs <- list()
 
 setwd(sg_dir)
-Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing"))
+Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing_check"))
 Spatial_Qs[[1]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_NTZ"))
 Spatial_Qs[[2]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
 
@@ -1742,7 +1762,9 @@ for(S in 1:4){
 
   Boat_Days[[S]] <- Boat_Days_Scen
 }
-
+Boat_Days[[1]][,,50]
+Effort_Scen[[4]][1000:1834,,50]
+Effort_Scen[[3]][1000:1834,,50]
 #* Sum up effort for every year in each of the scenarios
 
 Boat_Days_sum <- NULL
@@ -1757,7 +1779,38 @@ for(S in 1:4){
 }
 
 Boat_Days_sum <- Boat_Days_sum %>% 
-  rename(Effort = ".")
+  rename(Effort = ".") %>% 
+  mutate(Mortality = Effort*(0.000005))
+#* Spatial Plot of Peak Effort ####
+
+## Extract peak effort - 
+Normal_Effort <- Boat_Days[[1]]
+peak <- rowSums(Normal_Effort[,,59])
+peak <- peak[as.numeric(water_WHA$ID)]
+#peak <- round(peak, digits=1)
+
+water_WHA$Effort <- peak
+
+water_WHA_2 <- water_WHA %>% 
+  #filter(as.numeric(cell_area)>1000000) %>% 
+  mutate(cell_area = cell_area/1000000) %>% 
+  mutate(cell_effect = as.numeric(cell_area/sum(cell_area))) %>% 
+  mutate(Effort = as.numeric(Effort/cell_area)) %>% 
+  mutate(Effort_group = ifelse(Effort>500,500,
+                               ifelse(Effort>100,100, 
+                                      ifelse(Effort>50,50,
+                                             ifelse(Effort>10,10,
+                                                    ifelse(Effort>1,1,0)))))) %>% 
+  mutate(Effort_group = as.factor(Effort_group))
+
+map <- ggplot()+
+  geom_sf(data=water_WHA_2, aes(fill=Effort), color = NA, lwd=0)+
+  scale_fill_carto_c(name="Fishing effort (Boat days km-2)", palette="ag_Sunset", direction=1)+
+  #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+map
 
 #* Format catch data and add to effort ####
 setwd(pop_dir)
@@ -1993,8 +2046,6 @@ water <- water %>%
   mutate(WHA = ifelse(ID %in% c(model_WHA$row.id), "Y", "N")) %>% 
   mutate(Map_Colour = ifelse(Fished_2017=="N", "NTZ", ifelse(WHA=="Y", "WHA", "None")))
   
-
-
 
 map <- water %>% 
   filter(!ID==387) %>% # Weird cell on the side that makes things look odd

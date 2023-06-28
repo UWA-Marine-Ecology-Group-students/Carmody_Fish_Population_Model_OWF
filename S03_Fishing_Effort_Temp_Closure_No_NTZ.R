@@ -489,11 +489,12 @@ Cell_Vars <- DistBR %>%
 ## cell and multiply that by the effort in the cell to spatially allocate the effort across the area
 
 # Add coefficients to each variable - all the BRs are the same but make them negative because the further away they are the less likely people are to visit
-a = 0.0005
-b = -0.001
-c = -0.001
-d = -0.001
-e = -0.001
+a = 1
+b = -0.01
+c = -0.01
+d = -0.01
+e = -0.01
+
 
 Vj <- Cell_Vars %>% 
   mutate(Bd_BR = Bd_BR*b,
@@ -515,7 +516,7 @@ cellU <- matrix(NA, ncol=4, nrow=NCELL)
 
 for(RAMP in 1:4){
   for(cell in 1:NCELL){
-    U <- exp(Vj[cell,5]/Vj[cell,RAMP])
+    U <- exp(Vj[cell,RAMP]+log(Vj[cell,5]))
     cellU[cell, RAMP] <- U
   }
 }
@@ -524,7 +525,7 @@ rowU <- as.data.frame(colSums(cellU))
 
 for (RAMP in 1:4){
   for (cell in 1:NCELL){
-    BR_U[cell,RAMP] <- (exp(Vj[cell,5]/Vj[cell,RAMP]))/rowU[RAMP,1]
+    BR_U[cell,RAMP] <- (exp(Vj[cell,RAMP]+log(Vj[cell,5])))/rowU[RAMP,1]
   }
 }
 colSums(BR_U)
@@ -570,8 +571,6 @@ for(YEAR in 1:59){
 for (YEAR in 1:59){
   Fishing[,,YEAR] <- Fishing[,,YEAR] * spatial_q[,YEAR]
 }
-# Remove fishing effort for six months out of the year to simulate a temporal closure from 2008 which covers the spawning season
-Fishing[ ,c(1,2,3,10,11,12), 28:59] <- 0
 
 #### SAVE DATA ####
 setwd(sim_dir)

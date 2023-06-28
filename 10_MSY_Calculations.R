@@ -78,7 +78,7 @@ Water_shallow <- Water_WHA %>%
   mutate(ID = as.factor(ID)) %>% 
   left_join(., Water_bathy, by="ID") %>% 
   rename(bathy = "ga_bathy_ningaloocrop") %>% 
-  filter(bathy >= c(-30)) %>% 
+  #filter(bathy >= c(-30)) %>% 
   filter(!is.na(bathy))
 
 shallow_cells_NTZ <- Water_shallow %>% 
@@ -92,7 +92,7 @@ shallow_cells_F <- Water_shallow %>%
 shallow_NTZ_ID <- as.numeric(levels(shallow_cells_NTZ$ID))[as.integer(shallow_cells_NTZ$ID)]
 shallow_F_ID <- as.numeric(levels(shallow_cells_F$ID))[as.integer(shallow_cells_F$ID)]
 
-NCELL <- length(shallow_F_ID)
+NCELL <- length(shallow_NTZ_ID)
 
 #### SET UP FISHING EFFORT FOR EACH LEVEL OF F ####
 
@@ -119,7 +119,7 @@ Monthly_effort <- Monthly_effort %>%
   mutate(FM = F_finite_values)
 
 # Allocate effort to cells
-NCELL <- length(shallow_NTZ_ID) + length(shallow_F_ID)
+NCELL <-  length(shallow_NTZ_ID) + length(shallow_F_ID)
 
 Fishing_MSY <- array(0, dim=c(NCELL, 12,16)) #This array has a row for every cell, a column for every month, and a layer for every value of F
 
@@ -213,7 +213,7 @@ for(FM in 1:16){
   YearlyTotal <- readRDS(paste0(model.name, sep="_","BurnInPop"))
   
   YearlyTotal <- YearlyTotal[as.numeric(Cells),,]
-  
+
   Effort <- Effort.List[[FM]]
   
   
@@ -292,13 +292,13 @@ MSY.Plot.Data.F <- as.data.frame(array(0, dim=c(16,5))) %>%
 
 MSY.Plot.Data <- list()
 MSY.Plot.Data[[1]] <- MSY.Plot.Data.All
-MSY.Plot.Data[[2]] <- MSY.Plot.Data.NTZ
-MSY.Plot.Data[[3]] <- MSY.Plot.Data.F
+MSY.Plot.Data[[3]] <- MSY.Plot.Data.NTZ
+MSY.Plot.Data[[4]] <- MSY.Plot.Data.F
 
 FM.YPR <- list()
 FM.YPR[[1]] <- FM.YPR.All
-FM.YPR[[2]] <- FM.YPR.NTZ
-FM.YPR[[3]] <- FM.YPR.F
+FM.YPR[[3]] <- FM.YPR.NTZ
+FM.YPR[[4]] <- FM.YPR.F
 
 
 ## Yield Per Recruit plot

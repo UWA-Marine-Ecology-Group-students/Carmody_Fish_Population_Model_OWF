@@ -49,7 +49,7 @@ model.name <- "ningaloo"
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water"))
 BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
@@ -59,9 +59,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-setwd(sim_dir)
-Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
-Scenario <- "S03"
+# setwd(sim_dir)
+# Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+Scenario <- "S00"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -90,7 +90,7 @@ Water_shallow <- Water_WHA %>%
   mutate(ID = as.factor(ID)) %>% 
   left_join(., Water_bathy, by="ID") %>% 
   rename(bathy = "ga_bathy_ningaloocrop") %>% 
-  filter(bathy >= c(-30)) %>% 
+  #filter(bathy >= c(-30)) %>% 
   filter(!is.na(bathy))
 
 shallow_cells_NTZ <- Water_shallow %>% 
@@ -103,6 +103,7 @@ shallow_cells_F <- Water_shallow %>%
 
 shallow_NTZ_ID <- as.numeric(levels(shallow_cells_NTZ$ID))[as.integer(shallow_cells_NTZ$ID)]
 shallow_F_ID <- as.numeric(levels(shallow_cells_F$ID))[as.integer(shallow_cells_F$ID)]
+
 
 #### PARAMETER VALUES ####
 ## Natural Mortality
@@ -224,8 +225,8 @@ for (SIM in 1:100){ # Simulation loop
     
     if(YEAR %%5==0|YEAR==58){
       TimesPlotted <- TimesPlotted+1
-      SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=Water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
-      AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+      #SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=Water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
+      #AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
       
     } else { }
     
@@ -256,10 +257,10 @@ for (SIM in 1:100){ # Simulation loop
     saveRDS(Sim.Ages, file=filename)
     
     # Numbers of fish of each age, inside and outside sanctuary zones
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario)
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ_WHA", sep="_", Scenario)
     saveRDS(SIM.Sp.NTZ, file=filename)
 
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario)
+    filename <- paste0(model.name, sep="_", "Sp_Population_F_WHA", sep="_", Scenario)
     saveRDS(SIM.Sp.F, file=filename)
     
     # Number of fish in each cell at the end of each year

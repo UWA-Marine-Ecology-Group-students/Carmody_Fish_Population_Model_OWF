@@ -45,6 +45,7 @@ YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
 Weight <- readRDS("weight")
+MortRate <- readRDS("Mort_Rate")
 
 
 NCELL <- nrow(water)
@@ -80,7 +81,7 @@ Water_shallow <- Water_WHA %>%
   mutate(ID = as.factor(ID)) %>% 
   left_join(., Water_bathy, by="ID") %>% 
   rename(bathy = "ga_bathy_ningaloocrop") %>% 
-  filter(bathy >= c(-30)) %>% 
+  #filter(bathy >= c(-30)) %>% 
   filter(!is.na(bathy))
 
 shallow_cells_NTZ <- Water_shallow %>% 
@@ -346,73 +347,6 @@ for(S in 1:4){
   #*********************************  
 }
 
-
-## Calculate fishing mortality
-Mortality.All <- array(0, dim=c(59, 3))
-FM.Scenario.All <- list()
-Mortality.NTZ <- array(0, dim=c(59, 3))
-FM.Scenario.NTZ <- list()
-Mortality.F <- array(0, dim=c(59, 3))
-FM.Scenario.F <- list()
-
-
-for(S in 1:4){
-  ## Whole Area
-  temp <- Ages.All[[S]]
-  temp <- temp %>% 
-    colSums(.) %>% 
-    as.data.frame(.) %>% 
-    rename(Pop = ".")
-  
-  temp.c <- Catches.All[[S]]
-  temp.c <- temp.c %>% 
-    colSums(.) %>% 
-    as.data.frame(.) 
-  
-  temp2 <- temp %>% 
-    mutate(Caught = temp.c) %>% 
-    mutate(FM = Caught/Pop)
-  
-  FM.Scenario.All[[S]] <- temp2$FM
-  
-  ## NTZ
-  temp <- Ages.NTZ[[S]]
-  temp <- temp %>% 
-    colSums(.) %>% 
-    as.data.frame(.) %>% 
-    rename(Pop = ".")
-  
-  temp.c <- Catches.NTZ[[S]]
-  temp.c <- temp.c %>% 
-    colSums(.) %>% 
-    as.data.frame(.) 
-  
-  temp2 <- temp %>% 
-    mutate(Caught = temp.c) %>% 
-    mutate(FM = Caught/Pop)
-  
-  FM.Scenario.NTZ[[S]] <- temp2$FM
-  
-  ## Fished
-  temp <- Ages.F[[S]]
-  temp <- temp %>% 
-    colSums(.) %>% 
-    as.data.frame(.) %>% 
-    rename(Pop = ".")
-  
-  temp.c <- Catches.F[[S]]
-  temp.c <- temp.c %>% 
-    colSums(.) %>% 
-    as.data.frame(.) 
-  
-  temp2 <- temp %>% 
-    mutate(Caught = temp.c) %>% 
-    mutate(FM = Caught/Pop)
-  
-  FM.Scenario.F[[S]] <- temp2$FM
-  
-}
-
 ## Biomass and Spawning Biomass
 Kobe.Data.All <- NULL
 Kobe.Data.NTZ <- NULL
@@ -477,84 +411,159 @@ Kobe.Data.All <- Kobe.Data.All %>%
   mutate(Area = "All")
 Kobe.Data.NTZ <- Kobe.Data.NTZ %>% 
   mutate(Area = "NTZ") %>% 
-  mutate(FM = ifelse(Scenario %in% c("Historical and Current Management"),  Mort_Rate$Fishing_Mort, FM)) %>% 
-  mutate(FM = ifelse(Scenario %in% c("Temporal and Spatial Management"),  Mort_Rate$Fishing_Mort, FM))
+  mutate(FM = ifelse(Scenario %in% c("Historical and Current Management"),  MortRate$Fishing_Mort, FM)) %>% 
+  mutate(FM = ifelse(Scenario %in% c("Temporal and Spatial Management"),  MortRate$Fishing_Mort, FM))
 Kobe.Data.F <- Kobe.Data.F %>% 
   mutate(Area = "F")
 
+#* USING ACTUAL EFFORT FROM MODEL ####
+setwd(sg_dir)
+
+Effort_Scen <- list()
+Spatial_Qs <- list()
+
+setwd(sg_dir)
+Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing"))
+Spatial_Qs[[1]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_NTZ"))
+Spatial_Qs[[2]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
+
+setwd(sim_dir)
+Effort_Scen[[2]] <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+Effort_Scen[[3]] <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
+Effort_Scen[[4]] <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+
+#* Convert back to effort in boat days ####
+
+Boat_Days <- list()
+
+Boat_Days_Scen <- array(0, dim=c(NCELL, 12, 59))
+
+for(S in 1:4){
+  
+  if(S==1|S==3){
+    for (YEAR in 1:59){
+      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[1]][,YEAR]
+    }
+  } else {
+    for (YEAR in 1:59){
+      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[2]][,YEAR]
+    }
+  }
+  Boat_Days_Scen[is.nan(Boat_Days_Scen)] <- 0
+  
+  Boat_Days[[S]] <- Boat_Days_Scen
+}
+
+Boat_Days_sum <- NULL
+
+for(S in 1:4){
+  temp <- Boat_Days[[S]]
+  temp2 <- colSums(temp, dim=2) %>% 
+    as.data.frame() %>% 
+    mutate(Scenario = Names[S])
+  
+  Boat_Days_sum <- rbind(Boat_Days_sum, temp2)
+}
+
+Boat_Days_sum <- Boat_Days_sum %>% 
+  rename(Effort = ".") %>% 
+  mutate(Mortality = Effort*(0.000005)) %>% 
+  mutate(Finite.M = 1-exp(-Mortality))
+
+#* Sum up effort for every year inside and outside sanctuary zones in every scenario
+
+Boat_Days_sum_NTZ <- NULL
+Boat_Days_sum_F <- NULL
+
+for(S in 1:4){
+  temp <- Boat_Days[[S]]
+  temp2 <- temp[as.numeric(shallow_NTZ_ID),,]
+  temp3 <- colSums(temp2, dim=2) %>% 
+    as.data.frame() %>% 
+    mutate(Scenario = Names[S])
+  
+  Boat_Days_sum_NTZ <- rbind(Boat_Days_sum_NTZ, temp3)
+  
+  temp <- Boat_Days[[S]]
+  temp2 <- temp[as.numeric(shallow_F_ID),,]
+  temp3 <- colSums(temp2, dim=2) %>% 
+    as.data.frame() %>% 
+    mutate(Scenario = Names[S])
+  
+  Boat_Days_sum_F <- rbind(Boat_Days_sum_F, temp3)
+  
+}
+
+Boat_Days_sum_NTZ <- Boat_Days_sum_NTZ %>% 
+  rename(Effort = ".")
+Boat_Days_sum_F <- Boat_Days_sum_F %>% 
+  rename(Effort = ".")
+
+Boat_Days_sum_F <- Boat_Days_sum_F %>% 
+  mutate(Instant.M = Effort * 0.000005) %>% 
+  mutate(Finite.M = 1-exp(-Instant.M))
+
+Boat_Days_sum_NTZ <- Boat_Days_sum_NTZ %>% 
+  mutate(Instant.M = Effort * 0.000005) %>% 
+  mutate(Finite.M = 1-exp(-Instant.M)) %>% 
+  mutate(Finite.M = ifelse(Scenario %in% c("Historical and Current Management"),  MortRate$Fishing_Mort, Finite.M)) %>% 
+  mutate(Finite.M = ifelse(Scenario %in% c("Temporal and Spatial Management"),  MortRate$Fishing_Mort, Finite.M))
+
+Kobe.Data.All <- Kobe.Data.All %>% 
+  mutate(Area = "All") %>% 
+  mutate(FM = Boat_Days_sum$Finite.M)
+Kobe.Data.NTZ <- Kobe.Data.NTZ %>% 
+  mutate(Area = "NTZ") %>% 
+  mutate(FM = ifelse(Scenario %in% c("Historical and Current Management"),  MortRate$Fishing_Mort, FM)) %>% 
+  mutate(FM = ifelse(Scenario %in% c("Temporal and Spatial Management"),  MortRate$Fishing_Mort, FM))
+Kobe.Data.F <- Kobe.Data.F %>% 
+  mutate(Area = "F") %>% 
+  mutate(FM = Boat_Days_sum_F$Finite.M)
+
 
 #### MAKE KOBE PLOTS ####
-F.MSY.All = 0.1
+# Currently set using the 33% of the biomass inside NTZ etc.
+F.MSY.All = 0.1 
 F.Cons.All = 0.09
-Bio.MSY.All = 30.44921
+Bio.MSY.All =  43653.160 # If we find out biomass in real model at this levels of F
 Bio.Cons.All = 61.17121818
 
 F.MSY.NTZ = 0.03
 F.Cons.NTZ = 0.015
-Bio.MSY.NTZ = 24.3013704
+Bio.MSY.NTZ = 14405.54 # 7858.7788 If we find out biomass in real model at this levels of F
 Bio.Cons.NTZ = 65.37503736
 
 F.MSY.F = 0.03
 F.Cons.F = 0.01
-Bio.MSY.F = 40.5677022
+Bio.MSY.F = 28811.09 # 4127.5699 If we find out biomass in real model at this levels of F
 Bio.Cons.F = 107.66974383
-
-## Going to do some janky stuff here to make it so that the "whole" area is just the shallow WHA ##
-Fishing.Mortality <- NULL
-
-for(S in 1:4){
-  temp.catch.NTZ <- Catches.NTZ[[S]]
-  temp.pop.NTZ <- Age.Dist.NTZ[[S]] %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  if(S==1|S==3){
-    temp.catch.NTZ[,] <- 0
-  }
-  
-  temp.catch.F <- Catches.F[[S]]
-  temp.pop.F <- Age.Dist.F[[S]] %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  temp.catch <- temp.catch.NTZ+temp.catch.F 
-  temp.catch <- colSums(temp.catch)
-  temp.pop <- temp.pop.NTZ+temp.pop.F 
-  temp.pop <- colSums(temp.pop)
-
-  temp.mort <- temp.catch/temp.pop
-  
-  Fishing.Mortality <- cbind(Fishing.Mortality, temp.mort)
-}
 
 
 Kobe.Data.All.87 <- Kobe.Data.All %>% 
-  # mutate(Biomass = Kobe.Data.NTZ$Biomass+Kobe.Data.F$Biomass) %>% 
-  mutate(Biomass = Biomass/1000) %>% 
+  # mutate(Biomass = Kobe.Data.NTZ$Biomass+Kobe.Data.F$Biomass) %>%
+  #mutate(Biomass = Biomass/1000) %>%
   # mutate(FM = ifelse(Scenario %in% c("Historical and Current Management"), Fishing.Mortality[,1],
   #                    ifelse(Scenario %in% c("No Spatial Management"), Fishing.Mortality[,2],
-  #                           ifelse(Scenario %in% c("Temporal Management Only"), Fishing.Mortality[,3], Fishing.Mortality[,4])))) %>% 
-  mutate(Rel.FM = as.numeric(FM/F.Cons.All)) %>% 
-  mutate(Rel.Bio = as.numeric(Biomass/Bio.Cons.All))%>% 
-  #mutate(Rel.SB = as.numeric(Spawning.Biomass/SB.MSY)) %>% 
+  #                           ifelse(Scenario %in% c("Temporal Management Only"), Fishing.Mortality[,3], Fishing.Mortality[,4])))) %>%
+  mutate(Rel.FM = as.numeric(FM/F.MSY.All)) %>% 
+  mutate(Rel.Bio = as.numeric(Biomass/Bio.MSY.All))%>% 
   filter(Year <= 1988) %>% 
   rename(Mod.Year = "Year") %>% 
   mutate(Mod.Year = as.character(Mod.Year))
 
 Kobe.Data.NTZ <- Kobe.Data.NTZ %>% 
-  mutate(Biomass = Biomass/1000) %>% 
-  mutate(Rel.FM = as.numeric(FM/F.Cons.NTZ)) %>% 
-  mutate(Rel.Bio = as.numeric(Biomass/Bio.Cons.NTZ))%>% 
-  #mutate(Rel.SB = as.numeric(Spawning.Biomass/SB.MSY)) %>% 
+  # mutate(Biomass = Biomass/1000) %>% 
+  mutate(Rel.FM = as.numeric(FM/F.MSY.NTZ)) %>% 
+  mutate(Rel.Bio = as.numeric(Biomass/Bio.MSY.NTZ)) %>% 
   filter(Year >= 1988) %>% 
   rename(Mod.Year = "Year") %>% 
   mutate(Mod.Year = as.character(Mod.Year))
 
 Kobe.Data.F <- Kobe.Data.F %>% 
-  mutate(Biomass = Biomass/1000) %>% 
-  mutate(Rel.FM = as.numeric(FM/F.Cons.F)) %>% 
-  mutate(Rel.Bio = as.numeric(Biomass/Bio.Cons.F))%>% 
-  #mutate(Rel.SB = as.numeric(Spawning.Biomass/SB.MSY)) %>% 
+  # mutate(Biomass = Biomass/1000) %>% 
+  mutate(FM = Boat_Days_sum_F$Finite.M) %>% 
+  mutate(Rel.FM = as.numeric(FM/F.MSY.F)) %>% 
+  mutate(Rel.Bio = as.numeric(Biomass/Bio.MSY.F))%>% 
   filter(Year >= 1988) %>% 
   rename(Mod.Year = "Year") %>% 
   mutate(Mod.Year = as.character(Mod.Year))
@@ -586,8 +595,8 @@ Bio.Plot.S00 <- ggplot()+
   scale_x_continuous(breaks=seq(0,3.5, 0.25), limits=c(0,3.5)) +
   theme_classic()+
   theme_classic()+
-  ylab("F/Fcons")+
-  xlab("B/Bcons")
+  ylab("F/Fmsy")+
+  xlab("B/Bmsy")
 Bio.Plot.S00 
 
 ## S01
@@ -615,8 +624,8 @@ Bio.Plot.S01 <-  ggplot()+
   scale_x_continuous(breaks=seq(0,3.5, 0.25), limits=c(0,3.5)) +
   theme_classic()+
   theme_classic()+
-  ylab("F/Fcons")+
-  xlab("B/Bcons")
+  ylab("F/FMSY")+
+  xlab("B/BMSY")
 Bio.Plot.S01
 
 ## S02
@@ -644,8 +653,8 @@ Bio.Plot.S02 <-  ggplot()+
   scale_x_continuous(breaks=seq(0,3.5, 0.25), limits=c(0,3.5)) +
   theme_classic()+
   theme_classic()+
-  ylab("F/Fcons")+
-  xlab("B/Bcons")
+  ylab("F/Fmsy")+
+  xlab("B/Bmsy")
 Bio.Plot.S02
 
 ## S03
@@ -673,8 +682,8 @@ Bio.Plot.S03 <-  ggplot()+
   scale_x_continuous(breaks=seq(0,3.5, 0.25), limits=c(0,3.5)) +
   theme_classic()+
   theme_classic()+
-  ylab("F/Fcons")+
-  xlab("B/Bcons")
+  ylab("F/Fmsy")+
+  xlab("B/Bmsy")
 Bio.Plot.S03
 
 ## All Shallow WHA

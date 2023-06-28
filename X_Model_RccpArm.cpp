@@ -104,7 +104,7 @@ Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double
   }
   //std::cout << "vec recruitmentfunc_cpp: TotFemSB " << TotFemSB << std::endl;
   
-  tot_recs = (sum(recs_variable));// * (R::rlnorm(0.0, 0.6));
+  tot_recs = (sum(recs_variable)) * (R::rlnorm(1, 0.6));
   //std::cout << "vec recruitmentfunc_cpp: recs " << recs << std::endl;
     
     for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 
