@@ -243,6 +243,270 @@ msy.plot.func <- function(yield, biomass,spawning){
   
 }
   
+#### FORMATTING FUNCTIONS ####
+#* Fish by age and by zone ####
+
+
+zone.fish.age <- function(NTZ.Ages, F.Ages){
+  
+  NTZ_Ages <- array(0, dim=c(30,59,100))
+  F_Ages <- array(0, dim=c(30,59,100))
+  
+  for(S in 1:4){
+    
+    SP_Pop_NTZ <- NTZ.Ages[[S]]
+    SP_Pop_F <- F.Ages[[S]]
+    
+    for(SIM in 1:length(SP_Pop_NTZ)){
+      
+      temp <- as.data.frame(colSums(SP_Pop_NTZ[[SIM]])) %>% 
+        mutate(Age = seq(1:30)) %>% 
+        pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+        mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", ""))) %>% 
+        mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+        group_by(Age, Mod_Year) %>% 
+        summarise(across(where(is.numeric), sum)) %>% 
+        ungroup() %>%
+        dplyr::select(!Num_Year) %>%
+        pivot_wider(names_from="Mod_Year",id_col="Age", values_from="Number",values_fn = list(count=list)) %>% 
+        dplyr::select(!Age) %>% 
+        unlist()
+      
+      temp2 <- array(temp, dim=c(30,59))
+      
+      NTZ_Ages[,,SIM] <- temp2
+      
+      temp <- as.data.frame(colSums(SP_Pop_F[[SIM]])) %>% 
+        mutate(Age = seq(1:30)) %>% 
+        pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+        mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", ""))) %>% 
+        mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+        group_by(Age, Mod_Year) %>% 
+        summarise(across(where(is.numeric), sum)) %>% 
+        ungroup() %>% 
+        pivot_wider(names_from="Mod_Year",id_col="Age", values_from="Number") %>% 
+        dplyr::select(!Age) %>% 
+        unlist()
+      
+      temp2 <- array(temp, dim=c(30,59))
+      
+      F_Ages[,,SIM] <- temp2
+    }
+    
+    Age.Dist.NTZ[[S]] <- NTZ_Ages
+    Age.Dist.F[[S]] <- F_Ages
+    
+  }
+  
+  Age.Dist[[1]] <- Age.Dist.NTZ
+  Age.Dist[[2]] <- Age.Dist.F
+  
+  return(Age.Dist)
+} 
+
+#* Catch by age ####
+
+age.catch <- function(Catches, NTZ.Cells, F.Cells){
+  Age.Catch <- list()
+  temp4 <- list()
+  temp5 <- list()
+  catch <- array(0, dim=c(NCELL,59,100))
+  
+  for (S in 1:4){
+    
+    temp <- Catches[[S]] # NTZ and F are the same files 
+    
+    for(SIM in 1:100){
+      catch[,,SIM] <- temp[[SIM]]
+    }
+    
+    temp2 <- catch[as.numeric(NTZ.Cells),,]
+    temp3 <- catch[as.numeric(F.Cells),,]
+    
+    temp4[[S]] <- temp2
+    
+    temp5[[S]] <- temp3
+    
+  }
+  
+  Age.Catch[[1]] <- temp4
+  Age.Catch[[2]] <- temp5
+  
+  return(Age.Catch)
+  
+}
+
+
+#* Means  ####
+
+means.func <- function(Age, Catch, Zones, Age.NTZ, Age.F, Catch.NTZ, Catch.F){
+  Ages.All <- list()
+  Ages.F <- list()
+  Ages.NTZ <- list()
+  
+  Catches.All <- list()
+  Catches.NTZ <- list()
+  Catches.F <- list()
+  
+  catch <- array(0, dim=c(30,59,100))
+  catch.NTZ <- array(0, dim=c(30,59,100))
+  catch.F <- array(0, dim=c(30,59,100))
+  
+  for(S in 1:4){
+    
+    #*************AGES***************
+    temp.All <- Age[[S]]
+    
+    temp2 <- temp.All %>% 
+      rowMeans(., dim=2) %>% 
+      as.data.frame(.) 
+    
+    Ages.All[[S]] <- temp2
+
+    
+    if(Zones == TRUE){
+      # Ages NTZ
+      temp.NTZ <- Age.NTZ[[S]]
+      
+      temp2 <- temp.NTZ %>% 
+        rowMeans(., dim=2) %>% 
+        as.data.frame(.) 
+      
+      Ages.NTZ[[S]] <- temp2
+      
+      # Ages F
+      temp.F <- Age.F[[S]]
+      
+      temp2 <- temp.F %>% 
+        rowMeans(., dim=2) %>% 
+        as.data.frame(.) 
+      
+      Ages.F[[S]] <- temp2
+    } else {}
+    
+    
+    #*********************************
+    #*************CATCHES*************
+    ## All
+    temp.c <- Catch[[S]]
+    for(SIM in 1:100){
+      
+      catch[,,SIM] <- temp.c[[SIM]]
+      
+    }
+    
+    temp2.c <- catch %>% 
+      rowMeans(., dim=2) %>% 
+      as.data.frame(.) 
+    
+    Catches.All[[S]] <- temp2.c
+    
+    if(Zones == TRUE){
+      ## NTZ
+      temp.c.NTZ <- Catch.NTZ[[S]]
+      for(SIM in 1:100){
+        
+        catch.NTZ[,,SIM] <- temp.c.NTZ[[SIM]]
+        
+      }
+      
+      temp2.c.NTZ <- catch.NTZ %>% 
+        rowMeans(., dim=2) %>% 
+        as.data.frame(.) 
+      
+      if(S==1|S==3){
+        temp2.c.NTZ[,] <- 0
+      } else { }
+      
+      Catches.NTZ[[S]] <- temp2.c.NTZ
+      
+      ## F
+      temp.c.F <- Catch.F[[S]]
+      for(SIM in 1:100){
+        
+        catch.F[,,SIM] <- temp.c.F[[SIM]]
+        
+      }
+      
+      temp2.c.F <- catch.F %>% 
+        rowMeans(., dim=2) %>% 
+        as.data.frame(.) 
+      
+      Catches.F[[S]] <- temp2.c.F
+    } else { }
+    
+    
+    #*********************************  
+  }
+  Age.and.Catch <- list()
+  
+  Age.and.Catch[[1]] <- Ages.All
+  Age.and.Catch[[2]] <- Ages.F
+  Age.and.Catch[[3]] <- Ages.NTZ
+  
+  Age.and.Catch[[4]] <- Catches.All
+  Age.and.Catch[[5]] <- Catches.NTZ
+  Age.and.Catch[[6]] <- Catches.F
+  
+  return(Age.and.Catch)
+  
+}
+
+#* Biomass function #####
+
+biomass.func <- function(Age, Zones, Age.NTZ, Age.F, Weights){
+  Biomass.All <- list()
+  Biomass.NTZ <- list()
+  Biomass.F <- list()
+  
+  for(S in 1:4){
+    ## All
+    temp.All <- Age[[S]]
+    
+    temp3 <- temp.All %>% 
+      rowMeans(., dim=2) %>% 
+      as.data.frame(.) %>% 
+      mutate_all(.,function(col){Weights$V12*col}) 
+    
+    Biomass.All[[S]] <- temp3
+    
+    if(Zones == TRUE){
+      ## NTZ
+      temp.NTZ <- Age.NTZ[[S]]
+      
+      temp3.NTZ <- temp.NTZ %>% 
+        rowMeans(., dim=2) %>% 
+        as.data.frame(.) %>% 
+        mutate_all(.,function(col){Weights$V12*col}) 
+      
+      Biomass.NTZ[[S]] <- temp3.NTZ
+      
+      ## F
+      temp.F <- Age.F[[S]]
+      
+      temp3.F<- temp.F %>% 
+        rowMeans(., dim=2) %>% 
+        as.data.frame(.) %>% 
+        mutate_all(.,function(col){Weights$V12*col}) 
+      
+      Biomass.F[[S]] <- temp3.F
+    } else {  }
+  }
+ 
+  
+  Biomass <- list()
+  Biomass[[1]] <- Biomass.All
+  Biomass[[2]] <- Biomass.NTZ
+  Biomass[[3]] <- Biomass.F
+  
+  return(Biomass)
+  
+}
+
+
+
+
+
 
 
   

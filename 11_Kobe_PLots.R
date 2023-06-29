@@ -45,14 +45,13 @@ YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
 Weight <- readRDS("weight")
+
+setwd(pop_dir)
 MortRate <- readRDS("Mort_Rate")
 
 
 NCELL <- nrow(water)
 
-
-#### CALCULATE F AND BIOMASS FROM MY MODEL DATA ####
-setwd(pop_dir)
 
 #### SET UP FOR NTZ AND FISHED AREA ####
 setwd(sp_dir)
@@ -104,257 +103,95 @@ setwd(pop_dir)
 Age.Dist <- list()
 Age.Catch <- list()
 
-# Each layer is a simulation, rows are cells and columns are years
-Age.Dist[[1]] <- readRDS(paste0(model.name, sep="_", "Age_Distribution", sep="_", "S00"))
-Age.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Age_Distribution", sep="_", "S01"))
-Age.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Age_Distribution", sep="_", "S02"))
-Age.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Age_Distribution", sep="_", "S03"))
+Scenarios <- c("S00", "S01", "S02", "S03", "S04")
 
-Age.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Age", sep="_", "S00"))
-Age.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Age", sep="_", "S01"))
-Age.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Age", sep="_", "S02"))
-Age.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Age", sep="_", "S03"))
+for(S in 1:4){
+  
+  Filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenarios[S])
+  Age.Dist[[S]] <- readRDS(Filename)
+  
+  Filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenarios[S])
+  Age.Catch[[S]] <- readRDS(Filename)
+  
+}
+
 
 ## NTZ Area
 Age.Dist.NTZ <- list()
 Age.Catch.NTZ <- list()
 
-# List of lists - 100 items in list, each item in list is rows as cells, columns as ages and layers are years
-Age.Dist.NTZ[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S00"))
-Age.Dist.NTZ[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S01"))
-Age.Dist.NTZ[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S02"))
-Age.Dist.NTZ[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S03"))
+for(S in 1:4){
+  
+  Filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenarios[S])
+  Age.Dist.NTZ[[S]] <- readRDS(Filename)
+  
+  Filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenarios[S])
+  Age.Catch.NTZ[[S]] <- readRDS(Filename)
+}
 
-
-# Each layer is a simulation, rows are cells and columns are years
-Age.Catch.NTZ[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00"))
-Age.Catch.NTZ[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01"))
-Age.Catch.NTZ[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02"))
-Age.Catch.NTZ[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03"))
 
 ## Fished Area
 Age.Dist.F <- list()
 Age.Catch.F <- list()
 
-# List of lists - 100 items in list, each item in list is rows as cells, columns as ages and layers are years
-Age.Dist.F[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S00"))
-Age.Dist.F[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S01"))
-Age.Dist.F[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S02"))
-Age.Dist.F[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S03"))
-
-
-# Each layer is a simulation, rows are cells and columns are years
-Age.Catch.F[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00"))
-Age.Catch.F[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01"))
-Age.Catch.F[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02"))
-Age.Catch.F[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03"))
+for(S in 1:4){
+  
+  Filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenarios[S])
+  Age.Dist.F[[S]] <- readRDS(Filename)
+  
+  Filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenarios[S])
+  Age.Catch.F[[S]] <- readRDS(Filename)
+}
 
 
 ### Format Zone data
+res.age <- zone.fish.age(NTZ.Ages = Age.Dist.NTZ, F.Ages=Age.Dist.F)
 
-NTZ_Ages <- array(0, dim=c(30,59,100))
-F_Ages <- array(0, dim=c(30,59,100))
-
-## Numbers of fish by age
-for(S in 1:4){
-  
-  SP_Pop_NTZ <- Age.Dist.NTZ[[S]]
-  SP_Pop_F <- Age.Dist.F[[S]]
-  
-  for(SIM in 1:length(SP_Pop_NTZ)){
-    
-    temp <- as.data.frame(colSums(SP_Pop_NTZ[[SIM]])) %>% 
-      mutate(Age = seq(1:30)) %>% 
-      pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-      mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", ""))) %>% 
-      mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-      group_by(Age, Mod_Year) %>% 
-      summarise(across(where(is.numeric), sum)) %>% 
-      ungroup() %>%
-      dplyr::select(!Num_Year) %>%
-      pivot_wider(names_from="Mod_Year",id_col="Age", values_from="Number",values_fn = list(count=list)) %>% 
-      dplyr::select(!Age) %>% 
-      unlist()
-    
-    temp2 <- array(temp, dim=c(30,59))
-
-    NTZ_Ages[,,SIM] <- temp2
-    
-    temp <- as.data.frame(colSums(SP_Pop_F[[SIM]])) %>% 
-      mutate(Age = seq(1:30)) %>% 
-      pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-      mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", ""))) %>% 
-      mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-      group_by(Age, Mod_Year) %>% 
-      summarise(across(where(is.numeric), sum)) %>% 
-      ungroup() %>% 
-      pivot_wider(names_from="Mod_Year",id_col="Age", values_from="Number") %>% 
-      dplyr::select(!Age) %>% 
-      unlist()
-   
-     temp2 <- array(temp, dim=c(30,59))
-    
-    F_Ages[,,SIM] <- temp2
-  }
-  
-  Age.Dist.NTZ[[S]] <- NTZ_Ages
-  Age.Dist.F[[S]] <- F_Ages
-  
-}
+Age.Dist.NTZ <- res.age[[1]]
+Age.Dist.F <- res.age[[2]]
 
 ## Age catches
-catch <- array(0, dim=c(NCELL,59,100))
 
-for (S in 1:4){
-  
-  temp <- Age.Catch.NTZ[[S]] # NTZ and F are the same files 
-  
-  for(SIM in 1:100){
-    catch[,,SIM] <- temp[[SIM]]
-  }
-  
-  temp2 <- catch[as.numeric(shallow_NTZ_ID),,]
-  temp3 <- catch[as.numeric(shallow_F_ID),,]
-  
-  Age.Catch.NTZ[[S]] <- temp2
-  
-  Age.Catch.F[[S]] <- temp3
-  
-}
+res.catch <- age.catch(Catches = Age.Catch.F, NTZ.Cells = shallow_NTZ_ID, F.Cells = shallow_F_ID) #This file actuall has all of the cells for the whole model
 
+Age.Catch.NTZ <- res.catch[[1]]
+Age.Catch.F <- res.catch[[2]]
+
+
+## Calculate mean number of fish and mean catch in each year
+# Can turn the Zones on and off so you can do it for the whole mode only if you want 
+
+means.all <- means.func(Age = Age.Dist, Catch = Age.Catch, Zones = TRUE, 
+                       Age.NTZ = Age.Dist.NTZ, Age.F = Age.Dist.F, 
+                       Catch.NTZ = Age.Catch.NTZ, Catch.F = Age.Catch.F)
+
+Ages.All <- means.all[[1]]
+Ages.F <- means.all[[2]] 
+Ages.NTZ <- means.all[[3]] 
+
+Catches.All <- means.all[[4]] 
+Catches.NTZ <- means.all[[5]] 
+Catches.F <- means.all[[6]] 
+
+## Calculate biomass in each year
+
+biomass.all <- biomass.func(Age = Age.Dist, Zones = TRUE, Age.NTZ = Age.Dist.NTZ, Age.F = Age.Dist.F, Weights = Weight)
+
+Biomass.All <- biomass.all[[1]]
+Biomass.NTZ <- biomass.all[[2]]
+Biomass.F <- biomass.all[[3]]
+
+##Create data frames needed to make the Kobe plots 
 Names <- c("Historical and Current Management", "No Spatial Management", 
            "Temporal and Spatial Management","Temporal Management Only" )
 
-
-## Calculate mean number of fish and biomass in each year of the model
-Ages.All <- list()
-Ages.F <- list()
-Ages.NTZ <- list()
-
-Catches.All <- list()
-Catches.NTZ <- list()
-Catches.F <- list()
-
-catch <- array(0, dim=c(30,59,100))
-catch.NTZ <- array(0, dim=c(30,59,100))
-catch.F <- array(0, dim=c(30,59,100))
-
-Biomass.All <- list()
-Biomass.NTZ <- list()
-Biomass.F <- list()
-
-for(S in 1:4){
-  
-  #*************AGES***************
-  temp.All <- Age.Dist[[S]]
-  
-  temp2 <- temp.All %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  Ages.All[[S]] <- temp2
-  
-  # Ages NTZ
-  temp.NTZ <- Age.Dist.NTZ[[S]]
-  
-  temp2 <- temp.NTZ %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  Ages.NTZ[[S]] <- temp2
-  
-  # Ages F
-  temp.F <- Age.Dist.F[[S]]
-  
-  temp2 <- temp.F %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  Ages.F[[S]] <- temp2
-  #*********************************
-  #*************CATCHES*************
-  ## All
-  temp.c <- Age.Catch[[S]]
-  for(SIM in 1:100){
-    
-    catch[,,SIM] <- temp.c[[SIM]]
-    
-  }
-  
-  temp2.c <- catch %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  Catches.All[[S]] <- temp2.c
-  
-  ## NTZ
-  temp.c.NTZ <- Age.Catch.NTZ[[S]]
-  for(SIM in 1:100){
-    
-    catch.NTZ[,,SIM] <- temp.c.NTZ[[SIM]]
-    
-  }
-  
-  temp2.c.NTZ <- catch.NTZ %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  if(S==1|S==3){
-    temp2.c.NTZ[,] <- 0
-  } else { }
-  
-  Catches.NTZ[[S]] <- temp2.c.NTZ
-  
-  ## F
-  temp.c.F <- Age.Catch.F[[S]]
-  for(SIM in 1:100){
-    
-    catch.F[,,SIM] <- temp.c.F[[SIM]]
-    
-  }
-  
-  temp2.c.F <- catch.F %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) 
-  
-  Catches.F[[S]] <- temp2.c.F
-  
-  #*********************************  
-  #***********BIOMASS***************
-  ## All
-  temp3 <- temp.All %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) %>% 
-    mutate_all(.,function(col){Weight$V12*col}) 
-  
-  Biomass.All[[S]] <- temp3
-  
-  ## NTZ
-  temp3.NTZ <- temp.NTZ %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) %>% 
-    mutate_all(.,function(col){Weight$V12*col}) 
-  
-  Biomass.NTZ[[S]] <- temp3.NTZ
-  
-  ## F
-  temp3.F<- temp.F %>% 
-    rowMeans(., dim=2) %>% 
-    as.data.frame(.) %>% 
-    mutate_all(.,function(col){Weight$V12*col}) 
-  
-  Biomass.F[[S]] <- temp3.F
-  #*********************************  
-}
-
-## Biomass and Spawning Biomass
 Kobe.Data.All <- NULL
 Kobe.Data.NTZ <- NULL
 Kobe.Data.F <- NULL
 
 for(S in 1:4){
   
-  temp <- FM.Scenario.All[[S]]
+  temp <- FM.Scenario.NTZ[[S]]
   temp2 <- Biomass.All[[S]]
   
   temp3 <- temp2 %>% 
@@ -540,11 +377,6 @@ Bio.Cons.F = 107.66974383
 
 
 Kobe.Data.All.87 <- Kobe.Data.All %>% 
-  # mutate(Biomass = Kobe.Data.NTZ$Biomass+Kobe.Data.F$Biomass) %>%
-  #mutate(Biomass = Biomass/1000) %>%
-  # mutate(FM = ifelse(Scenario %in% c("Historical and Current Management"), Fishing.Mortality[,1],
-  #                    ifelse(Scenario %in% c("No Spatial Management"), Fishing.Mortality[,2],
-  #                           ifelse(Scenario %in% c("Temporal Management Only"), Fishing.Mortality[,3], Fishing.Mortality[,4])))) %>%
   mutate(Rel.FM = as.numeric(FM/F.MSY.All)) %>% 
   mutate(Rel.Bio = as.numeric(Biomass/Bio.MSY.All))%>% 
   filter(Year <= 1988) %>% 
@@ -552,7 +384,6 @@ Kobe.Data.All.87 <- Kobe.Data.All %>%
   mutate(Mod.Year = as.character(Mod.Year))
 
 Kobe.Data.NTZ <- Kobe.Data.NTZ %>% 
-  # mutate(Biomass = Biomass/1000) %>% 
   mutate(Rel.FM = as.numeric(FM/F.MSY.NTZ)) %>% 
   mutate(Rel.Bio = as.numeric(Biomass/Bio.MSY.NTZ)) %>% 
   filter(Year >= 1988) %>% 
@@ -560,7 +391,6 @@ Kobe.Data.NTZ <- Kobe.Data.NTZ %>%
   mutate(Mod.Year = as.character(Mod.Year))
 
 Kobe.Data.F <- Kobe.Data.F %>% 
-  # mutate(Biomass = Biomass/1000) %>% 
   mutate(FM = Boat_Days_sum_F$Finite.M) %>% 
   mutate(Rel.FM = as.numeric(FM/F.MSY.F)) %>% 
   mutate(Rel.Bio = as.numeric(Biomass/Bio.MSY.F))%>% 
