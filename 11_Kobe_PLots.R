@@ -360,9 +360,9 @@ Kobe.Data.F <- Kobe.Data.F %>%
 
 #### MAKE KOBE PLOTS ####
 # Currently set using the 33% of the biomass inside NTZ etc.
-F.MSY.All = 0.1 
+F.MSY.All = 0.06 
 F.Cons.All = 0.09
-Bio.MSY.All =  43653.160 # If we find out biomass in real model at this levels of F
+Bio.MSY.All = 107010.71 # Biomass from year in model where fishing effort is closest to 0.06
 Bio.Cons.All = 61.17121818
 
 F.MSY.NTZ = 0.03

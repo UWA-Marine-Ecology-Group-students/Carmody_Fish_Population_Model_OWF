@@ -329,48 +329,46 @@ water_area <- water %>%
   mutate(q_17 = Area_17/Sum_17) %>% 
   mutate(ID = row_number())
 
-spatial_q <- array(0.000005, dim=c(NCELL, 59))
+spatial_q <- array(0.00001, dim=c(NCELL, 59))
 
-for (y in 31:51){
+for (y in 31:59){
   spatial_q[ ,y] <- spatial_q[ ,y-1] * 1.02
 }
 
-spatial_q[,52:59] <- spatial_q[,51]
 
 for(COL in 1:27){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,9])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,9])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,9]
   }
 }
 
 for(COL in 28:45){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,10])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,10])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,10]
   }
 }
 
 for(COL in 46:57){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,11])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,11])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,11]
   }
 }
 
 for(COL in 58:59){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,12])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,12])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,12]
   }
 }
 
 spatial_q[spatial_q == Inf] <- 0
-
 ## Save catchability for later
 setwd(sg_dir)
 saveRDS(spatial_q, file=paste0(model.name, sep="_", "Spatial_q_No_NTZ"))

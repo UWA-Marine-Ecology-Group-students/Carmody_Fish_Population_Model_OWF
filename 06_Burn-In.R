@@ -5,7 +5,6 @@
 # Will run the full model with fishing
 # Make sure you reset things like NCELL if you've
 # used the test script
-# This takes about 1.5 hours to run
 
 ###################################################
 library(tidyverse)
@@ -17,6 +16,7 @@ library(RColorBrewer)
 library(MQMF)
 library(Rcpp)
 library(RcppArmadillo)
+library(abind)
 
 rm(list = ls())
 
@@ -76,7 +76,7 @@ NatMort = 0.146
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 BHa = 0.4344209 #0.4344209
-BHb = 0.003759261 #0.0009398152 #0.01889882
+BHb = 0.009398152 #0.003759261 #0.0009398152 #0.01889882
 PF = 0.5
 
 # Model settings
@@ -116,7 +116,7 @@ BurnIn = F #This is to swap the model between burn in and running the model prop
 set.seed(1313) # This is the burn in seed number
 
 Start=Sys.time()
-for (YEAR in 0:MaxYear){
+for (YEAR in 0:50){
   
   print(YEAR)
   
@@ -147,3 +147,58 @@ plot(x=seq(1,51,1), y=Total$V1)
 ## Save burn in population for use in the actual model
 setwd(sg_dir)
 saveRDS(YearlyTotal, file=paste0(model.name, sep="_", "BurnInPop"))
+
+
+#### RUN BURN IN AGAIN WITH HIGH LEVEL OF FISHING MORTALITY ####
+#### SET UP LISTS TO HOLD THE PLOTS ####
+SpatialPlots <- list()
+LengthPlots <- list()
+AgePlots <- list()
+TimesPlotted = 0
+
+#### SET UP INITIAL POPULATION ####
+Total <- array(0, dim=c(MaxYear+1,1))
+
+setwd(sg_dir)
+YearlyTotal <- readRDS("ningaloo_BurnInPop") #This is our yearly population split by age category (every layer is an age group)
+Effort <- readRDS("ningaloo_burn_in_fishing_High_M")
+
+PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
+
+#### RUN MODEL ####
+
+Start=Sys.time()
+for (YEAR in 0:30){
+  
+  print(YEAR)
+  
+  ## Loop over all the Rcpp functions in the model
+  ModelOutput <- RunModelfunc_cpp(YEAR, MaxAge, MaxYear, MaxCell, NatMort, BHa, BHb, PF, AdultMove, Mature, Weight, Settlement, 
+                                  YearlyTotal, Selectivity, Effort)
+  
+  ## Save some outputs from the model 
+  # Have to add 1 to all YEAR because the loop is now starting at 0
+  PopTotal[ , , YEAR+1] <- rowSums(ModelOutput$YearlyTotal[,,1:MaxAge], dim=2) # This flattens the matrix to give you the number of fish present in the population each month, with layers representing the years
+  
+  water$pop <- PopTotal[ , 12, YEAR+1] # We just want the population at the end of the year
+  
+  Total[YEAR+1,1] <- sum(water$pop)
+  print(Total[YEAR+1,1])
+  
+  
+}
+
+End=Sys.time()
+Runtime = End - Start
+Runtime
+
+## PLOTTING
+Total <- as.data.frame(Total)
+plot(x=seq(1,51,1), y=Total$V1)
+
+setwd(sg_dir)
+saveRDS(YearlyTotal, file=paste0(model.name, sep="_", "BurnInPop_High_M"))
+
+
+
+

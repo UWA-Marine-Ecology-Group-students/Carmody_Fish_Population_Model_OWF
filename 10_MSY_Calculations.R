@@ -99,8 +99,8 @@ NCELL <- length(shallow_NTZ_ID)
 ## Effort values 
 
 # F_finite_values <- seq(0, 0.9, 0.05) # These are the values of F that we want to cycle through to see where our MSY is
-F_finite_values <- seq(0, 0.15, 0.01)
-E_values <- as.data.frame(array(0, dim = c(16, 13))) %>% 
+F_finite_values <- seq(0, 0.9, 0.05)
+E_values <- as.data.frame(array(0, dim = c(19, 13))) %>% 
   mutate(V1 = F_finite_values) 
   # mutate(V1 = V1/q)
 
@@ -119,13 +119,13 @@ Monthly_effort <- Monthly_effort %>%
   mutate(FM = F_finite_values)
 
 # Allocate effort to cells
-NCELL <-  length(shallow_NTZ_ID) + length(shallow_F_ID)
+NCELL <- nrow(Water)
 
-Fishing_MSY <- array(0, dim=c(NCELL, 12,16)) #This array has a row for every cell, a column for every month, and a layer for every value of F
+Fishing_MSY <- array(0, dim=c(NCELL, 12,19)) #This array has a row for every cell, a column for every month, and a layer for every value of F
 
 Effort.List <- list()
 
-for(FM in 1:16){
+for(FM in 1:19){
   
   for(M in 1:12){
     
@@ -146,7 +146,7 @@ for(FM in 1:16){
 #### PARAMETER VALUES ####
 MaxAge = 30
 MaxYear = 50
-MaxCell = length(shallow_NTZ_ID) + length(shallow_F_ID)
+MaxCell = NCELL
 PF = 0.5 # Proportion female
 
 ## Natural Mortality
@@ -204,15 +204,14 @@ Selectivity <- abind(Selectivity, Selectivity, along=3)
 # Need to get it to produce the plots we want as well 
 # Want it to run for a year and then get the values for the population at the end of the year 
 setwd(sg_dir)
-Cells <- c(shallow_F_ID, shallow_NTZ_ID)
 
-for(FM in 1:16){
+for(FM in 1:19){
   
   print(FM)
   
   YearlyTotal <- readRDS(paste0(model.name, sep="_","BurnInPop"))
   
-  YearlyTotal <- YearlyTotal[as.numeric(Cells),,]
+  #YearlyTotal <- YearlyTotal[as.numeric(Cells),,]
 
   Effort <- Effort.List[[FM]]
   
@@ -274,21 +273,6 @@ MSY.Plot.Data.All <- as.data.frame(array(0, dim=c(16,5))) %>%
          Zone = "V5") %>%
   mutate(Fishing.Mort = seq(0,0.15, 0.01))
 
-MSY.Plot.Data.NTZ <- as.data.frame(array(0, dim=c(16,5))) %>%
-  rename(Fishing.Mort = "V1",
-         YPR = "V2",
-         Total.Bio = "V3",
-         Spawn.Bio = "V4",
-         Zone = "V5") %>%
-  mutate(Fishing.Mort = seq(0,0.15, 0.01))
-
-MSY.Plot.Data.F <- as.data.frame(array(0, dim=c(16,5))) %>%
-  rename(Fishing.Mort = "V1",
-         YPR = "V2",
-         Total.Bio = "V3",
-         Spawn.Bio = "V4",
-         Zone = "V5") %>%
-  mutate(Fishing.Mort = seq(0,0.15, 0.01))
 
 MSY.Plot.Data <- list()
 MSY.Plot.Data[[1]] <- MSY.Plot.Data.All
@@ -319,7 +303,7 @@ for(A in 1:1){
 }
 
 Plots.YPR <- list()
-for(A in 1:3){
+for(A in 1:1){
   Plot.Data <- MSY.Plot.Data[[A]]
   
   plot <- ggplot(Plot.Data)+
@@ -329,7 +313,7 @@ for(A in 1:3){
   
   Plots.YPR[[A]] <- plot
 }
-Plots.YPR[[3]]
+Plots.YPR[[1]]
 
 
 ## Biomass Plot
@@ -356,7 +340,7 @@ for(A in 1:1){
 }
 
 Plots.Bio <- list()
-for(A in 1:3){
+for(A in 1:1){
   Plot.Data <- MSY.Plot.Data[[A]]
   
   plot <- ggplot(Plot.Data)+
@@ -366,7 +350,7 @@ for(A in 1:3){
   
   Plots.Bio[[A]] <- plot
 }
-Plots.Bio[[3]]
+Plots.Bio[[1]]
 
 
 

@@ -42,7 +42,8 @@ model.name <- "ningaloo"
 
 #### READ FILES ####
 setwd(sg_dir)
-water <- readRDS(paste0(model.name, sep="_", "water"))
+water <- readRDS(paste0(model.name, sep="_", "water")) %>% 
+  st_make_valid()
 
 # Habitat Layers
 setwd(sp_dir)
@@ -254,8 +255,6 @@ for(i in 1:length(habitat.types)){
 #### SAVE FILES FOR USE IN NEXT STEP ####
 setwd(sp_dir)
 
-#### NEED TO REDO THE NINGALOO ONES BECAUSE YOU'VE OVERWRITTEN THEM
-
 saveRDS(network_matrix, file=paste0(model.name, sep="_", "network_matrix"))
 saveRDS(perc_by_hab[[1]], file=paste0(model.name, sep="_", "reef_perc"))
 saveRDS(perc_by_hab[[2]], file=paste0(model.name, sep="_", "lagoon_perc"))
@@ -348,9 +347,13 @@ pRocky <- readRDS(paste0(model.name, sep="_","pRocky"))
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-SwimSpeed <- 1.6 #2.5
+# Point 930 to point 1000 is 80km 
 
-a = -SwimSpeed
+Pj[930,1000]
+
+SwimSpeed <- 1.5 #2.5
+
+a = -(SwimSpeed)
 b =  0.15 #0.1 # Reef
 c =  0.12 #0.09 #Lagoon
 d =  0.1 #0.003 #Rocky Reef
@@ -457,7 +460,7 @@ rowSums(ProbRec)
 
 #### SAVE FILES ####
 setwd(sg_dir)
-saveRDS(Pj, file=paste0(model.name, sep="_", "movement"))
+saveRDS(Pj, file=paste0(model.name, sep="_", "movement_medium"))
 saveRDS(ProbRec, file=paste0(model.name, sep="_","juvmove"))
 saveRDS(recruitment, file=paste0(model.name, sep="_","recruitment"))
 saveRDS(water, file=paste0(model.name, sep="_", "water"))

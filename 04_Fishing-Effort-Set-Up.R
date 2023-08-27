@@ -75,7 +75,6 @@ setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid() 
-BR <- BR[1:4,]
 
 # No Take Zones
 setwd(sg_dir)
@@ -343,43 +342,42 @@ water_area <- water %>%
   mutate(q_17 = Area_17/Sum_17) %>% 
   mutate(ID = row_number())
 
-spatial_q <- array(0.000005, dim=c(NCELL, 59))
+spatial_q <- array(0.00001, dim=c(NCELL, 59))
 
-for (y in 31:51){
+for (y in 31:59){
   spatial_q[ ,y] <- spatial_q[ ,y-1] * 1.02
 }
 
-spatial_q[,52:59] <- spatial_q[,51]
 
 for(COL in 1:27){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,9])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,9])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,9]
   }
 }
 
 for(COL in 28:45){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,10])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,10])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,10]
   }
 }
 
 for(COL in 46:57){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,11])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,11])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,11]
   }
 }
 
 for(COL in 58:59){
   for (ROW in 1:NCELL){
     
-    spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,12])
-    
+    #spatial_q[ROW,COL] <- 0.3*(spatial_q[ROW,COL]/water_area[ROW,12])
+    spatial_q[ROW,COL] <- spatial_q[ROW,COL]/water_area[ROW,12]
   }
 }
 
@@ -809,8 +807,8 @@ BR_Trips <- BR_Trips %>%
   mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008 as the boat ramp pretty much didn't exist, have allocated 10% of its boats to the other Exmouth Boat Ramps
 
 # Fishing parameters
-eq.init.fish = 0.025 
-q = 0.00005
+eq.init.fish = 0.05
+q = 0.00001
 Effort = (-log(1-eq.init.fish))/q # We assume the same level of nominal effort in each year
 
 ## Split up this effort by the same proprtions as before and allocate it to the different access points
@@ -864,6 +862,120 @@ for(YEAR in 1:50){
 
 setwd(sg_dir)
 saveRDS(Burn_In_Fishing, file=paste0("ningaloo", sep="_", "burn_in_fishing"))
+
+## Pre-1987 high fishing mortality burn in 
+
+
+BR_Trips <- data.frame(BoatRamp = c("Tantabiddi", "Bundegi", "ExmouthMar", "CoralBay"),
+                       Effort = c(194.48, 133.9, 166.15, 146.07),
+                       Trips = c(224, 157, 198, 151))
+
+BR_Trips <- BR_Trips %>% 
+  mutate(Trip_per_Hr = as.numeric(unlist((Trips/Effort)))) %>% # Standardise the no. trips based on how much time you spent sampling
+  mutate(BR_Prop = 0.25) #Then work out the proportion of trips each hour that leave from each boat ramp
+
+
+# Fishing parameters
+eq.init.fish = 0.146*1.5
+q = 0.00001
+Effort = (-log(1-eq.init.fish))/q # We assume the same level of nominal effort in each year
+
+## Split up this effort by the same proprtions as before and allocate it to the different access points
+# Months
+burn_in_effort <- Month_Prop_Ave[,2]*Effort
+
+burn_in_effort <- as.data.frame(burn_in_effort) %>% 
+  mutate(Tb_BR = 0,
+         Bd_BR = 0,
+         ExM_BR = 0,
+         CrB_BR = 0) %>% 
+  rename(Effort = "Ave_Month_Prop")
+
+
+## Split up by boat ramp
+for(M in 1:12){
+  burn_in_effort$Tb_BR = burn_in_effort$Effort*BR_Trips[1,5]
+  burn_in_effort$Bd_BR = burn_in_effort$Effort*BR_Trips[2,5]
+  burn_in_effort$ExM_BR = burn_in_effort$Effort*BR_Trips[3,5] 
+  burn_in_effort$CrB_BR = burn_in_effort$Effort*BR_Trips[4,5]
+}
+
+## Set up new utilities because we don't necessarily want this fishing to be determined by distance to access point
+# Add coefficients to each variable - all the BRs are the same but make them negative because the further away they are the less likely people are to visit
+a = 1
+b = 1
+c = 1
+d = 1
+e = 1
+
+Vj <- Cell_Vars %>% 
+  mutate(Bd_BR = Bd_BR*b,
+         ExM_BR = ExM_BR*c,
+         Tb_BR = Tb_BR*d,
+         CrB_BR = CrB_BR*e,
+         Area= Area*a) %>% 
+  mutate(vj = Bd_BR+ExM_BR+Tb_BR+CrB_BR)
+
+Vj_6086 <- Vj
+
+
+## 1960-1987 
+BR_U_BI <- as.data.frame(matrix(0, nrow=NCELL, ncol=4)) #Set up data frame to hold utilities of cells
+
+BR_U_BI <- BR_U_BI %>% #make sure you give the columns good names so that you know what they are
+  rename("Bd_U"=V1) %>% 
+  rename("ExM_U" = V2) %>% 
+  rename("Tb_U" = V3) %>% 
+  rename("CrB_U"=V4)
+
+cellU <- matrix(NA, ncol=4, nrow=NCELL)
+
+for(RAMP in 1:4){
+  for(cell in 1:NCELL){
+    U <- exp(log(Vj_6086[cell,5]))
+    cellU[cell, RAMP] <- U
+  }
+}
+
+rowU <- as.data.frame(colSums(cellU))
+
+for (RAMP in 1:4){
+  for (cell in 1:NCELL){
+    BR_U_BI[cell,RAMP] <- (exp(log(Vj_6086[cell,5])))/rowU[RAMP,1]
+  }
+}
+colSums(BR_U_BI)
+
+## Allocate to the cells
+Burn_In_Fishing <- array(0, dim=c(NCELL, 12, 75)) #This array has a row for every cell, a column for every month, and a layer for every year
+Months <- array(0, dim=c(NCELL, 12))
+Ramps <- array(0, dim=c(NCELL, 4))
+layer <- 1
+
+for(YEAR in 1:50){
+  
+  for(MONTH in 1:12){
+    
+    for(RAMP in 1:4){
+      
+      temp <- burn_in_effort %>% 
+        dplyr::select(-c(Effort))
+      
+      temp <- as.matrix(temp) 
+      
+      for(CELL in 1:NCELL){
+        Ramps[CELL,RAMP] <- BR_U_BI[CELL,RAMP] * temp[MONTH,RAMP] # Use the same utility from before as nothing should have changed
+      }
+    }
+    
+    Months[,MONTH] <-  rowSums(Ramps)
+  }
+  Burn_In_Fishing[ , ,layer] <- Months
+  Burn_In_Fishing[ , ,layer] <- Burn_In_Fishing[ , ,layer] * spatial_q[,1]
+  layer <- layer+1
+}
+colSums(Burn_In_Fishing[,,40])
+saveRDS(Burn_In_Fishing, file=paste0("ningaloo", sep="_", "burn_in_fishing_High_M"))
 
 #### FOR SMALL MODEL ####
 ## Small model burn in
