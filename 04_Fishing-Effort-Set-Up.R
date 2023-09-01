@@ -307,6 +307,7 @@ EffortPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_line(aes(x=Year, y=`sum(Total_Boat_Days)`)) + 
   theme_classic()+
+  xlim(1986, NA)+
   ylab("Effort (Boat days)")+
   geom_vline(xintercept=1991, linetype="dotted", color="#302383")+
   geom_vline(xintercept=1995, linetype="dashed", colour="#66CCEE")

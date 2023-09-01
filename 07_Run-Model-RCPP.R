@@ -17,8 +17,22 @@ library(MQMF)
 library(Rcpp)
 library(RcppArmadillo)
 library(raster)
+library(gmailr)
+library(beepr)
 
 rm(list = ls())
+
+#### Setting Up to Send Email ####
+rappdirs::user_data_dir("gmailr")
+path_old <- "~/Downloads/client_secret_197921613648-unj6hrruc81rfdj9f6am0uvfvhtq2a3p.apps.googleusercontent.com.json"
+d <- fs::dir_create(rappdirs::user_data_dir("gmailr"), recurse=TRUE)
+fs::file_move(path_old, d)
+
+gm_auth_configure()
+
+gm_oauth_client()
+
+gm_auth()
 
 #### SET DIRECTORIES ####
 working.dir <- dirname(rstudioapi::getActiveDocumentContext()$path) # to directory of current file - or type your own
@@ -47,9 +61,9 @@ model.name <- "ningaloo"
 
 ## Normal Model Files
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement_medium"))
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_really_slow"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water")) 
 BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop_High_M"))
@@ -59,9 +73,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-setwd(sim_dir)
-Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
-Scenario <- "S03"
+# setwd(sim_dir)
+# Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+Scenario <- "S00"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -160,7 +174,6 @@ SIM.N.Catches <- list()
 SIM.Age.Catches <- list()
 SIM.Weight.Catches <- list()
 
-
 #### RUN MODEL ####
 Start=Sys.time()
 for (SIM in 1:10){ # Simulation loop
@@ -249,35 +262,35 @@ for (SIM in 1:10){ # Simulation loop
     
     ## Population
     # Total population
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(Sim.Pop, file=filename)
     
     # Numbers of each age that make it to the end of each year
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(Sim.Ages, file=filename)
     
     # Numbers of fish of each age, inside and outside sanctuary zones
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(SIM.Sp.NTZ, file=filename)
 
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(SIM.Sp.F, file=filename)
     
     # Number of fish in each cell at the end of each year
-    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(SIM.N.Dist, file=filename)
     
     ## Catches
     # Catch in each year by age
-    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(SIM.Age.Catches, file=filename)
     
     # catch in each cell across the year
-    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(SIM.N.Catches, file=filename)
     
     # Catch in each cell by weight across the year
-    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario, sep="_", "medium_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario, sep="_", "really_small_movement")
     saveRDS(SIM.Weight.Catches, file=filename)
     
   } else { }# End saving if statement
@@ -286,5 +299,16 @@ for (SIM in 1:10){ # Simulation loop
 End = Sys.time() 
 Runtime = End - Start
 Runtime
-beep(1)
+
+finished_email <- gm_mime() %>% 
+  gm_to("charlotte.aston@research.uwa.edu.au") %>% 
+  gm_from("charlotte.aston@marineecology.io") %>% 
+  gm_subject("Code has finished running") %>% 
+  gm_text_body("It's done, Yew!")
+
+d <- gm_create_draft(finished_email)
+gm_send_draft(d)
+
+
+
 

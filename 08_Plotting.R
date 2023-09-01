@@ -23,6 +23,7 @@ library(purrr)
 library(matrixStats)
 library(sfnetworks)
 library(rcartocolor)
+library(ggtext)
 
 
 rm(list = ls())
@@ -102,6 +103,14 @@ AMP_NTZ <- AMP %>%
   mutate(Name = ifelse(is.na(Name), "Comm Cloates", Name)) %>% 
   dplyr::select(Name, Year.Sanct, geometry) 
 plot(AMP_NTZ$geometry)
+
+setwd(sp_dir)
+gdacrs <- "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"
+
+aus <- st_read("cstauscd_r.mif") %>%                    # Geodata 100k coastline available: https://data.gov.au/dataset/ds-ga-a05f7892-eae3-7506-e044-00144fdd4fa6/
+  dplyr::filter(FEAT_CODE %in% c("mainland", "island"))
+st_crs(aus) <- gdacrs
+ausc <- st_crop(aus, xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)
 
 # Put all of the NTZs together into one object
 NTZ <- rbind(NTZ, AMP_NTZ) # Put all the different NTZs together into one object
@@ -1811,10 +1820,18 @@ map <- ggplot()+
   geom_sf(data=water_WHA_2, aes(fill=Effort), color = NA, lwd=0)+
   scale_fill_carto_c(bquote(Fishing~effort~(Boat~days~km^-1)), palette="BluYl", direction=-1)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+  geom_sf(data=ausc)+
+  geom_sf(data=BR)+
+  geom_richtext(data = BR, x=c(114.1730+0.13, 114.1400+0.14, 113.9784-0.155, 113.7665+0.15), 
+                            y=c(-21.83106, -21.95587, -21.91276, -23.15521), label = c("Bundegi", "Exmouth", "Tantabiddi", "Coral Bay"), size=3)+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 map
+
+setwd(fig_dir)
+a4.width <- 160
+ggsave(map, filename="ningaloo_spatial_Effort_Plot.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 #* Format catch data and add to effort ####
 setwd(pop_dir)

@@ -347,17 +347,17 @@ pRocky <- readRDS(paste0(model.name, sep="_","pRocky"))
 # This is very sensitive to changes in the values particularly for reef 
 # PROBABLY ALSO NEED TO PUT DEPTH IN HERE
 
-# Point 930 to point 1000 is 80km 
+## Small movement Swim Speed = 2.5 95% within approx 10km 
+## Medium movement Swim Speed = 5 95% within approx 25km
+## Big movement Swim Speed = 10 95% within approx 45km 
 
-Pj[930,1000]
+SwimSpeed <-  1
 
-SwimSpeed <- 1.5 #2.5
-
-a = -(SwimSpeed)
-b =  0.15 #0.1 # Reef
-c =  0.12 #0.09 #Lagoon
-d =  0.1 #0.003 #Rocky Reef
-e =  0.001 #0.001 #Pelagic
+a = -(1/SwimSpeed)
+b =  0.0150 #0.15 # Reef
+c =  0.0120 #0.12 #Lagoon
+d =  0.0100 #0.1 #Rocky Reef
+e =  0.0001 #0.001 #Pelagic
 
 Vj <- (a*pDist) + (b*pReef) + (c*pLagoon) + (d*pRocky) + (e*pPelagic)
 
@@ -383,7 +383,31 @@ for (r in 1:NCELL){
     Pj[r,c] <- (exp(Vj[r,c]))/rowU[r,1]
   }
 }
-rowSums(Pj)
+# rowSums(Pj)
+
+## Visualising the movement to double check it 
+# 
+movement <- Pj[190, ]
+
+water_2 <- Water %>%
+  mutate(Move.Prob = movement)
+
+map <- ggplot()+
+  geom_sf(data=water_2, aes(fill=Move.Prob), color = NA, lwd=0)+
+  scale_fill_carto_c(palette="BluYl", direction=-1)+
+  #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+map
+
+data <- as.data.frame(Pj[190, ])
+data <- data %>%
+  mutate(Distance = pDist[190, ]) %>%
+  arrange(Distance) %>%
+  mutate(Cumulative_Prob = cumsum(`Pj[190, ]`))
+
+plot(y=data$Cumulative_Prob, x=data$Distance, type="l")
 
 #### RECRUITMENT MATRIX ####
 ## Want the recruits to be in the lagoons and then move out from there 
@@ -460,7 +484,7 @@ rowSums(ProbRec)
 
 #### SAVE FILES ####
 setwd(sg_dir)
-saveRDS(Pj, file=paste0(model.name, sep="_", "movement_medium"))
+saveRDS(Pj, file=paste0(model.name, sep="_", "movement_really_slow"))
 saveRDS(ProbRec, file=paste0(model.name, sep="_","juvmove"))
 saveRDS(recruitment, file=paste0(model.name, sep="_","recruitment"))
 saveRDS(water, file=paste0(model.name, sep="_", "water"))

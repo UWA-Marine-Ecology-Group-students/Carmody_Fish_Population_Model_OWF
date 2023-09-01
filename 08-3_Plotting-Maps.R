@@ -106,6 +106,13 @@ wampa$waname <- dplyr::recode(wampa$waname,
                                 "Special Purpose Zone",
                               "MMA" = 'Marine Management Area' )
 
+wampa <- wampa %>% 
+  mutate(waname = ifelse(NAME %in% "Barrow Island" & TYPE %in% "Marine Park", "Sanctuary Zone", waname)) %>% 
+  mutate(waname = ifelse(NAME %in% "Barrow Island" & TYPE %in% "Marine Management Area", "Marine Management Area", waname)) %>% 
+  mutate(waname = ifelse(NAME %in% "Shark Bay" & ZONE_TYPE %in% "Recreation Zone (IUCN II)", "Recreation Area", waname)) %>% 
+  mutate(waname = ifelse(NAME %in% "Hamelin Pool" & TYPE %in% "Marine Nature Reserve", "Sanctuary Zone", waname)) %>% 
+  filter(!NAME %in% c("Miaboolya Beach"))
+
 wampa$waname <- factor(wampa$waname, levels = c("Unassigned", 
                                                 "Marine Management Area",
                                                 "Conservation Area",
@@ -117,10 +124,6 @@ wampa$waname <- factor(wampa$waname, levels = c("Unassigned",
 wampa <- st_crop(wampa, e)                                                      # Crop to the study area
 wasanc <- wampa[wampa$ZONE_TYPE %in% "Sanctuary Zone (IUCN IA)", ]
 plot(wampa$geometry)
-
-wampa <- wampa %>% 
-  mutate(waname = ifelse(NAME == "Barrow Island" & TYPE == "Marine Park", "Sanctuary Zone", waname)) %>% 
-  mutate(waname = ifelse(NAME == "Barrow Island" & TYPE == "Marine Management Area", "Marine Management Area", waname))
 
 # Terrestrial parks
 # terrnp <- st_read("Legislated_Lands_and_Waters_DBCA_011.shp") %>%  # Terrestrial reserves
@@ -151,14 +154,14 @@ cwatr <- st_crop(cwatr, e)
 cbathy <- raster("bath_250_good.tif")                    
 bath_r <- rast(cbathy)
 crs(bath_r) <- wgscrs
-bath_r <- crop(bath_r, ext(112.9, 120.0, -28, -16))
+bath_r <- crop(bath_r, ext(112, 120.0, -28, -16))
 bath_df <- as.data.frame(bath_r, xy = T, na.rm = T)                             # Dataframe - cropped and above 0 use for bath cross section
 bath_r <- clamp(bath_r, upper = 0, value = F)                               # Only data below 0
 bathy <- as.data.frame(bath_r, xy = T, na.rm = T)
 
 # Fisheries layers
 CEO_notices <- st_read("Fisheries_Guide_CEO_Notices_Determinations_DPIRD_060.shp") %>% 
-  filter(ufi %in% c(448, 449, 450, 451, 452, 453, 454, 912, 913, 914, 916, 923, 917, 918, 920, 921, 922, 924, 925)) %>% 
+  filter(ufi %in% c( 912, 913, 914, 916, 923, 917, 918, 920, 921, 922, 924, 925)) %>% 
   dplyr::select(-notc_detr)
 
 Management_plans <- st_read("Fisheries_Guide_Consolidated_Management_Plans_DPIRD_062.shp") %>% 
@@ -174,6 +177,8 @@ License_conditions <- st_read("Fisheries_Guide_Licence_Conditions_DPIRD_050.shp"
 fisheries_closures <- rbind(CEO_notices, Management_plans, License_conditions) %>% 
   filter(!descript %in% c("Schedule 1 - Description of the Fishery", "Schedule - Item 1 (The Fishery)"))
 
+fisheries_closures <- st_crop(fisheries_closures, e)
+
 fisheries_closures$name <- dplyr::recode(fisheries_closures$name,
                                          "Onslow Prawn Managed Fishery Management Plan 1991 - Notice of Areas Closed to Fishing for Prawns" = "Onslow Prawn Fishery",
                                          "Pilbara Fish Trawl Interim Managed Fishery Management Plan 1997"  = "Pilbara Fish Trap and Trawl Fishery",
@@ -181,6 +186,10 @@ fisheries_closures$name <- dplyr::recode(fisheries_closures$name,
                                          "Point Maud to Tantabiddi Closure" = "Point Maud to Tantabiddi Closure",
                                          "Shark Bay Prawn Managed Fishery Management Plan 1993 - Determination of Areas Closed to Fishing for Prawns" = "Shark Bay Prawn Fishery",
                                          "Gascoyne Demersal Scalefish Management Plan 2010" = "Gascoyne Demersal Scalefish Fishery")
+
+fisheries_closures <- fisheries_closures %>% 
+  mutate(name = ifelse(name %in% "Pilbara Fish Trap and Trawl Fishery" & descript %in% "Schedule 3 (Item 3 - Zone 2 - Area 3)", "Pilbara Fish Trap, Trawl and Line Fishery", name)) %>%
+  mutate(pattern_dir = ifelse(name %in% c("Pilbara Fish Trap, Trawl and Line Fishery","Exmouth Gulf Prawn Fishery", "Shark Bay Prawn Fishery" ), "Left", "Right"))
 
 ## Make overview map
 nmpa_fills <- scale_fill_manual(values = c("National Park Zone" = "#7bbc63",
@@ -203,49 +212,50 @@ name = "State Marine Parks")
 
 # terr_fills <- scale_fill_manual(values = c("National Park" = "#c4cea6",          # Set the colours for terrestrial parks
 #                                            "Nature Reserve" = "#e4d0bb"))
-closed_fills <- scale_pattern_color_manual(values= c("Onslow Prawn Fishery" = "mediumseagreen",
-                                            "Pilbara Fish Trap and Trawl Fishery" = "pink1",
-                                            "Exmouth Gulf Prawn Fishery" = "darkslateblue",
-                                            "Point Maud to Tantabiddi Closure" = "sienna1",
-                                            "Shark Bay Prawn Fishery" = "mediumseagreen",
-                                            "Gascoyne Demersal Scalefish Fishery" = "mediumseagreen"),
+closed_fills <- scale_pattern_color_manual(values= c("Pilbara Fish Trap and Trawl Fishery" = "deeppink",
+                                            "Pilbara Fish Trap, Trawl and Line Fishery" = "blue4",
+                                            "Exmouth Gulf Prawn Fishery" = "darkviolet",
+                                            "Point Maud to Tantabiddi Closure" = "goldenrod2",
+                                            "Shark Bay Prawn Fishery" = "red",
+                                            "Gascoyne Demersal Scalefish Fishery" = "chartreuse4"),
                                            name = "Fishery Closures")
+closure_pattern <- scale_pattern_angle_manual(values = c(-30, 30), guide="none")
 
 nmpa <- mpa %>%
-  dplyr::filter(ResName %in% "Ningaloo", "Shark Bay")
+  dplyr::filter(ResName %in% c("Ningaloo", "Shark Bay"))
 
 gmpa <- mpa %>%
   dplyr::filter(ResName %in% "Gascoyne")
 
 p3 <- ggplot() +
-  # geom_contour_filled(data = bathy, aes(x = x, y = y, z = bath_250_good,
-  #                                       fill = after_stat(level)),
-  #                     breaks = c(0, -30, -70, -200, - 700, -2000 , -4000,-6000)) +
-  # geom_contour(data = bathy, aes(x = x, y = y, z = bath_250_good),
-  #              breaks = c(-30, -70, -200, - 700, -2000 , -4000,-6000), colour = "white", alpha = 3/5, size = 0.1) +
-  # scale_fill_grey(start = 1, end = 0.5, guide = "none") +
+  geom_contour_filled(data = bathy, aes(x = x, y = y, z = bath_250_good,
+                                        fill = after_stat(level)),
+                      breaks = c(0, -30, -70, -200, - 700, -2000 , -4000,-6000)) +
+  geom_contour(data = bathy, aes(x = x, y = y, z = bath_250_good),
+               breaks = c(-30, -70, -200, - 700, -2000 , -4000,-6000), colour = "white", alpha = 3/5, size = 0.1) +
+  scale_fill_grey(start = 1, end = 0.5, guide = "none") +
   geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
   new_scale_fill() +
-
+  geom_sf_pattern(data=fisheries_closures, aes(pattern_colour = name, pattern_angle=pattern_dir),
+                  pattern= "stripe" ,pattern_size=0.1, pattern_spacing=0.01, pattern_alpha=0.5,
+                  colour=NA, alpha=0)+
+  closed_fills + 
+  closure_pattern +
+  new_scale_fill() +
   geom_sf(data = wampa, aes(fill = waname), alpha = 2/5, colour = NA) +
   wampa_fills +
   labs(fill = "State Marine Parks") +
   new_scale_fill() +
   labs(fill = "Terrestrial Managed Areas") +
   new_scale_fill() +
-  geom_sf(data = nmpa, aes(fill = ZoneName), alpha = 0.2, colour = NA) +
+  geom_sf(data = nmpa, aes(fill = ZoneName), alpha = 0.4, colour = NA) +
   nmpa_fills + 
   labs(fill = "Australian Marine Parks") +
-  new_scale_fill() +
-  geom_sf_pattern(data=fisheries_closures, aes(pattern_colour = name),
-                  pattern="stripe", pattern_size=0.1, pattern_spacing=0.005, pattern_alpha=0.4,
-                  colour=NA, alpha=0)+
-  closed_fills + 
   new_scale_fill() +
   geom_sf(data = cwatr, colour = "firebrick", alpha = 4/5, size = 0.4) +
   labs(x = NULL, y = NULL) +
   guides(fill = guide_legend(order = 1)) +
-  annotate(geom = "text", x = c((114.1279 + 0.26), (113.6775 + 0.275)), 
+  annotate(geom = "text", x = c((114.1279 + 0.4), (113.6775 + 0.45)), 
            y = c(-21.9323, -22.7212), label = c("Exmouth", "Pt Cloates"),
            size = 3) +
   annotate(geom = "point", x = c(114.1279, 113.6775), 
@@ -259,25 +269,30 @@ p3 <- ggplot() +
         legend.spacing = unit(0.01, "cm"))
 p3 
 
-p3.1 <- ggplot(data = aus) +
-  geom_sf(fill = "seashell1", colour = "grey90", size = 0.05, alpha = 4/5) +
+p3.1 <- ggplot() +
+  geom_sf(data = aus, fill = "seashell2", colour = "grey90", size = 0.075) +
   #geom_sf(data = aumpa, alpha = 5/6, colour = "grey85", size = 0.02) +
   coord_sf(xlim = c(108, 125), ylim = c(-37, -13)) +
+  annotate(geom = "text", x=c(110), y=c(-29.4), label = c("Indian\nOcean"), size=4)+
+  annotate(geom = "text", x=c(120.75), y=c(-25.94), label = c("Western\nAustralia"), size=4)+
   annotate("rect", xmin = 113, xmax = 114.35, ymin = -22.8, ymax = -21.5,   # Change here 
            colour = "grey25", fill = "white", alpha = 1/5, size = 0.2) +
   theme_bw() +
   theme(axis.text = element_blank(), 
         axis.ticks = element_blank(),
         panel.grid.major = element_blank(),
-        panel.border = element_rect(colour = "grey70"))
+        panel.border = element_rect(colour = "grey70"))+
+  ylab(NULL)+
+  xlab(NULL)
+p3.1
 
-p3 + inset_element(p3.1, left = -1.25, right = 2.93, top = 0.4, bottom = 0)  
+p3 + inset_element(p3.1, left = -1.25, right = 2.874, top = 0.4, bottom = 0)  
 
 setwd(fig_dir)
-ggsave('broad-site-plot.png', dpi = 200, width = 6, height = 6)
+ggsave('broad-site-plot.png', dpi = 200, width = 10, height = 10)
 
 
-#* For model plots ####
+#### PLOTS OF THE MODEL ####
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water"))
@@ -349,7 +364,7 @@ water <- water_WHA %>%
   mutate(ID = as.factor(ID)) %>% 
   left_join(., water_bathy, by="ID") %>% 
   rename(bathy = "ga_bathy_ningaloocrop") %>% 
-  filter(bathy >= c(-30)) %>% 
+  #filter(bathy >= c(-30)) %>% 
   filter(!is.na(bathy))
 
 
@@ -376,4 +391,4 @@ map
 setwd(fig_dir)
 ggsave(map, filename="Whole_map.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
-#* Horrendo-plot ####
+
