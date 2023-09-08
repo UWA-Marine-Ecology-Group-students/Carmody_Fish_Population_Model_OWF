@@ -503,10 +503,117 @@ biomass.func <- function(Age, Zones, Age.NTZ, Age.F, Weights){
   
 }
 
+#### Data formatting ####
+
+## Whole population
+
+total.pop.format <- function(pop.file.list, scenario.names, nsim, nyears, startyear, maxage, mat, kg){
+  
+  total_pop <- NULL
+  
+  for(i in 1:length(pop.file.list)){
+    temp <- pop.file.list[[i]]
+    
+    median.ages <- NULL
+    
+    for(year in 26:nyears){
+      
+      age <- temp[,year,]
+      
+      age.median <- age %>% 
+        as.data.frame()
+      
+      age.median <- age.median[ , ]*mat[,12]
+      age.median <- age.median[ , ]*kg[,12]
+        
+      age.median <- colSums(age.median[,1:nsim]) %>%   
+        as.data.frame() %>% 
+        mutate(Year = year) %>% 
+        rename(MatBio = ".")
+      
+      median.ages <- rbind(median.ages, age.median)
+    }
+    median.ages <- median.ages %>% 
+      group_by(Year) %>% 
+      summarise(Median_MatBio = median(MatBio), 
+                P_0.025 = quantile(MatBio, probs=c(0.025)),
+                P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
+      mutate(Scenario = scenario.names[i])
+
+    total_pop <- rbind(total_pop, median.ages)
+  
+  }
+  
+  return(total_pop)
+  
+}
+
+# Separate NTZs and Fished areas 
+
+zone.pop.format <- function(ntz.list, f.list, scenario.name, nsim){
+
+NTZ_Ages_S00 <- NULL
+F_Ages_S00 <- NULL
+
+for(SIM in 1:nsim){
+  
+  temp <- as.data.frame(colSums(ntz.list[[SIM]])) %>% 
+    mutate(Age = seq(1:30)) %>% 
+    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+  
+  NTZ_Ages_S00 <- cbind(NTZ_Ages_S00, temp$Number)
+  
+  temp <- as.data.frame(colSums(f.list[[SIM]])) %>% 
+    mutate(Age = seq(1:30)) %>% 
+    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+  
+  F_Ages_S00 <- cbind(F_Ages_S00,temp$Number)
+}
+
+NTZ_Ages_S00 <- as.data.frame(NTZ_Ages_S00) %>% 
+  mutate(Age = rep(1:30, each=59)) %>% 
+  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+  mutate(Stage = ifelse(Age==1, "Recruit",
+                        ifelse(Age>1 & Age<3, "Sublegal",
+                               ifelse(Age>=3 & Age<=10, "Legal",
+                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
+  group_by(Stage, Mod_Year) %>% 
+  summarise(across(where(is.numeric) & !Age, sum)) %>% 
+  ungroup() %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
+  mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>% 
+  mutate(P_0.025 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.025))) %>%
+  mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>% 
+  mutate(Scenario = scenario.name)  %>% 
+  dplyr::select(Mod_Year, Stage, Median_Pop, P_0.025, P_0.975, Scenario)
 
 
+F_Ages_S00 <- as.data.frame(F_Ages_S00) %>% 
+  mutate(Age = rep(1:30, each=59)) %>% 
+  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+  mutate(Stage = ifelse(Age==1, "Recruit",
+                        ifelse(Age>1 & Age<3, "Sublegal",
+                               ifelse(Age>=3 & Age<=10, "Legal",
+                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
+  group_by(Stage, Mod_Year) %>% 
+  summarise(across(where(is.numeric) & !Age, sum)) %>% 
+  ungroup() %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
+  mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>% 
+  mutate(P_0.025 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.025))) %>%
+  mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>% 
+  mutate(Scenario = scenario.name)  %>% 
+  dplyr::select(Mod_Year, Stage, Median_Pop, P_0.025, P_0.975, Scenario)
 
+NTZ.F.Ages <- list()
+NTZ.F.Ages[[1]] <- NTZ_Ages_S00
+NTZ.F.Ages[[2]] <- F_Ages_S00
 
+return(NTZ.F.Ages)
+
+}
 
 
   

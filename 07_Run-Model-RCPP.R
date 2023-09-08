@@ -61,7 +61,7 @@ model.name <- "ningaloo"
 
 ## Normal Model Files
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement_really_slow"))
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_fast"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
 Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -176,7 +176,7 @@ SIM.Weight.Catches <- list()
 
 #### RUN MODEL ####
 Start=Sys.time()
-for (SIM in 1:10){ # Simulation loop
+for (SIM in 1:100){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -228,20 +228,20 @@ for (SIM in 1:10){ # Simulation loop
     monthly.catch.weight <- ModelOutput$month_catch_weight
     catch.by.weight[ ,YEAR+1] <- rowSums(monthly.catch.weight[,,3:30], dims=1)
     
-    if(YEAR==58){ # Have to subtract one because the loop now starts at 0
-      TotalPop <- as.data.frame(Total) %>%
-        rename(Tot.Pop="V1")
-      TotalPop$Year <- seq(1960, 2018, by=1)
-      TotalPlot <- total.plot.func(pop=TotalPop)
-      print(TotalPlot)
-    } else { }
-    
-    if(YEAR %%5==0|YEAR==58){
-      TimesPlotted <- TimesPlotted+1
-      #SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=Water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
-      #AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
-      
-    } else { }
+    # if(YEAR==58){ # Have to subtract one because the loop now starts at 0
+    #   TotalPop <- as.data.frame(Total) %>%
+    #     rename(Tot.Pop="V1")
+    #   TotalPop$Year <- seq(1960, 2018, by=1)
+    #   TotalPlot <- total.plot.func(pop=TotalPop)
+    #   print(TotalPlot)
+    # } else { }
+    # 
+    # if(YEAR %%5==0|YEAR==58){
+    #   TimesPlotted <- TimesPlotted+1
+    #   #SpatialPlots[[TimesPlotted]] <- spatial.plot.func(area=Water, pop=Total, pop.breaks=pop.groups, colours="PuBu")
+    #   #AgePlots[[TimesPlotted]] <- age.plot.func(pop=YearlyTotal, NTZs=NoTake)
+    #   
+    # } else { }
     
     Sim.Pop[YEAR+1, SIM] <- Total[YEAR+1,1] 
     Sim.Ages[ ,YEAR+1,SIM] <- colSums(ModelOutput$YearlyTotal[,12,1:30]) #Number of fish present in age age group at the end of the year
@@ -262,35 +262,35 @@ for (SIM in 1:10){ # Simulation loop
     
     ## Population
     # Total population
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(Sim.Pop, file=filename)
     
     # Numbers of each age that make it to the end of each year
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(Sim.Ages, file=filename)
     
     # Numbers of fish of each age, inside and outside sanctuary zones
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(SIM.Sp.NTZ, file=filename)
 
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(SIM.Sp.F, file=filename)
     
     # Number of fish in each cell at the end of each year
-    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(SIM.N.Dist, file=filename)
     
     ## Catches
     # Catch in each year by age
-    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(SIM.Age.Catches, file=filename)
     
     # catch in each cell across the year
-    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(SIM.N.Catches, file=filename)
     
     # Catch in each cell by weight across the year
-    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario, sep="_", "really_small_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario, sep="_", "slow_movement")
     saveRDS(SIM.Weight.Catches, file=filename)
     
   } else { }# End saving if statement
@@ -303,7 +303,7 @@ Runtime
 finished_email <- gm_mime() %>% 
   gm_to("charlotte.aston@research.uwa.edu.au") %>% 
   gm_from("charlotte.aston@marineecology.io") %>% 
-  gm_subject("Code has finished running") %>% 
+  gm_subject("Slow movement scenario code has finished running") %>% 
   gm_text_body("It's done, Yew!")
 
 d <- gm_create_draft(finished_email)
