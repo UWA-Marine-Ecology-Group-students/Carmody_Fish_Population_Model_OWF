@@ -37,11 +37,12 @@ source("X_Functions.R")
 
 #### READ IN DATA ####
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement"))
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_medium"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
 Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
-Water <- readRDS(paste0(model.name, sep="_","water"))
+Water <- readRDS(paste0(model.name, sep="_","water")) %>% 
+  st_make_valid()
 YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
@@ -56,7 +57,7 @@ setwd(sp_dir)
 bathy <- raster("ga_bathy_ningaloocrop.tif")
 WHA <- st_read("2013_02_WorldHeritageMarineProgramme.shp") %>% 
   st_transform(4283)%>%
-  st_make_valid %>% 
+  st_make_valid() %>% 
   st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5) 
 
 
@@ -92,15 +93,15 @@ shallow_cells_F <- Water_shallow %>%
 shallow_NTZ_ID <- as.numeric(levels(shallow_cells_NTZ$ID))[as.integer(shallow_cells_NTZ$ID)]
 shallow_F_ID <- as.numeric(levels(shallow_cells_F$ID))[as.integer(shallow_cells_F$ID)]
 
-NCELL <- length(shallow_NTZ_ID)
+# NCELL <- length(shallow_NTZ_ID)
 
 #### SET UP FISHING EFFORT FOR EACH LEVEL OF F ####
 
 ## Effort values 
 
 # F_finite_values <- seq(0, 0.9, 0.05) # These are the values of F that we want to cycle through to see where our MSY is
-F_finite_values <- seq(0, 0.9, 0.05)
-E_values <- as.data.frame(array(0, dim = c(19, 13))) %>% 
+F_finite_values <- seq(0, 0.2, 0.025)
+E_values <- as.data.frame(array(0, dim = c(9, 13))) %>% 
   mutate(V1 = F_finite_values) 
   # mutate(V1 = V1/q)
 
@@ -109,7 +110,7 @@ names(E_values)[1:13] <- c("Yearly_Total", "Jan", "Feb", "Mar", "Apr", "May", "J
 ## Allocation to months
 Monthly_effort <- E_values[,2:13]
 
-for(E in 1:16){
+for(E in 1:9){
   for(M in 1:12){
     Monthly_effort[E,M] <- month.ave[M,2] * E_values[E,1] 
   }
@@ -121,11 +122,11 @@ Monthly_effort <- Monthly_effort %>%
 # Allocate effort to cells
 NCELL <- nrow(Water)
 
-Fishing_MSY <- array(0, dim=c(NCELL, 12,19)) #This array has a row for every cell, a column for every month, and a layer for every value of F
+Fishing_MSY <- array(0, dim=c(NCELL, 12,9)) #This array has a row for every cell, a column for every month, and a layer for every value of F
 
 Effort.List <- list()
 
-for(FM in 1:19){
+for(FM in 1:9){
   
   for(M in 1:12){
     
@@ -155,8 +156,8 @@ NatMort = 0.146
 step = 1/12 # We're doing a monthly time step here
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
-BHa = 0.4344209 
-BHb = 0.003759261 
+BHa = 0.4344209 #0.4344209
+BHb = 0.009398152 #0.003759261 #0.0009398152 #0.01889882
 
 # Collect catch data
 age.catch <- array(0, dim=c(12, MaxAge, MaxYear))
@@ -190,11 +191,11 @@ FM.YPR.NTZ <- list()
 FM.YPR.F <- list()
 
 # Inside outside plots
-# Sp.Pop.F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
-# Sp.Pop.NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
+Sp.Pop.F <- array(0, dim=c(length(shallow_F_ID), MaxAge, MaxYear))
+Sp.Pop.NTZ <- array(0, dim=c(length(shallow_NTZ_ID), MaxAge, MaxYear))
 # 
-# SIM.Sp.F <- list()
-# SIM.SP.NTZ <- list()
+SIM.Sp.F <- list()
+SIM.SP.NTZ <- list()
 
 Selectivity <- Selectivity[,,45:59] # Have to modify this to just be years where selectivity is the same as it is now, otherwise we get the selectivity where everything gets fished
 Selectivity <- abind(Selectivity, Selectivity, along=3)
@@ -205,11 +206,11 @@ Selectivity <- abind(Selectivity, Selectivity, along=3)
 # Want it to run for a year and then get the values for the population at the end of the year 
 setwd(sg_dir)
 
-for(FM in 1:19){
+for(FM in 1:9){
   
   print(FM)
   
-  YearlyTotal <- readRDS(paste0(model.name, sep="_","BurnInPop"))
+  YearlyTotal <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
   
   #YearlyTotal <- YearlyTotal[as.numeric(Cells),,]
 
@@ -229,7 +230,7 @@ for(FM in 1:19){
     
     ## For BMSY plots inside and outside NTZ
     # Sp.Pop.F[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_F_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
-    # Sp.Pop.NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
+    Sp.Pop.NTZ[,,YEAR+1] <- ModelOutput$YearlyTotal[c(shallow_NTZ_ID),12, ] # Saving the population at the end of the year in cells <30m depth for plots
     
     ## Catch data
     monthly.catch.weight <- ModelOutput$month_catch_weight
@@ -255,7 +256,7 @@ for(FM in 1:19){
   } # End of model year loop
   
   # SIM.Sp.F[[FM]] <- Sp.Pop.F
-  # SIM.SP.NTZ[[FM]] <- Sp.Pop.NTZ
+  SIM.SP.NTZ[[FM]] <- Sp.Pop.NTZ
   
   FM.Weight.Catches.All[[FM]] <- catch.by.weight
   FM.Age.Catches.All[[FM]] <- catch.by.age
@@ -265,24 +266,24 @@ for(FM in 1:19){
 
 }
 
-MSY.Plot.Data.All <- as.data.frame(array(0, dim=c(16,5))) %>%
+MSY.Plot.Data.All <- as.data.frame(array(0, dim=c(9,5))) %>%
   rename(Fishing.Mort = "V1",
          YPR = "V2",
          Total.Bio = "V3",
          Spawn.Bio = "V4",
          Zone = "V5") %>%
-  mutate(Fishing.Mort = seq(0,0.15, 0.01))
+  mutate(Fishing.Mort = seq(0, 0.2, 0.025))
 
 
 MSY.Plot.Data <- list()
 MSY.Plot.Data[[1]] <- MSY.Plot.Data.All
-MSY.Plot.Data[[3]] <- MSY.Plot.Data.NTZ
-MSY.Plot.Data[[4]] <- MSY.Plot.Data.F
+MSY.Plot.Data[[2]] <- MSY.Plot.Data.All
+MSY.Plot.Data[[3]] <- MSY.Plot.Data.F
 
 FM.YPR <- list()
 FM.YPR[[1]] <- FM.YPR.All
-FM.YPR[[3]] <- FM.YPR.NTZ
-FM.YPR[[4]] <- FM.YPR.F
+FM.YPR[[2]] <- FM.YPR.NTZ
+FM.YPR[[3]] <- FM.YPR.F
 
 
 ## Yield Per Recruit plot
@@ -292,7 +293,7 @@ for(A in 1:1){
   area <- FM.YPR[[A]]
   Plot.Data <-  MSY.Plot.Data[[A]]
   
-  for(FM in 1:16){
+  for(FM in 1:9){
     temp <- area[[FM]]
     temp <- sum(temp[,50])
     
@@ -308,8 +309,7 @@ for(A in 1:1){
   
   plot <- ggplot(Plot.Data)+
     geom_line(aes(x=Fishing.Mort, y=YPR))+
-    theme_classic()+
-    ggplot2::annotate("text", x=0.0, y=0.4, label=A, size = 2.5, fontface=1)
+    theme_classic()
   
   Plots.YPR[[A]] <- plot
 }
@@ -323,12 +323,12 @@ FM.Tot.Bio[[1]] <- FM.Tot.Bio.All
 FM.Tot.Bio[[2]] <- FM.Tot.Bio.NTZ
 FM.Tot.Bio[[3]] <- FM.Tot.Bio.F
 
-for(A in 1:1){
+for(A in 1:2){
   
   area <- FM.Tot.Bio[[A]]
   Plot.Data <-  MSY.Plot.Data[[A]]
   
-  for(FM in 1:16){
+  for(FM in 1:21){
     temp <- area[[FM]] * Weight[,12]
     temp <- sum(temp[,50])
     
@@ -353,5 +353,43 @@ for(A in 1:1){
 Plots.Bio[[1]]
 
 
+## Spawning biomass
 
+for(A in 1:1){
+  
+  area <- FM.Tot.Bio[[A]]
+  Plot.Data <-  MSY.Plot.Data[[A]]
+  
+  for(FM in 1:9){
+    temp <- area[[FM]] * Mature[,12]
+    temp <- temp * Weight[,12]
+    temp <- sum(temp[,50])
+    
+    Plot.Data[FM,"Spawn.Bio"] <- temp
+  }
+  
+  MSY.Plot.Data[[A]] <- Plot.Data
+  
+}
+MSY.Plot.Data[[1]]
 
+## Spawning biomass inside NTZ
+
+for(A in 2:2){
+  
+
+  Plot.Data <-  MSY.Plot.Data[[A]]
+  
+  for(FM in 1:9){
+    area <- SIM.SP.NTZ[[FM]]
+    temp <- area[,,50] * Mature[,12]
+    temp <- temp * Weight[,12]
+    temp <- sum(temp)
+    
+    Plot.Data[FM,"Spawn.Bio"] <- temp
+  }
+  
+  MSY.Plot.Data[[A]] <- Plot.Data
+  
+}
+MSY.Plot.Data[[2]]

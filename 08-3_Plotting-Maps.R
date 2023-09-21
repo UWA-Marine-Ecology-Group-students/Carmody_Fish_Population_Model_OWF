@@ -221,11 +221,11 @@ closed_fills <- scale_pattern_color_manual(values= c("Pilbara Fish Trap and Traw
                                            name = "Fishery Closures")
 closure_pattern <- scale_pattern_angle_manual(values = c(-30, 30), guide="none")
 
-nmpa <- mpa %>%
-  dplyr::filter(ResName %in% c("Ningaloo", "Shark Bay"))
+# nmpa <- mpa %>%
+#   dplyr::filter(ResName %in% c("Ningaloo", "Shark Bay"))
 
-gmpa <- mpa %>%
-  dplyr::filter(ResName %in% "Gascoyne")
+# gmpa <- mpa %>%
+#   dplyr::filter(ResName %in% "Gascoyne")
 
 p3 <- ggplot() +
   geom_contour_filled(data = bathy, aes(x = x, y = y, z = bath_250_good,
@@ -248,7 +248,7 @@ p3 <- ggplot() +
   new_scale_fill() +
   labs(fill = "Terrestrial Managed Areas") +
   new_scale_fill() +
-  geom_sf(data = nmpa, aes(fill = ZoneName), alpha = 0.4, colour = NA) +
+  geom_sf(data = mpa, aes(fill = ZoneName), alpha = 0.4, colour = NA) +
   nmpa_fills + 
   labs(fill = "Australian Marine Parks") +
   new_scale_fill() +
@@ -390,5 +390,98 @@ map
 
 setwd(fig_dir)
 ggsave(map, filename="Whole_map.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
+
+#### CATCH PER UNIT EFFORT MAP ####
+
+Names <- c("Historical and Current Management", "No Spatial Management", 
+           "Temporal and Spatial Management","Temporal Management Only" )
+
+Effort_Scen <- list()
+Spatial_Qs <- list()
+
+setwd(sg_dir)
+Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing_test"))
+Spatial_Qs[[1]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_NTZ"))
+Spatial_Qs[[2]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
+
+setwd(sim_dir)
+Effort_Scen[[2]] <- readRDS(paste0(model.name, sep="_", "burn_in_fishing_High_M"))
+Effort_Scen[[3]] <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
+Effort_Scen[[4]] <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+
+#* Convert back to effort in boat days ####
+
+Boat_Days <- list()
+
+Boat_Days_Scen <- array(0, dim=c(NCELL, 12, 59))
+
+for(S in 1:4){
+  
+  if(S==1|S==3){
+    for (YEAR in 1:59){
+      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[1]][,YEAR]
+    }
+  } else {
+    for (YEAR in 1:59){
+      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[2]][,YEAR]
+    }
+  }
+  Boat_Days_Scen[is.nan(Boat_Days_Scen)] <- 0
+  
+  Boat_Days[[S]] <- Boat_Days_Scen
+}
+colSums(Boat_Days[[2]][,,2])
+Effort_Scen[[1]][1000:1834,,50]
+Effort_Scen[[3]][1000:1834,,50]
+#* Sum up effort for every year in each of the scenarios
+
+Boat_Days_sum <- NULL
+
+for(S in 1:4){
+  temp <- Boat_Days[[S]]
+  temp2 <- colSums(temp, dim=2) %>% 
+    as.data.frame() %>% 
+    mutate(Scenario = Names[S])
+  
+  Boat_Days_sum <- rbind(Boat_Days_sum, temp2)
+}
+
+Boat_Days_sum <- Boat_Days_sum %>% 
+  rename(Effort = ".") %>% 
+  mutate(Mortality = Effort*(0.00001)) %>% 
+  mutate(Finite = 1-exp(-Mortality))
+#* Spatial Plot of Peak Effort ####
+
+## Extract peak effort - 
+Normal_Effort <- Boat_Days[[2]]
+peak <- rowSums(Normal_Effort[,,40])
+peak <- peak[as.numeric(water_WHA$ID)]
+#peak <- round(peak, digits=1)
+
+water_WHA$Effort <- peak
+
+water_WHA_2 <- water_WHA %>% 
+  #filter(as.numeric(cell_area)>1000000) %>% 
+  mutate(cell_area = cell_area/1000000) %>% 
+  mutate(cell_effect = as.numeric(cell_area/sum(cell_area))) %>% 
+  mutate(Effort = as.numeric(Effort/cell_area))
+
+map <- ggplot()+
+  geom_sf(data=water_WHA_2, aes(fill=Effort), color = NA, lwd=0)+
+  scale_fill_carto_c(bquote(Fishing~effort~(Boat~days~km^-1)), palette="BluYl", direction=-1)+
+  #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+  geom_sf(data=ausc)+
+  geom_sf(data=BR)+
+  geom_richtext(data = BR, x=c(114.1730+0.14, 114.1400+0.15, 113.9784-0.165, 113.7665+0.165), 
+                y=c(-21.83106, -21.95587, -21.91276, -23.15521), label = c("Bundegi", "Exmouth", "Tantabiddi", "Coral Bay"), size=2.5)+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+map
+
+setwd(fig_dir)
+a4.width <- 160
+ggsave(map, filename="ningaloo_spatial_Effort_Plot.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 

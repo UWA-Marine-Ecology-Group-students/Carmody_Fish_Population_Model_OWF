@@ -72,13 +72,13 @@ setwd(sp_dir)
 BR <- st_read("Boat_Ramps.shp") %>% 
   st_transform(4283)%>%
   st_make_valid()
-BR <- BR[1:4,]
 
 # No Take Zones
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 
-water <- readRDS(paste0(model.name, sep="_","water"))
+water <- readRDS(paste0(model.name, sep="_","water")) %>% 
+  st_make_valid()
 NCELL <- nrow(water)
 
 #### FILL IN MISSING VALUES FOR NINGALOO BOAT DAYS ####

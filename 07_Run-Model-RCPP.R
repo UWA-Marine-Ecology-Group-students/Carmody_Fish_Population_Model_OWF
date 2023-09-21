@@ -63,9 +63,10 @@ model.name <- "ningaloo"
 setwd(sg_dir)
 AdultMove <- readRDS(paste0(model.name, sep="_", "movement_fast"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
-Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+#Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
-Water <- readRDS(paste0(model.name, sep="_","water")) 
+Water <- readRDS(paste0(model.name, sep="_","water")) %>% 
+  st_make_valid()
 BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop_High_M"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
@@ -73,9 +74,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-# setwd(sim_dir)
-# Effort <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
-Scenario <- "S00"
+setwd(sim_dir)
+Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+Scenario <- "S03"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -98,13 +99,13 @@ model_WHA <- Water %>%
   st_intersects(., WHA) %>% 
   as.data.frame()
 
-Water_WHA <-Water[c(as.numeric(model_WHA$row.id)), ]
+Water_WHA <- Water[c(as.numeric(model_WHA$row.id)), ]
 
 Water_shallow <- Water_WHA %>% 
   mutate(ID = as.factor(ID)) %>% 
   left_join(., Water_bathy, by="ID") %>% 
   rename(bathy = "ga_bathy_ningaloocrop") %>% 
-  filter(bathy >= c(-30)) %>% 
+  #filter(bathy >= c(-30)) %>% 
   filter(!is.na(bathy))
 
 shallow_cells_NTZ <- Water_shallow %>% 
@@ -262,35 +263,35 @@ for (SIM in 1:100){ # Simulation loop
     
     ## Population
     # Total population
-    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Total_Population", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(Sim.Pop, file=filename)
     
     # Numbers of each age that make it to the end of each year
-    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Age_Distribution", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(Sim.Ages, file=filename)
     
     # Numbers of fish of each age, inside and outside sanctuary zones
-    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(SIM.Sp.NTZ, file=filename)
 
-    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Sp_Population_F", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(SIM.Sp.F, file=filename)
     
     # Number of fish in each cell at the end of each year
-    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Cell_Population", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(SIM.N.Dist, file=filename)
     
     ## Catches
     # Catch in each year by age
-    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Age", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(SIM.Age.Catches, file=filename)
     
     # catch in each cell across the year
-    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Cell", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(SIM.N.Catches, file=filename)
     
     # Catch in each cell by weight across the year
-    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario, sep="_", "slow_movement")
+    filename <- paste0(model.name, sep="_", "Catch_by_Weight", sep="_", Scenario, sep="_", "fast_movement")
     saveRDS(SIM.Weight.Catches, file=filename)
     
   } else { }# End saving if statement
@@ -308,7 +309,4 @@ finished_email <- gm_mime() %>%
 
 d <- gm_create_draft(finished_email)
 gm_send_draft(d)
-
-
-
 

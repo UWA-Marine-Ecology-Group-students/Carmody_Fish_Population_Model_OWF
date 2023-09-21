@@ -172,6 +172,15 @@ total_pop_list[[4]] <-  readRDS(paste0(model.name, sep="_","Age_Distribution_S03
 # This function formats all the data and turns it in to mature biomass for plotting
 total_pop <- total.pop.format(pop.file.list = total_pop_list, scenario.names = Names, nsim=200, nyears=59, startyear=26, maxage=30, mat = maturity, kg=Weight)
 
+# Need to work out the unfished spawning biomass in the model 
+setwd(sg_dir)
+unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+
+temp <- unfished.bio[,12,]
+temp2 <- colSums(temp)
+temp3 <- temp2 * maturity[,12]
+Unf.Mat.Bio <- sum(temp3 * Weight[,12])
+
 total_pop_plot <- total_pop %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
   mutate(Scenario = fct_recode(Scenario, "Historical and\ncurrent NTZs"="Historical and Current NTZs", "Neither NTZs nor\ntemporal management"="Neither NTZs nor Temporal Management",
@@ -187,9 +196,14 @@ total_pop_plot <- total_pop %>%
                     guide="none")+
   scale_colour_manual(values = c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
                                  "Temporal\nmanagement only"="#BBCC33"), name= "Spatial and temporal\nmanagement scenario")+ 
-  ylab("Median total population")+
+  ylab("Total Spawning Biomass (kg)\n")+
   xlab("Year")+
-  xlim(1987, 2020)+
+  xlim(1985, 2020)+
+  scale_y_continuous(sec.axis = sec_axis(trans=~((./Unf.Mat.Bio)*100), name="Relative Spawning Biomass (%)\n"))+
+  theme(axis.line.y.right = element_line(colour = "grey40"),
+        axis.text.y.right = element_text(colour = "grey40"),
+        axis.ticks.y.right = element_line(colour="grey40"),
+        axis.title.y.right = element_text(colour="grey40"))+
   #ylim(0,57500)+
   theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+ 
   theme(legend.title = element_text(size=9), #change legend title font size
@@ -203,18 +217,13 @@ total_pop_plot <- total_pop %>%
 total_pop_plot
 
 setwd(fig_dir)
-ggsave(total_pop_plot, filename="Total_Pop_new_start.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+ggsave(total_pop_plot, filename="Total_Pop_new_start.png",height = a4.width*1.2, width = a4.width*1.3, units  ="mm", dpi = 300 )
 
 #* Read zone Data ####
 
 setwd(pop_dir)
-SP_Pop_NTZ_S00 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_medium_movement_1"))
-SP_Pop_F_S00 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_medium_movement_1"))
-SP_Pop_NTZ_S00.1 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_medium_movement_2"))
-SP_Pop_F_S00.1 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_medium_movement_2"))
-
-SP_Pop_NTZ_S00 <- c(SP_Pop_NTZ_S00, SP_Pop_NTZ_S00.1)
-SP_Pop_F_S00 <- c(SP_Pop_F_S00, SP_Pop_F_S00.1)
+SP_Pop_NTZ_S00 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_medium_movement"))
+SP_Pop_F_S00 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_medium_movement"))
 
 SP_Pop_NTZ_S01 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S01_medium_movement"))
 SP_Pop_F_S01 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S01_medium_movement"))
@@ -239,22 +248,22 @@ F.S00 <- NTZ.F.Ages.S00[[2]]
 ## S01 - No NTZs (and no temporal closure)
 NTZ.F.Ages.S01 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S01, f.list = SP_Pop_NTZ_S01, scenario.name = Names[2], nsim = 200)
 
-NTZ.S01 <- NTZ.F.Ages[[1]]
-F.S01 <- NTZ.F.Ages[[2]]
+NTZ.S01 <- NTZ.F.Ages.S01[[1]]
+F.S01 <- NTZ.F.Ages.S01[[2]]
 
 
 ## S02 - Temporal Closure, no NTZs
 NTZ.F.Ages.S02 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S02, f.list = SP_Pop_NTZ_S02, scenario.name = Names[3], nsim = 200)
 
-NTZ.S02 <- NTZ.F.Ages[[1]]
-F.S02 <- NTZ.F.Ages[[2]]
+NTZ.S02 <- NTZ.F.Ages.S02[[1]]
+F.S02 <- NTZ.F.Ages.S02[[2]]
 
 
 ## S03 - Temporal Closure and NTZs
 NTZ.F.Ages.S03 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S03, f.list = SP_Pop_NTZ_S03, scenario.name = Names[4], nsim = 200)
 
-NTZ.S03 <- NTZ.F.Ages[[1]]
-F.S03 <- NTZ.F.Ages[[2]]
+NTZ.S03 <- NTZ.F.Ages.S03[[1]]
+F.S03 <- NTZ.F.Ages.S03[[2]]
 
 
 ## Put everything together
@@ -271,234 +280,62 @@ Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F)
 #### ZONE PLOTS BY AGE #####
 
 #* Recruits ####
-
-Recruit_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.recruit <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
-                    guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,4)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=25, label="(a) Recruits", size = 2.5, fontface=1)
-line.recruit
-
+ 
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(b) Recruits", label.pos.y = 10, label.pos.x = 1990)
+recruit.ntz <- recruit.plots[[1]]
+recruit.F <- recruit.plots[[2]]
 
 #* Sublegal ####
-
-Sublegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.sublegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup))%>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Sublegal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Sublegal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
-                    guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,20)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=20, label="(b) Juveniles", size = 2.5, fontface=1)
-line.sublegal
+ 
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(c) Juveniles", plot.label.2 = "(d) Juveniles", label.pos.y = 10, label.pos.x = 1991)
+sublegal.ntz <- sublegal.plots[[1]]
+sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
 
-legal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Legal", plot.label.2 = "(b) Legal", label.pos.y = 15, label.pos.x = 1990)
+legal.ntz <- legal.plots[[1]]
+legal.F <- legal.plots[[2]]
 
-line.legal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=legal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=legal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
-                    guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  #ylim(0,6)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=35, label="(a) 3-10 years old", size = 2.5, fontface=1)
-line.legal
+
+
 
 #* Large Legal ####
+Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+  filter(Stage == "Large Legal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1996, P_0.025/1.5, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
+  
 
-LargeLegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  mutate(ColourGroup = factor(ColourGroup, levels = c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management")))
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Large Legal", plot.label.2 = "(d) Large Legal", label.pos.y = 3, label.pos.x = 1993)
+large.legal.ntz <- large.legal.plots[[1]]
+large.legal.F <- large.legal.plots[[2]]
 
-line.largeLegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("S00") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                 ifelse(Scenario %in% c("S03") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                        ifelse(Scenario %in% c("S01"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                              "Neither NTZs nor\ntemporal management"="#302383"),
-                    guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
-  #geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  #geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  #geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  #geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  ylim(0,10)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.05, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
-  ggplot2::annotate("text", x=1990, y=10, label="(b) 10-30 years old", size = 2.5, fontface=1)
-line.largeLegal
 
 #* Put them together and save ####
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
 y.label <- textGrob("Median No. Fish per"~km^2, gp=gpar(fontsize=9), rot=90)
-legend <- gtable_filter(ggplotGrob(line.largeLegal), "guide-box")
+legend <- gtable_filter(ggplotGrob(large.legal.ntz), "guide-box")
 
-LinePlotsxGroup.SL <-grid.arrange(arrangeGrob(line.recruit + theme(legend.position="none"),
-                                              line.sublegal + theme(legend.position="none"),
+LinePlotsxGroup.SL <-grid.arrange(arrangeGrob(recruit.ntz + theme(legend.position="none"),
+                                              recruit.F + theme(legend.position="none"),
+                                              sublegal.ntz + theme(legend.position="none"),
+                                              sublegal.F + theme(legend.position="none"),
                                               left=y.label,
                                               bottom=x.label,
                                               right=legend))
 
-ggsave(LinePlotsxGroup.SL, filename="Sublegal_Combined_1987.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+ggsave(LinePlotsxGroup.SL, filename="Sublegal_Combined_1987.png",height = a4.width*1, width = a4.width*1.2, units  ="mm", dpi = 300 )
 
-LinePlotsxGroup.L <-grid.arrange(arrangeGrob(line.legal + theme(legend.position="none"),
-                                             line.largeLegal + theme(legend.position="none"),
+LinePlotsxGroup.L <-grid.arrange(arrangeGrob(legal.ntz + theme(legend.position="none"),
+                                             legal.F + theme(legend.position="none"),
+                                             large.legal.ntz + theme(legend.position="none"),
+                                             large.legal.F + theme(legend.position="none"),
                                              left=y.label,
                                              bottom=x.label,
                                              right=legend))
-ggsave(LinePlotsxGroup.L, filename="Legal_Combined_1987.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+ggsave(LinePlotsxGroup.L, filename="Legal_Combined_1987_new_start.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 
 
@@ -604,10 +441,10 @@ setwd(pop_dir)
 # Each layer is a simulation, rows are cells and columns are years
 Pop.Dist <- list()
 
-Pop.Dist[[1]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S00"))
-Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S01"))
-Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03"))
-Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S04"))
+Pop.Dist[[1]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S00", sep="_", "medium_movement"))
+Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S01", sep="_", "medium_movement"))
+Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02", sep="_", "medium_movement"))
+Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03", sep="_", "medium_movement"))
 
 temp <- array(0, dim=c(NCELL, 59, 100))
 
@@ -773,10 +610,12 @@ S00.abundance.dist.plot <- ggplot()+
   guides(color = guide_legend(byrow = TRUE))+
   theme(axis.text=element_text(size=8))+
   theme(axis.text=element_text(size=8))+
+  xlim(1986,2020)+
+  ylim(0,8000)+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1961, y=7700, label="(a)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1987, y=7700, label="(a)", size = 2.5, fontface=1, hjust=0)
 S00.abundance.dist.plot
 
 S01.means <- Pop.Dist.Mean[[2]]
@@ -800,13 +639,15 @@ S01.abundance.dist.plot <- ggplot()+
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
         legend.key.size = unit(2,"line")) +
+  xlim(1986,2020)+
+  ylim(0,8000)+
   guides(color = guide_legend(byrow = TRUE))+
   theme(axis.text=element_text(size=8))+
   theme(axis.text=element_text(size=8))+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1960.5, y=7700, label="(b)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1987, y=7700, label="(b)", size = 2.5, fontface=1, hjust=0)
 S01.abundance.dist.plot
 
 S02.means <- Pop.Dist.Mean[[3]]
@@ -826,6 +667,8 @@ S02.abundance.dist.plot <- ggplot()+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
+  xlim(1986,2020)+
+  ylim(0,8000)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -836,7 +679,7 @@ S02.abundance.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1960.5, y=7600, label="(c)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1987, y=7700, label="(c)", size = 2.5, fontface=1, hjust=0)
 S02.abundance.dist.plot
 
 
@@ -857,6 +700,8 @@ S03.abundance.dist.plot <- ggplot()+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
+  xlim(1986,2020)+
+  ylim(0,8000)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -867,7 +712,7 @@ S03.abundance.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1960.5, y=8300, label="(d)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1987, y=7700, label="(d)", size = 2.5, fontface=1, hjust=0)
 S03.abundance.dist.plot
 
 legend.plot <- ggplot()+
@@ -898,10 +743,10 @@ setwd(pop_dir)
 Pop.Catch <- list()
 
 # Each layer is a simulation, rows are cells and columns are years
-Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00"))
-Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01"))
-Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03"))
-Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S04"))
+Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00", sep="_", "medium_movement"))
+Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01", sep="_", "medium_movement"))
+Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02", sep="_", "medium_movement"))
+Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03", sep="_", "medium_movement"))
 
 Pop.Catch.Mean <- list()
 Pop.Catch.SD <- list()
@@ -1047,7 +892,9 @@ S00.data <- cbind(S00.means, S00.SD$SD_Catch, S00.medians$Median_Catch, S00.Quan
   rename(SD_Catch = "S00.SD$SD_Catch",
          Median_Catch = "S00.medians$Median_Catch",
          Q2.5 = "S00.Quant$`2.5%`",
-         Q97.5 = "S00.Quant$`97.5%`")
+         Q97.5 = "S00.Quant$`97.5%`")%>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
 
 S00.catch.dist.plot <- ggplot()+
@@ -1057,6 +904,8 @@ S00.catch.dist.plot <- ggplot()+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
+  xlim(1986, 2020)+
+  ylim(0,1000)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -1067,7 +916,7 @@ S00.catch.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1961, y=700, label="(a)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=1000, label="(a)", size = 2.5, fontface=1, hjust=0)
 S00.catch.dist.plot
 
 
@@ -1079,7 +928,9 @@ S01.data <- cbind(S01.means, S01.SD$SD_Catch, S01.medians$Median_Catch, S01.Quan
   rename(SD_Catch = "S01.SD$SD_Catch",
          Median_Catch = "S01.medians$Median_Catch",
          Q2.5 = "S01.Quant$`2.5%`",
-         Q97.5 = "S01.Quant$`97.5%`")
+         Q97.5 = "S01.Quant$`97.5%`") %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
 S01.catch.dist.plot <- ggplot()+
   geom_line(data=S01.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#302383")+
@@ -1088,6 +939,8 @@ S01.catch.dist.plot <- ggplot()+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
+  xlim(1986,2020)+
+  ylim(0,1000)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -1098,7 +951,7 @@ S01.catch.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1961, y=750, label="(b)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=1000, label="(b)", size = 2.5, fontface=1, hjust=0)
 S01.catch.dist.plot
 
 S02.means <- Pop.Catch.Mean[[3]]
@@ -1109,7 +962,9 @@ S02.data <- cbind(S02.means, S02.SD$SD_Catch, S02.medians$Median_Catch, S02.Quan
   rename(SD_Catch = "S02.SD$SD_Catch",
          Median_Catch = "S02.medians$Median_Catch",
          Q2.5 = "S02.Quant$`2.5%`",
-         Q97.5 = "S02.Quant$`97.5%`")
+         Q97.5 = "S02.Quant$`97.5%`") %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
 S02.catch.dist.plot <- ggplot()+
   geom_line(data=S02.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#66CCEE")+
@@ -1118,6 +973,8 @@ S02.catch.dist.plot <- ggplot()+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
+  xlim(1986, 2020)+
+  ylim(0,1000)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -1128,7 +985,7 @@ S02.catch.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1961, y=700, label="(c)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=1000, label="(c)", size = 2.5, fontface=1, hjust=0)
 S02.catch.dist.plot
 
 
@@ -1140,7 +997,9 @@ S03.data <- cbind(S03.means, S03.SD$SD_Catch, S03.medians$Median_Catch, S03.Quan
   rename(SD_Catch = "S03.SD$SD_Catch",
          Median_Catch = "S03.medians$Median_Catch",
          Q2.5 = "S03.Quant$`2.5%`",
-         Q97.5 = "S03.Quant$`97.5%`")
+         Q97.5 = "S03.Quant$`97.5%`") %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
 S03.catch.dist.plot <- ggplot()+
   geom_line(data=S03.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#BBCC33")+
@@ -1149,6 +1008,8 @@ S03.catch.dist.plot <- ggplot()+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
+  xlim(1986, 2020)+
+  ylim(0,1000)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -1159,7 +1020,7 @@ S03.catch.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1960.5, y=750, label="(d)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=1000, label="(d)", size = 2.5, fontface=1, hjust=0)
 S03.catch.dist.plot
 
 legend.plot <- ggplot()+
@@ -1186,8 +1047,8 @@ ggsave(CatchxDistance, filename="Catch_Distance.png",height = a4.width*1, width 
 
 #* Combining scenarios ####
 
-abundance.10_50 <- NULL
-catch.10_50 <- NULL
+abundance.0_10 <- NULL
+catch.0_10 <- NULL
 
 for (S in 1:4){
   temp.mean <- Pop.Dist.Mean[[S]]
@@ -1202,7 +1063,7 @@ for (S in 1:4){
            Q97.5 = "temp.quant$`97.5%`") %>% 
     filter(Distances %in% c("0-10 km"))
   
-  abundance.10_50 <- rbind(abundance.10_50, temp.all)
+  abundance.0_10 <- rbind(abundance.0_10, temp.all)
   
   temp.mean <- Pop.Catch.Mean[[S]]
   temp.SD <- Pop.Catch.SD[[S]]
@@ -1216,22 +1077,16 @@ for (S in 1:4){
            Q97.5 = "temp.quant$`97.5%`") %>% 
     filter(Distances %in% c("0-10 km"))
   
-  catch.10_50 <- rbind(catch.10_50, temp.all)
+  catch.0_10 <- rbind(catch.0_10, temp.all)
 }
 
-abundance.Pre_1987 <- abundance.10_50 %>% 
-  filter(Year<=1986) %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("No NTZs or Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))
-
-abundance.10_50.plot <- abundance.10_50 %>% 
+abundance.0_10.plot <- abundance.0_10 %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
                                                                  ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
                                                                         ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  mutate(SE_Abundance= SD_Abundance/sqrt(100)) %>% 
-  #mutate(CI = SE_Abundance * t.score) %>% 
-  filter(Year>1985) %>% 
+  filter(Year>1985) %>%
+  # mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.1, Q2.5)) %>%
+  # mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.2, Q97.5)) %>%
   ggplot(.)+
   geom_line(aes(x=Year, y=Median_Abundance, group=Scenario, colour=ColourGroup), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
@@ -1242,12 +1097,10 @@ abundance.10_50.plot <- abundance.10_50 %>%
   scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
                                  "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
                       name= "Spatial and temporal\nmanagement scenario")+ 
-  geom_line(data=abundance.Pre_1987, aes(x=Year, y=Median_Abundance, group=Scenario, colour="grey20"), size=0.7)+
-  geom_ribbon(data=abundance.Pre_1987, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, fill="grey20", group=Scenario), alpha=0.2)+
   theme_classic()+
   xlab(NULL)+
-  ylab("Median abundance within\n0-10km of boat ramp")+
-  xlim(1987,2020)+
+  ylab("Abundance within\n0-10km of boat ramp")+
+  xlim(1986,2020)+
   #ylim(0, 500)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
@@ -1260,12 +1113,12 @@ abundance.10_50.plot <- abundance.10_50 %>%
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=500, label="(a)", size = 2.5, fontface=1)
-abundance.10_50.plot
+  ggplot2::annotate("text", x=1987, y=2000, label="(a)", size = 2.5, fontface=1)
+abundance.0_10.plot
 
 
 Catch.Pre_1987 <- catch.10_50 %>% 
-  filter(Year<=1986) %>% 
+  filter(Year>1984) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent NTZs", 
                                                              ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
                                                                     ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))
@@ -1274,8 +1127,8 @@ Catch.10_50.plot <- catch.10_50 %>%
                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
   filter(Year>1985) %>% 
-  # mutate(SE_Catch= SD_Catch/sqrt(100)) %>% 
-  # mutate(CI = SE_Catch * t.score) %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) %>% 
   ggplot(.)+
   geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
@@ -1285,13 +1138,11 @@ Catch.10_50.plot <- catch.10_50 %>%
   scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
                                  "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
                       name= "Spatial and temporal\nmanagement scenario")+ 
-  geom_line(data=Catch.Pre_1987, aes(x=Year, y=Median_Catch, group=Scenario, colour="grey20"), size=0.7)+
-  geom_ribbon(data=Catch.Pre_1987, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill="grey20", group=Scenario), alpha=0.2)+
   theme_classic()+
   xlab(NULL)+
   ylab("Median catch within\n0-10km of boat ramp")+
-  xlim(1987,2020)+
-  #ylim(0,60)+
+  xlim(1986,2020)+
+  ylim(0,300)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -1303,7 +1154,7 @@ Catch.10_50.plot <- catch.10_50 %>%
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=60, label="(b)", size = 2.5)
+  ggplot2::annotate("text", x=1987, y=300, label="(b)", size = 2.5)
 Catch.10_50.plot
 
 ## Put it together
@@ -1317,7 +1168,10 @@ Catch.AbundancexDistance <-grid.arrange(arrangeGrob(abundance.10_50.plot + theme
                                           right=legend))
 ggsave(Catch.AbundancexDistance, filename="Distance_Combined.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
-## CPUE for 0-10 km from Boat Ramp 
+
+
+#### CPUE PLOTS FOR DISTANCE FROM BOAT RAMP ####
+
 Effort_Scen <- list()
 Spatial_Qs <- list()
 
@@ -1354,34 +1208,38 @@ for(S in 1:4){
 }
 
 #* Sum up effort for every year in each of the scenarios
+Effort_Dist <-list()
 
-Boat_Days_sum <- NULL
+for(D in 1:3){
 
-for(S in 1:4){
-  temp <- Boat_Days[[S]]
-  temp2 <- temp[as.numeric(Distances[[1]]), ,] %>% 
-    colSums(., dim=2) %>% 
-    as.data.frame() %>% 
-    mutate(Scenario = Names[S])
+  Boat_Days_sum <- NULL
   
-  Boat_Days_sum <- rbind(Boat_Days_sum, temp2)
+  for(S in 1:4){
+    temp <- Boat_Days[[S]]
+    temp2 <- temp[as.numeric(Distances[[D]]), ,] %>% 
+      colSums(., dim=2) %>% 
+      as.data.frame() %>% 
+      mutate(Scenario = Names[S]) %>% 
+      mutate(Distance = Dist.Names[D]) %>% 
+      mutate(Year = seq(1960,2018,1))
+    
+    Boat_Days_sum <- rbind(Boat_Days_sum, temp2)
+  }
+  
+  Boat_Days_sum <- Boat_Days_sum %>% 
+    rename(Effort = ".")
+  Effort_Dist[[D]] <- Boat_Days_sum
 }
 
-Boat_Days_sum <- Boat_Days_sum %>% 
-  rename(Effort = ".")
 
+## 0-10km all scenarios
 cpue.0_10 <- catch.10_50 %>% 
-  mutate(Effort = Boat_Days_sum$Effort) %>% 
+  mutate(Effort = Boat_Days_sum[[1]]$Effort) %>% 
   mutate(Median_CPUE = Median_Catch/Effort,
          CPUE_2.5 = Q2.5/Effort,
          CPUE_97.5 = Q97.5/Effort)
 
 
-CPUE.Pre_1987 <- cpue.0_10 %>% 
-  filter(Year<=1986) %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))
 CPUE.0_10.plot <- cpue.0_10 %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
                                                              ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
@@ -1398,13 +1256,11 @@ CPUE.0_10.plot <- cpue.0_10 %>%
   scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
                                  "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
                       name= "Spatial and temporal\nmanagement scenario")+ 
-  geom_line(data=CPUE.Pre_1987, aes(x=Year, y=Median_CPUE, group=Scenario, colour="grey20"), size=0.7)+
-  geom_ribbon(data=CPUE.Pre_1987, aes(x=Year, y=Median_CPUE, ymin=CPUE_2.5, ymax=CPUE_97.5, fill="grey20", group=Scenario), alpha=0.2)+
   theme_classic()+
   xlab(NULL)+
   ylab("CPUE within\n0-10km of boat ramp")+
   xlim(1987,2020)+
-  ylim(0,0.08)+
+  #ylim(0,0.08)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -1412,207 +1268,430 @@ CPUE.0_10.plot <- cpue.0_10 %>%
         legend.key.size = unit(2,"line")) +
   guides(color = guide_legend(byrow = TRUE))+
   theme(axis.text=element_text(size=8),
-        axis.title = element_text(size=9))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+        axis.title.y = element_text(size=9))+
+  geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=0.08, label="(b)", size = 2.5)
+  ggplot2::annotate("text", x=1988, y=0.8, label="(b)", size = 2.5)
 CPUE.0_10.plot
 
-#### CATCH PER UNIT EFFORT PLOTS ####
-
-Names <- c("Historical and Current Management", "No Spatial Management", 
-           "Temporal and Spatial Management","Temporal Management Only" )
-
-Effort_Scen <- list()
-Spatial_Qs <- list()
-
-setwd(sg_dir)
-Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing_test"))
-Spatial_Qs[[1]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_NTZ"))
-Spatial_Qs[[2]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
-
-setwd(sim_dir)
-Effort_Scen[[2]] <- readRDS(paste0(model.name, sep="_", "burn_in_fishing_High_M"))
-Effort_Scen[[3]] <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
-Effort_Scen[[4]] <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
-
-#* Convert back to effort in boat days ####
-
-Boat_Days <- list()
-
-Boat_Days_Scen <- array(0, dim=c(NCELL, 12, 59))
-
-for(S in 1:4){
-  
-  if(S==1|S==3){
-    for (YEAR in 1:59){
-      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[1]][,YEAR]
-    }
-  } else {
-    for (YEAR in 1:59){
-      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[2]][,YEAR]
-    }
-  }
-  Boat_Days_Scen[is.nan(Boat_Days_Scen)] <- 0
-
-  Boat_Days[[S]] <- Boat_Days_Scen
-}
-colSums(Boat_Days[[2]][,,2])
-Effort_Scen[[1]][1000:1834,,50]
-Effort_Scen[[3]][1000:1834,,50]
-#* Sum up effort for every year in each of the scenarios
-
-Boat_Days_sum <- NULL
-
-for(S in 1:4){
-  temp <- Boat_Days[[S]]
-  temp2 <- colSums(temp, dim=2) %>% 
-    as.data.frame() %>% 
-    mutate(Scenario = Names[S])
-  
-  Boat_Days_sum <- rbind(Boat_Days_sum, temp2)
-}
-
-Boat_Days_sum <- Boat_Days_sum %>% 
-  rename(Effort = ".") %>% 
-  mutate(Mortality = Effort*(0.00001)) %>% 
-  mutate(Finite = 1-exp(-Mortality))
-#* Spatial Plot of Peak Effort ####
-
-## Extract peak effort - 
-Normal_Effort <- Boat_Days[[2]]
-peak <- rowSums(Normal_Effort[,,40])
-peak <- peak[as.numeric(water_WHA$ID)]
-#peak <- round(peak, digits=1)
-
-water_WHA$Effort <- peak
-
-water_WHA_2 <- water_WHA %>% 
-  #filter(as.numeric(cell_area)>1000000) %>% 
-  mutate(cell_area = cell_area/1000000) %>% 
-  mutate(cell_effect = as.numeric(cell_area/sum(cell_area))) %>% 
-  mutate(Effort = as.numeric(Effort/cell_area))
-
-map <- ggplot()+
-  geom_sf(data=water_WHA_2, aes(fill=Effort), color = NA, lwd=0)+
-  scale_fill_carto_c(bquote(Fishing~effort~(Boat~days~km^-1)), palette="BluYl", direction=-1)+
-  #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
-  geom_sf(data=ausc)+
-  geom_sf(data=BR)+
-  geom_richtext(data = BR, x=c(114.1730+0.14, 114.1400+0.15, 113.9784-0.165, 113.7665+0.165), 
-                            y=c(-21.83106, -21.95587, -21.91276, -23.15521), label = c("Bundegi", "Exmouth", "Tantabiddi", "Coral Bay"), size=2.5)+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-map
-
+## Save the plot
 setwd(fig_dir)
-a4.width <- 160
-ggsave(map, filename="ningaloo_spatial_Effort_Plot.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+x.label <- textGrob("Year", gp=gpar(fontsize=9))
+legend <- gtable_filter(ggplotGrob(Catch.10_50.plot), "guide-box")
 
-#* Format catch data and add to effort ####
+CPUE.AbundancexDistance <-grid.arrange(arrangeGrob(abundance.10_50.plot + theme(legend.position="none"),
+                                                   CPUE.0_10.plot + theme(legend.position="none"),
+                                                    bottom=x.label,
+                                                    right=legend))
+ggsave(CPUE.AbundancexDistance, filename="CPUE_Distance_Combined.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
+
+#### CPUE PLOTS FOR ALL DISTANCES BY SCENARIO ####
+
 setwd(pop_dir)
 
 Pop.Catch <- list()
 
 # Each layer is a simulation, rows are cells and columns are years
-Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00"))
-Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01"))
-Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02"))
-Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03"))
-
-temp <- array(0, dim=c(NCELL,59,100))
-Pop.Catch.Mean <- NULL
-Pop.Catch.SD <- NULL
+Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00", sep="_", "medium_movement"))
+Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01", sep="_", "medium_movement"))
+Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02", sep="_", "medium_movement"))
+Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03", sep="_", "medium_movement"))
 
 
 for(S in 1:4){
   
   Scenario <- Pop.Catch[[S]]
-  
-  Means <- array(0, dim=c(1, 59)) %>% 
+
+  Medians <- array(0, dim=c(3, 59))%>% 
     as.data.frame(.)
-  SDs <- array(0, dim=c(1, 59))%>% 
+  Quantiles <- array(0, dim=c(6, 59))%>% 
     as.data.frame(.)
+  temp <- array(0, dim=c(1834,59,200))
   
-  for(SIM in 1:100){
+  for(SIM in 1:200){
     temp[,,SIM] <- Scenario[[SIM]]
   }
-  for(YEAR in 1:59){
+  for(YEAR in 26:59){
     
     temp1 <- temp[,YEAR,]
+    tempE <- Effort_Dist[[1]] %>% 
+      filter(Scenario %in% Names[S])
     
-    temp2 <- temp1 %>% 
-      as.data.frame() %>% 
+    temp1.1 <- temp1/tempE$Effort
+    
+    temp2 <- as.data.frame(temp1.1) %>% 
+      mutate(CellID = row_number()) %>% 
+      mutate(Fished_17 = water$Fished_2017) 
+    
+    
+    Dist.10km <- temp2 %>% 
+      filter(CellID %in% c(Distances[[1]])) %>% 
+      #{if (S>0) filter(., Fished_17 =="Y") else .} %>% 
       summarise(across(where(is.numeric), sum)) %>% 
-      mutate(Mean_Catch = rowMeans(.[1:100])) %>% 
-      mutate(SD_Catch = rowSds(as.matrix(.[,1:100]))) 
+      # mutate(Mean_Pop = rowMeans(.[1:200])) %>% 
+      # mutate(SD_Pop = rowSds(as.matrix(.[,1:200]))) %>% 
+      mutate(Median_Pop = rowMedians(as.matrix(.[1:200]))) %>%
+      mutate(Distance = "10km") 
     
-    Means[,YEAR] <- temp2$Mean_Catch
-    SDs[,YEAR] <- temp2$SD_Catch
+    ## 10-50km
+    tempE <- Effort_Dist[[2]] %>% 
+      filter(Scenario %in% Names[S])
+    
+    temp1.2 <- temp1/tempE$Effort
+    
+    temp2 <- as.data.frame(temp1.2) %>% 
+      mutate(CellID = row_number()) %>% 
+      mutate(Fished_17 = water$Fished_2017)
+    
+    Dist.50km <- temp2 %>% 
+      filter(CellID %in% c(Distances[[2]])) %>% 
+      #{if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+      summarise(across(where(is.numeric), sum)) %>% 
+      # mutate(Mean_Pop = rowMeans(.[1:200])) %>% 
+      # mutate(SD_Pop = rowSds(as.matrix(.[,1:200]))) %>% 
+      mutate(Median_Pop = rowMedians(as.matrix(.[1:200]))) %>%
+      mutate(Distance = "50km")
+    
+    ## 50-100km
+    
+    tempE <- Effort_Dist[[3]] %>% 
+      filter(Scenario %in% Names[S])
+    
+    temp1.3 <- temp1/tempE$Effort
+    
+    temp2 <- as.data.frame(temp1.3) %>% 
+      mutate(CellID = row_number()) %>% 
+      mutate(Fished_17 = water$Fished_2017)
+    
+    Dist.100km <- temp2 %>% 
+      filter(CellID %in% c(Distances[[3]])) %>% 
+      #{if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+      summarise(across(where(is.numeric), sum)) %>% 
+      # mutate(Mean_Pop = rowMeans(.[1:200])) %>% 
+      # mutate(SD_Pop = rowSds(as.matrix(.[,1:200]))) %>% 
+      mutate(Median_Pop = rowMedians(as.matrix(.[1:200]))) %>%
+      mutate(Distance = "100km") 
+    
+    temp2 <- as.matrix(Dist.10km[ , 1:200])
+    
+    Catch.Quantiles.10 <- quantile(temp2, probs=c(0.025, 0.975)) %>% 
+      as.data.frame() %>% 
+      mutate(Distance = "10 km") 
+    
+    temp2 <- as.matrix(Dist.50km[ , 1:200])
+    
+    Catch.Quantiles.50 <-quantile(temp2, probs=c(0.025, 0.975)) %>% 
+      as.data.frame() %>% 
+      mutate(Distance = "50 km") 
+    
+    temp2 <- as.matrix(Dist.100km[ , 1:200])
+    
+    Catch.Quantiles.100 <-quantile(temp2, probs=c(0.025, 0.975)) %>% 
+      as.data.frame() %>% 
+      mutate(Distance = "100 km") 
+    
+    # Means.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>% 
+    #   dplyr::select(Distance, Median_Pop)
+    # SDs.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>% 
+    #   dplyr::select(Distance, SD_Pop)
+    Medians.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>% 
+      dplyr::select(Distance, Median_Pop)
+    Quantiles.Full <- rbind(Catch.Quantiles.10, Catch.Quantiles.50, Catch.Quantiles.100) %>%
+      as.data.frame() 
+    Quantiles.Full$Quantile <- rownames(Quantiles.Full)
+    
+    # Means[,YEAR] <- Means.Full$Mean_Pop
+    # 
+    # SDs[ ,YEAR] <- SDs.Full$SD_Pop
+    
+    Medians[ ,YEAR] <- Medians.Full$Median_Pop
+    
+    Quantiles[, YEAR] <- Quantiles.Full$. 
+    Quantiles$Quantile <- Quantiles.Full$Quantile
+    
+    
   }
-  Means <- as.data.frame(Means) %>% 
-    mutate(Scenario = Names[S]) %>% 
-    pivot_longer(cols=-c("Scenario"), values_to = "Mean_Catch", names_to = "Year") %>% 
-    mutate(Year = seq(1960,2018,1))
   
-  SDs <- as.data.frame(SDs) %>% 
+  Medians <- as.data.frame(Medians) %>% 
     mutate(Scenario = Names[S]) %>% 
-    pivot_longer(cols=-c("Scenario"), values_to = "SD_Catch", names_to = "Year") %>% 
-    mutate(Year = seq(1960,2018,1))
+    mutate(Distances = Dist.Names)%>% 
+    pivot_longer(cols=-c("Scenario", "Distances"), values_to = "Median_Catch", names_to = "Year") %>% 
+    mutate(Year = rep(seq(1960,2018,1), times = 3))
   
-  Pop.Catch.Mean <- rbind(Pop.Catch.Mean, Means)
-  Pop.Catch.SD <- rbind(Pop.Catch.SD, SDs)
+  Quantiles <- as.data.frame(Quantiles) %>%
+    mutate(Scenario = rep(Names[S], 6)) %>%
+    mutate(Distances = rep(Dist.Names, each=2)) %>%
+    pivot_longer(cols=-c("Scenario", "Distances", "Quantile"), values_to = "Quantile_Catch", names_to = "Year") %>%
+    mutate(Year = rep(seq(1960,2018,1), times = 6)) %>% 
+    mutate(Quantile = str_replace(Quantile, "%[[:digit:]]$", "%")) %>% 
+    pivot_wider(names_from = "Quantile", values_from="Quantile_Catch")
+  
+  Pop.Catch.Mean[[S]] <- Means
+  Pop.Catch.SD[[S]] <- SDs
+  Pop.Catch.Median[[S]] <- Medians
+  Pop.Catch.Quant[[S]] <- Quantiles
   
 }
 
-CPUE <- Boat_Days_sum %>% 
-  mutate(Catch = Pop.Catch.Mean$Mean_Catch) %>% 
-  mutate(SD.Catch = Pop.Catch.SD$SD_Catch) %>% 
-  mutate(Year = rep(seq(1960,2018), 4)) %>% 
-  mutate(cpue = Catch/Effort) %>% 
-  mutate(cpue = ifelse(is.nan(cpue), 0, cpue))
+# S00.means <- Pop.Catch.Mean[[1]]
+S00.medians <- Pop.Catch.Median[[1]]
+# S00.SD <- Pop.Catch.SD[[1]]
+S00.Quant <- Pop.Catch.Quant[[1]]
+S00.data <- cbind(S00.medians, S00.Quant$`2.5%`, S00.Quant$`97.5%`) %>% 
+  rename(Q2.5 = "S00.Quant$`2.5%`",
+         Q97.5 = "S00.Quant$`97.5%`")%>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
-#* Plot CPUE for each scenario ####
 
-CPUE.Pre_1987 <- CPUE %>% 
-  filter(Year<=1986) %>%  
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent management", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("No NTZs or Temporal Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))
-
-CPUE.plot <- CPUE %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent management", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("No NTZs or Temporal Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))%>% 
-  filter(Year>1985) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Year, y=cpue, group=Scenario, colour=ColourGroup), size=0.7)+
-  scale_fill_manual(values= c("Historical and\ncurrent management"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
-                    guide="none")+
-  scale_colour_manual(values = c( "Historical and\ncurrent management"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                                  "Temporal\nmanagement only"="#BBCC33"), name= "Spatial and Temporal\nManagement Scenario")+ 
-  geom_line(data=CPUE.Pre_1987, aes(x=Year, y=cpue, group=Scenario, colour="grey20"), size=0.7)+
+S00.CPUE.dist.plot <- ggplot()+
+  geom_line(data=S00.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#36753B")+
+  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
+  geom_ribbon(data=S00.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#36753B", alpha=0.2)+
   theme_classic()+
+  ylab(NULL)+
   xlab(NULL)+
-  ylab("CPUE")+
-  xlim(1970,2020)+
-  ylim(0,0.3)+
-  #scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
-  theme(legend.title = element_text(size=9, face="bold"), #change legend title font size
+  xlim(1986, 2020)+
+  #ylim(0,1000)+
+  theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
         legend.key.size = unit(2,"line")) +
   guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8),
-        axis.title = element_text(size=9))+
+  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8))+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")
-  #ggplot2::annotate("text", x=1960, y=400, label="(b)", size = 2.5, fontface=2)
-CPUE.plot
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=2, label="(a)", size = 2.5, fontface=1, hjust=0)
+S00.CPUE.dist.plot
+
+
+# S01.means <- Pop.Catch.Mean[[2]]
+S01.medians <- Pop.Catch.Median[[2]]
+# S01.SD <- Pop.Catch.SD[[2]]
+S01.Quant <- Pop.Catch.Quant[[2]]
+S01.data <- cbind(S01.medians, S01.Quant$`2.5%`, S01.Quant$`97.5%`) %>% 
+  rename(Q2.5 = "S01.Quant$`2.5%`",
+         Q97.5 = "S01.Quant$`97.5%`") %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
+
+S01.CPUE.dist.plot <- ggplot()+
+  geom_line(data=S01.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#302383")+
+  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
+  geom_ribbon(data=S01.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#302383", alpha=0.2)+
+  theme_classic()+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1986,2020)+
+  #ylim(0,1000)+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=2, label="(b)", size = 2.5, fontface=1, hjust=0)
+S01.CPUE.dist.plot
+
+# S02.means <- Pop.Catch.Mean[[3]]
+S02.medians <- Pop.Catch.Median[[3]]
+# S02.SD <- Pop.Catch.SD[[3]]
+S02.Quant <- Pop.Catch.Quant[[3]]
+S02.data <- cbind(S02.medians, S02.Quant$`2.5%`, S02.Quant$`97.5%`) %>% 
+  rename(Q2.5 = "S02.Quant$`2.5%`",
+         Q97.5 = "S02.Quant$`97.5%`") %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
+
+S02.CPUE.dist.plot <- ggplot()+
+  geom_line(data=S02.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#66CCEE")+
+  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
+  geom_ribbon(data=S02.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#66CCEE", alpha=0.1)+
+  theme_classic()+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1986, 2020)+
+  ylim(0,2)+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=2, label="(c)", size = 2.5, fontface=1, hjust=0)
+S02.CPUE.dist.plot
+
+
+# S03.means <- Pop.Catch.Mean[[4]]
+S03.medians <- Pop.Catch.Median[[4]]
+# S03.SD <- Pop.Catch.SD[[4]]
+S03.Quant <- Pop.Catch.Quant[[4]]
+S03.data <- cbind(S03.medians, S03.Quant$`2.5%`, S03.Quant$`97.5%`) %>% 
+  rename(Q2.5 = "S03.Quant$`2.5%`",
+         Q97.5 = "S03.Quant$`97.5%`") %>% 
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
+
+S03.CPUE.dist.plot <- ggplot()+
+  geom_line(data=S03.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#BBCC33")+
+  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"))+
+  geom_ribbon(data=S03.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#BBCC33", alpha=0.1)+
+  theme_classic()+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1986, 2020)+
+  ylim(0,2)+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=2, label="(d)", size = 2.5, fontface=1, hjust=0)
+S03.CPUE.dist.plot
+
+legend.plot <- ggplot()+
+  geom_line(data=S03.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="grey20")+
+  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
+  theme_classic()
+
+## Put it all together
+setwd(fig_dir)
+x.label <- textGrob("Year", gp=gpar(fontsize=9))
+y.label <- textGrob("CPUE", gp=gpar(fontsize=9), rot=90)
+legend <- gtable_filter(ggplotGrob(legend.plot), "guide-box")
+
+CPUExDistance <-grid.arrange(arrangeGrob(S00.CPUE.dist.plot + theme(legend.position="none"),
+                                          S01.CPUE.dist.plot + theme(legend.position="none"),
+                                          S02.CPUE.dist.plot + theme(legend.position="none"),
+                                          S03.CPUE.dist.plot + theme(legend.position="none"),
+                                          left=y.label,
+                                          bottom=x.label,
+                                          right=legend))
+
+ggsave(CPUExDistance, filename="CPUE_Distance.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
+#### CATCH PER UNIT EFFORT PLOTS DUPLICATE? ####
+
+
+# #* Format catch data and add to effort ####
+# setwd(pop_dir)
+# 
+# Pop.Catch <- list()
+# 
+# # Each layer is a simulation, rows are cells and columns are years
+# Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00"))
+# Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01"))
+# Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02"))
+# Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03"))
+# 
+# temp <- array(0, dim=c(NCELL,59,100))
+# Pop.Catch.Mean <- NULL
+# Pop.Catch.SD <- NULL
+# 
+# 
+# for(S in 1:4){
+#   
+#   Scenario <- Pop.Catch[[S]]
+#   
+#   Means <- array(0, dim=c(1, 59)) %>% 
+#     as.data.frame(.)
+#   SDs <- array(0, dim=c(1, 59))%>% 
+#     as.data.frame(.)
+#   
+#   for(SIM in 1:100){
+#     temp[,,SIM] <- Scenario[[SIM]]
+#   }
+#   for(YEAR in 1:59){
+#     
+#     temp1 <- temp[,YEAR,]
+#     
+#     temp2 <- temp1 %>% 
+#       as.data.frame() %>% 
+#       summarise(across(where(is.numeric), sum)) %>% 
+#       mutate(Median_Catch = rowMedians(.[1:100])) %>% 
+#       mutate(SD_Catch = rowSds(as.matrix(.[,1:100]))) 
+#     
+#     Means[,YEAR] <- temp2$Mean_Catch
+#     SDs[,YEAR] <- temp2$SD_Catch
+#   }
+#   Means <- as.data.frame(Means) %>% 
+#     mutate(Scenario = Names[S]) %>% 
+#     pivot_longer(cols=-c("Scenario"), values_to = "Mean_Catch", names_to = "Year") %>% 
+#     mutate(Year = seq(1960,2018,1))
+#   
+#   SDs <- as.data.frame(SDs) %>% 
+#     mutate(Scenario = Names[S]) %>% 
+#     pivot_longer(cols=-c("Scenario"), values_to = "SD_Catch", names_to = "Year") %>% 
+#     mutate(Year = seq(1960,2018,1))
+#   
+#   Pop.Catch.Mean <- rbind(Pop.Catch.Mean, Means)
+#   Pop.Catch.SD <- rbind(Pop.Catch.SD, SDs)
+#   
+# }
+# 
+# CPUE <- Boat_Days_sum %>% 
+#   mutate(Catch = Pop.Catch.Mean$Mean_Catch) %>% 
+#   mutate(SD.Catch = Pop.Catch.SD$SD_Catch) %>% 
+#   mutate(Year = rep(seq(1960,2018), 4)) %>% 
+#   mutate(cpue = Catch/Effort) %>% 
+#   mutate(cpue = ifelse(is.nan(cpue), 0, cpue))
+# 
+# #* Plot CPUE for each scenario ####
+# 
+# CPUE.Pre_1987 <- CPUE %>% 
+#   filter(Year<=1986) %>%  
+#   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent management", 
+#                                                              ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
+#                                                                     ifelse(Scenario %in% c("No NTZs or Temporal Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))
+# 
+# CPUE.plot <- CPUE %>% 
+#   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent management", 
+#                                                              ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
+#                                                                     ifelse(Scenario %in% c("No NTZs or Temporal Management"), "No NTZs or\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+#   filter(Year>1985) %>% 
+#   ggplot(.)+
+#   geom_line(aes(x=Year, y=cpue, group=Scenario, colour=ColourGroup), size=0.7)+
+#   scale_fill_manual(values= c("Historical and\ncurrent management"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+#                               "Temporal\nmanagement only"="#BBCC33"),
+#                     guide="none")+
+#   scale_colour_manual(values = c( "Historical and\ncurrent management"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+#                                   "Temporal\nmanagement only"="#BBCC33"), name= "Spatial and Temporal\nManagement Scenario")+ 
+#   geom_line(data=CPUE.Pre_1987, aes(x=Year, y=cpue, group=Scenario, colour="grey20"), size=0.7)+
+#   theme_classic()+
+#   xlab(NULL)+
+#   ylab("CPUE")+
+#   xlim(1970,2020)+
+#   ylim(0,0.3)+
+#   #scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
+#   theme(legend.title = element_text(size=9, face="bold"), #change legend title font size
+#         legend.text = element_text(size=8), #change legend text font size
+#         legend.spacing.y = unit(0.1, "cm"),
+#         legend.key.size = unit(2,"line")) +
+#   guides(color = guide_legend(byrow = TRUE))+
+#   theme(axis.text=element_text(size=8),
+#         axis.title = element_text(size=9))+
+#   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+#   geom_vline(xintercept=2005, colour="grey20")+
+#   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")
+#   #ggplot2::annotate("text", x=1960, y=400, label="(b)", size = 2.5, fontface=2)
+# CPUE.plot
 
 
 #### PLOT JUST ONE SCENARIO/SIMULATION FOR CHECKING ####

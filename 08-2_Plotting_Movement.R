@@ -53,6 +53,8 @@ model.name <- "ningaloo"
 colours <- c("#69BE28", "#005594", "#8AD2D8", "#53AF8B")
 a4.width <- 160
 
+Names <- c("Slow Movement", "Medium Movement", "Fast Movement")
+
 #### READ IN DATA ####
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -145,14 +147,52 @@ AreaNT <- water %>%
 AreaNT <- (sum(AreaNT$cell_area))/1000000
 
 #### SCENARIO S00 ####
+#* Whole population plot ####
+ 
+setwd(pop_dir)
+
+total_pop_list <- list()
+
+total_pop_list[[1]] <-  readRDS(paste0(model.name, sep="_","Age_Distribution_S00_slow_movement"))
+total_pop_list[[2]] <-  readRDS(paste0(model.name, sep="_","Age_Distribution_S00_medium_movement"))
+total_pop_list[[3]] <-  readRDS(paste0(model.name, sep="_","Age_Distribution_S00_fast_movement"))
+
+# This function formats all the data and turns it in to mature biomass for plotting
+total_pop <- total.pop.format(pop.file.list = total_pop_list, scenario.names = Names, nsim=10, nyears=59, startyear=26, maxage=30, mat = maturity, kg=Weight)
+
+
+total_pop_plot <- total_pop %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  ggplot() +
+  geom_line(aes(x=Year, y=Median_MatBio, group=Scenario, color=Scenario), size=0.7)+
+  geom_ribbon(aes(x=Year, y=Median_MatBio, ymin=P_0.025, ymax=P_0.975, group=Scenario,
+                  fill=Scenario), alpha=0.2)+
+  theme_classic()+
+  scale_fill_manual(values= c("Slow Movement"="#36753B", "Medium Movement"="#302383" ,"Fast Movement"="#66CCEE"),
+                    guide="none")+
+  scale_colour_manual(values = c("Slow Movement"="#36753B", "Medium Movement"="#302383" ,"Fast Movement"="#66CCEE"), name= "Movement Pattern")+ 
+  ylab("Total spawning biomass")+
+  xlab("Year")+
+  xlim(1985, 2020)+
+  #ylim(0,57500)+
+  theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+ 
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.05, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")
+total_pop_plot
 
 #* Read zone Data ####
 setwd(pop_dir)
-SP_Pop_NTZ_S00_medium <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_slow_movement"))
-SP_Pop_F_S00_medium <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_slow_movement"))
+SP_Pop_NTZ_S00_slow <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_slow_movement"))
+SP_Pop_F_S00_slow <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_slow_movement"))
 
-SP_Pop_NTZ_S00_slow <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_really_small_movement"))
-SP_Pop_F_S00_slow <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_really_small_movement"))
+SP_Pop_NTZ_S00_medium <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_medium_movement"))
+SP_Pop_F_S00_medium <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_medium_movement"))
 
 SP_Pop_NTZ_S00_fast <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_fast_movement"))
 SP_Pop_F_S00_fast <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_fast_movement"))
@@ -166,7 +206,7 @@ SP_Pop_F_S00_fast <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_fas
 NTZ_Ages_S00_medium <- NULL
 F_Ages_S00_medium <- NULL
 
-for(SIM in 1:length(SP_Pop_NTZ_S00_medium)){
+for(SIM in 1:10){
   
   temp <- as.data.frame(colSums(SP_Pop_NTZ_S00_medium[[SIM]])) %>% 
     mutate(Age = seq(1:30)) %>% 
@@ -222,7 +262,7 @@ F_Ages_S00_medium <- as.data.frame(F_Ages_S00_medium) %>%
 NTZ_Ages_S00_slow <- NULL
 F_Ages_S00_slow <- NULL
 
-for(SIM in 1:length(SP_Pop_NTZ_S00_slow)){
+for(SIM in 1:10){
   
   temp <- as.data.frame(colSums(SP_Pop_NTZ_S00_slow[[SIM]])) %>% 
     mutate(Age = seq(1:30)) %>% 
@@ -277,7 +317,7 @@ F_Ages_S00_slow <- as.data.frame(F_Ages_S00_slow) %>%
 NTZ_Ages_S00_fast <- NULL
 F_Ages_S00_fast <- NULL
 
-for(SIM in 1:length(SP_Pop_NTZ_S00_fast)){
+for(SIM in 1:10){
   
   temp <- as.data.frame(colSums(SP_Pop_NTZ_S00_fast[[SIM]])) %>% 
     mutate(Age = seq(1:30)) %>% 
@@ -550,7 +590,7 @@ line.legal <- Whole_Pop_Ages %>%
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=35, label="(a) 3-10 years old", size = 2.5, fontface=1)
+  ggplot2::annotate("text", x=1990, y=10, label="(a) 3-10 years old", size = 2.5, fontface=1)
 line.legal
 
 #* Large Legal ####
@@ -618,7 +658,7 @@ line.largeLegal <- Whole_Pop_Ages %>%
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
-  ggplot2::annotate("text", x=1990, y=10, label="(b) 10-30 years old", size = 2.5, fontface=1)
+  ggplot2::annotate("text", x=1990, y=1.5, label="(b) 10-30 years old", size = 2.5, fontface=1)
 line.largeLegal
 
 #* Read zone Data ####

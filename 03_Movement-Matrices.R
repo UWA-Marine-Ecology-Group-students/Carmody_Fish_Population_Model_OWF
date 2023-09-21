@@ -383,7 +383,8 @@ for (r in 1:NCELL){
     Pj[r,c] <- (exp(Vj[r,c]))/rowU[r,1]
   }
 }
-# rowSums(Pj)
+rowSums(Pj)
+
 
 ## Visualising the movement to double check it 
 # 

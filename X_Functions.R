@@ -249,8 +249,8 @@ msy.plot.func <- function(yield, biomass,spawning){
 
 zone.fish.age <- function(NTZ.Ages, F.Ages){
   
-  NTZ_Ages <- array(0, dim=c(30,59,100))
-  F_Ages <- array(0, dim=c(30,59,100))
+  NTZ_Ages <- array(0, dim=c(30,59,200))
+  F_Ages <- array(0, dim=c(30,59,200))
   
   for(S in 1:4){
     
@@ -306,17 +306,17 @@ zone.fish.age <- function(NTZ.Ages, F.Ages){
 
 #* Catch by age ####
 
-age.catch <- function(Catches, NTZ.Cells, F.Cells){
+age.catch <- function(Catches, NTZ.Cells, F.Cells, nsim){
   Age.Catch <- list()
   temp4 <- list()
   temp5 <- list()
-  catch <- array(0, dim=c(NCELL,59,100))
+  catch <- array(0, dim=c(NCELL,59,nsim))
   
   for (S in 1:4){
     
     temp <- Catches[[S]] # NTZ and F are the same files 
     
-    for(SIM in 1:100){
+    for(SIM in 1:nsim){
       catch[,,SIM] <- temp[[SIM]]
     }
     
@@ -339,114 +339,210 @@ age.catch <- function(Catches, NTZ.Cells, F.Cells){
 
 #* Means  ####
 
-means.func <- function(Age, Catch, Zones, Age.NTZ, Age.F, Catch.NTZ, Catch.F){
+median.biomass.func <- function(Age, Catch, Zones, Age.NTZ, Age.F, Catch.NTZ, Catch.F, nsim, nyears, yearstart, maxage, scenario.names, mat, kg){
   Ages.All <- list()
   Ages.F <- list()
   Ages.NTZ <- list()
   
-  Catches.All <- list()
-  Catches.NTZ <- list()
-  Catches.F <- list()
+  Ages.All <- NULL
+  Ages.F <- NULL
+  Ages.NTZ <- NULL
   
-  catch <- array(0, dim=c(30,59,100))
-  catch.NTZ <- array(0, dim=c(30,59,100))
-  catch.F <- array(0, dim=c(30,59,100))
+  # Catches.All <- list()
+  # Catches.NTZ <- list()
+  # Catches.F <- list()
+  
+  # catch <- array(0, dim=c(maxage,nyear,nsim))
+  # catch.NTZ <- array(0, dim=c(maxage,nyear,nsim))
+  # catch.F <- array(0, dim=c(maxage,nyear,nsim))
   
   for(S in 1:4){
     
     #*************AGES***************
-    temp.All <- Age[[S]]
+    total_pop <- NULL
+    mod_year <- seq(1960,2018,1)
     
-    temp2 <- temp.All %>% 
-      rowMeans(., dim=2) %>% 
-      as.data.frame(.) 
+      temp <- Age[[S]]
+      
+      median.ages <- NULL
+      
+      for(year in yearstart:nyears){
+        
+        age <- temp[,year,]
+        
+        age.median <- age %>% 
+          as.data.frame()
+        
+        age.median <- age.median[ , ]*mat[,12]
+        age.median <- age.median[ , ]*kg[,12]
+        
+        age.median <- colSums(age.median[ ,1:nsim]) %>%   
+          as.data.frame() %>% 
+          mutate(Year = mod_year[year]) %>% 
+          rename(MatBio = ".")
+        
+        median.ages <- rbind(median.ages, age.median)
+      }
+      
+      median.ages <- median.ages %>% 
+        group_by(Year) %>% 
+        summarise(Median_MatBio = median(MatBio), 
+                  P_0.025 = quantile(MatBio, probs=c(0.025)),
+                  P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
+        mutate(Scenario = scenario.names[S])
+      
+      total_pop <- rbind(total_pop, median.ages)
     
-    Ages.All[[S]] <- temp2
+    #Ages.All[[S]] <- total_pop
 
     
     if(Zones == TRUE){
       # Ages NTZ
-      temp.NTZ <- Age.NTZ[[S]]
+      NTZ_pop <- NULL
+      mod_year <- seq(1960,2018,1)
       
-      temp2 <- temp.NTZ %>% 
-        rowMeans(., dim=2) %>% 
-        as.data.frame(.) 
+      temp <- Age.NTZ[[S]]
       
-      Ages.NTZ[[S]] <- temp2
+      median.ages <- NULL
+      
+      for(year in yearstart:nyears){
+        
+        age <- temp[,year,]
+        
+        age.median <- age %>% 
+          as.data.frame()
+        
+        age.median <- age.median[ , ]*mat[,12]
+        age.median <- age.median[ , ]*kg[,12]
+        
+        age.median <- colSums(age.median[ ,1:nsim]) %>%   
+          as.data.frame() %>% 
+          mutate(Year = mod_year[year]) %>% 
+          rename(MatBio = ".")
+        
+        median.ages <- rbind(median.ages, age.median)
+      }
+      
+      median.ages <- median.ages %>% 
+        group_by(Year) %>% 
+        summarise(Median_MatBio = median(MatBio), 
+                  P_0.025 = quantile(MatBio, probs=c(0.025)),
+                  P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
+        mutate(Scenario = scenario.names[S])
+      
+      NTZ_pop <- rbind(NTZ_pop, median.ages)
+      
+      #Ages.NTZ[[S]] <- NTZ_pop
       
       # Ages F
-      temp.F <- Age.F[[S]]
+      F_pop <- NULL
+      mod_year <- seq(1960,2018,1)
       
-      temp2 <- temp.F %>% 
-        rowMeans(., dim=2) %>% 
-        as.data.frame(.) 
+      temp <- Age.F[[S]]
       
-      Ages.F[[S]] <- temp2
+      median.ages <- NULL
+      
+      for(year in yearstart:nyears){
+        
+        age <- temp[,year,]
+        
+        age.median <- age %>% 
+          as.data.frame()
+        
+        age.median <- age.median[ , ]*mat[,12]
+        age.median <- age.median[ , ]*kg[,12]
+        
+        age.median <- colSums(age.median[ ,1:nsim]) %>%   
+          as.data.frame() %>% 
+          mutate(Year = mod_year[year]) %>% 
+          rename(MatBio = ".")
+        
+        median.ages <- rbind(median.ages, age.median)
+      }
+      
+      median.ages <- median.ages %>% 
+        group_by(Year) %>% 
+        summarise(Median_MatBio = median(MatBio), 
+                  P_0.025 = quantile(MatBio, probs=c(0.025)),
+                  P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
+        mutate(Scenario = scenario.names[S])
+      
+      F_pop <- rbind(F_pop, median.ages)
+      
+      #Ages.F[[S]] <- F_pop
+      
     } else {}
     
     
-    #*********************************
-    #*************CATCHES*************
-    ## All
-    temp.c <- Catch[[S]]
-    for(SIM in 1:100){
-      
-      catch[,,SIM] <- temp.c[[SIM]]
-      
-    }
+    # #*********************************
+    # #*************CATCHES*************
+    # ## All
+    # temp.c <- Catch[[S]]
+    # for(SIM in 1:nsim){
+    #   
+    #   catch[,,SIM] <- temp.c[[SIM]]
+    #   
+    # }
+    # 
+    # temp2.c <- catch[,yearstart:nyear, ] %>% 
+    #   rowMedians(., dim=2) %>% 
+    #   as.data.frame(.) 
+    # 
+    # Catches.All[[S]] <- temp2.c
+    # 
+    # if(Zones == TRUE){
+    #   ## NTZ
+    #   temp.c.NTZ <- Catch.NTZ[[S]]
+    #   for(SIM in 1:nsim){
+    #     
+    #     catch.NTZ[,,SIM] <- temp.c.NTZ[[SIM]]
+    #     
+    #   }
+    #   
+    #   temp2.c.NTZ <- catch.NTZ[,yearstart:nyear, ] %>% 
+    #     rowMedians(., dim=2) %>% 
+    #     as.data.frame(.) 
+    #   
+    #   if(S==1|S==3){
+    #     temp2.c.NTZ[,] <- 0
+    #   } else { }
+    #   
+    #   Catches.NTZ[[S]] <- temp2.c.NTZ
+    #   
+    #   ## F
+    #   temp.c.F <- Catch.F[[S]]
+    #   for(SIM in 1:nsim){
+    #     
+    #     catch.F[,,SIM] <- temp.c.F[[SIM]]
+    #     
+    #   }
+    #   
+    #   temp2.c.F <- catch.F[,yearstart:nyear, ] %>% 
+    #     rowMedians(., dim=2) %>% 
+    #     as.data.frame(.) 
+    #   
+    #   Catches.F[[S]] <- temp2.c.F
+    # } else { }
+    # 
+    # 
+    # #*********************************  
     
-    temp2.c <- catch %>% 
-      rowMeans(., dim=2) %>% 
-      as.data.frame(.) 
+    Ages.All <- rbind(Ages.All, total_pop)
+    Ages.F <- rbind(Ages.F, F_pop)
+    Ages.NTZ <- rbind(Ages.NTZ, NTZ_pop)
     
-    Catches.All[[S]] <- temp2.c
-    
-    if(Zones == TRUE){
-      ## NTZ
-      temp.c.NTZ <- Catch.NTZ[[S]]
-      for(SIM in 1:100){
-        
-        catch.NTZ[,,SIM] <- temp.c.NTZ[[SIM]]
-        
-      }
-      
-      temp2.c.NTZ <- catch.NTZ %>% 
-        rowMeans(., dim=2) %>% 
-        as.data.frame(.) 
-      
-      if(S==1|S==3){
-        temp2.c.NTZ[,] <- 0
-      } else { }
-      
-      Catches.NTZ[[S]] <- temp2.c.NTZ
-      
-      ## F
-      temp.c.F <- Catch.F[[S]]
-      for(SIM in 1:100){
-        
-        catch.F[,,SIM] <- temp.c.F[[SIM]]
-        
-      }
-      
-      temp2.c.F <- catch.F %>% 
-        rowMeans(., dim=2) %>% 
-        as.data.frame(.) 
-      
-      Catches.F[[S]] <- temp2.c.F
-    } else { }
-    
-    
-    #*********************************  
   }
+
+    
   Age.and.Catch <- list()
   
   Age.and.Catch[[1]] <- Ages.All
   Age.and.Catch[[2]] <- Ages.F
   Age.and.Catch[[3]] <- Ages.NTZ
   
-  Age.and.Catch[[4]] <- Catches.All
-  Age.and.Catch[[5]] <- Catches.NTZ
-  Age.and.Catch[[6]] <- Catches.F
+  # Age.and.Catch[[4]] <- Catches.All
+  # Age.and.Catch[[5]] <- Catches.NTZ
+  # Age.and.Catch[[6]] <- Catches.F
   
   return(Age.and.Catch)
   
@@ -510,13 +606,14 @@ biomass.func <- function(Age, Zones, Age.NTZ, Age.F, Weights){
 total.pop.format <- function(pop.file.list, scenario.names, nsim, nyears, startyear, maxage, mat, kg){
   
   total_pop <- NULL
+  mod_year <- seq(1960,2018,1)
   
   for(i in 1:length(pop.file.list)){
     temp <- pop.file.list[[i]]
     
     median.ages <- NULL
     
-    for(year in 26:nyears){
+    for(year in startyear:nyears){
       
       age <- temp[,year,]
       
@@ -526,18 +623,18 @@ total.pop.format <- function(pop.file.list, scenario.names, nsim, nyears, starty
       age.median <- age.median[ , ]*mat[,12]
       age.median <- age.median[ , ]*kg[,12]
         
-      age.median <- colSums(age.median[,1:nsim]) %>%   
+      age.median <- colSums(age.median[ ,1:nsim]) %>%   
         as.data.frame() %>% 
-        mutate(Year = year) %>% 
+        mutate(Year = mod_year[year]) %>% 
         rename(MatBio = ".")
       
       median.ages <- rbind(median.ages, age.median)
     }
     median.ages <- median.ages %>% 
-      group_by(Year) %>% 
-      summarise(Median_MatBio = median(MatBio), 
-                P_0.025 = quantile(MatBio, probs=c(0.025)),
-                P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
+      # group_by(Year) %>% 
+      # summarise(Median_MatBio = median(MatBio), 
+      #           P_0.025 = quantile(MatBio, probs=c(0.025)),
+      #           P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
       mutate(Scenario = scenario.names[i])
 
     total_pop <- rbind(total_pop, median.ages)
@@ -583,9 +680,9 @@ NTZ_Ages_S00 <- as.data.frame(NTZ_Ages_S00) %>%
   summarise(across(where(is.numeric) & !Age, sum)) %>% 
   ungroup() %>% 
   mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>% 
+  mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>%
   mutate(P_0.025 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.025))) %>%
-  mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>% 
+  mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>%
   mutate(Scenario = scenario.name)  %>% 
   dplyr::select(Mod_Year, Stage, Median_Pop, P_0.025, P_0.975, Scenario)
 
@@ -600,10 +697,10 @@ F_Ages_S00 <- as.data.frame(F_Ages_S00) %>%
   group_by(Stage, Mod_Year) %>% 
   summarise(across(where(is.numeric) & !Age, sum)) %>% 
   ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>% 
+  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>%
+  mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>%
   mutate(P_0.025 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.025))) %>%
-  mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>% 
+  mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>%
   mutate(Scenario = scenario.name)  %>% 
   dplyr::select(Mod_Year, Stage, Median_Pop, P_0.025, P_0.975, Scenario)
 
@@ -614,6 +711,93 @@ NTZ.F.Ages[[2]] <- F_Ages_S00
 return(NTZ.F.Ages)
 
 }
+
+#### PLOTTING FUNCTIONS ####
+
+age.group.plots <- function(age.group, data.to.plot, plot.label.1, plot.label.2, label.pos.y, label.pos.x){
+  
+  plot.NTZ <- data.to.plot %>% 
+    filter(Stage %in% c(age.group)) %>% 
+    filter(Zone %in% c("NTZ")) %>% 
+    filter(Mod_Year >=1986) %>% 
+    mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
+                                                                   ifelse(Scenario %in% c("Temporal Management Only") & Mod_Year>1985, "Temporal\nmanagement only", 
+                                                                          ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+    mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+    ggplot(.)+
+    geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
+    geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
+    scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                                "Temporal\nmanagement only"="#BBCC33"),
+                      guide="none")+
+    scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
+                                   "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
+    theme_classic()+
+    xlab(NULL)+
+    ylab(NULL)+
+    xlim(1987,2020)+
+    ylim(0,NA)+
+    scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),guide = "none")+
+    theme(legend.title = element_text(size=9), #change legend title font size
+          legend.text = element_text(size=8), #change legend text font size
+          legend.spacing.y = unit(0.1, "cm"),
+          legend.key.size = unit(2,"line")) +
+    guides(color = guide_legend(byrow = TRUE))+
+    theme(axis.text=element_text(size=8))+
+    geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+    geom_vline(xintercept=2005, colour="grey20")+
+    geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
+    ggplot2::annotate("text", x=label.pos.x, y=label.pos.y, label=plot.label.1, size = 2.5, fontface=1)
+  plot.NTZ
+
+  plot.F <- data.to.plot %>% 
+    filter(Stage %in% c(age.group)) %>% 
+    filter(Zone %in% c("F")) %>% 
+    filter(Mod_Year >=1986) %>% 
+    mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
+                                                                   ifelse(Scenario %in% c("Temporal Management Only") & Mod_Year>1985, "Temporal\nmanagement only", 
+                                                                          ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+    mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+    ggplot(.)+
+    geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
+    geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
+    scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                                "Temporal\nmanagement only"="#BBCC33"),
+                      guide="none")+
+    scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
+                                   "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
+    theme_classic()+
+    xlab(NULL)+
+    ylab(NULL)+
+    xlim(1987,2020)+
+    ylim(0,NA)+
+    scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),guide = "none")+
+    theme(legend.title = element_text(size=9), #change legend title font size
+          legend.text = element_text(size=8), #change legend text font size
+          legend.spacing.y = unit(0.1, "cm"),
+          legend.key.size = unit(2,"line")) +
+    guides(color = guide_legend(byrow = TRUE))+
+    theme(axis.text=element_text(size=8))+
+    geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+    geom_vline(xintercept=2005, colour="grey20")+
+    geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
+    ggplot2::annotate("text", x=label.pos.x, y=label.pos.y, label=plot.label.2, size = 2.5, fontface=1)
+  plot.F
+  
+  plots <- list()
+  plots[[1]] <- plot.NTZ
+  plots[[2]] <- plot.F
+  
+  return(plots)
+
+}
+
+
+
+
+
+
+
 
 
   
