@@ -247,12 +247,12 @@ msy.plot.func <- function(yield, biomass,spawning){
 #* Fish by age and by zone ####
 
 
-zone.fish.age <- function(NTZ.Ages, F.Ages){
+zone.fish.age <- function(NTZ.Ages, F.Ages, nsim, max.age, n.years, n.scenario, start.year, end.year){
   
-  NTZ_Ages <- array(0, dim=c(30,59,200))
-  F_Ages <- array(0, dim=c(30,59,200))
+  NTZ_Ages <- array(0, dim=c(max.age,n.years,nsim))
+  F_Ages <- array(0, dim=c(max.age,n.years,nsim))
   
-  for(S in 1:4){
+  for(S in 1:n.scenario){
     
     SP_Pop_NTZ <- NTZ.Ages[[S]]
     SP_Pop_F <- F.Ages[[S]]
@@ -260,10 +260,10 @@ zone.fish.age <- function(NTZ.Ages, F.Ages){
     for(SIM in 1:length(SP_Pop_NTZ)){
       
       temp <- as.data.frame(colSums(SP_Pop_NTZ[[SIM]])) %>% 
-        mutate(Age = seq(1:30)) %>% 
+        mutate(Age = seq(1:max.age)) %>% 
         pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
         mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", ""))) %>% 
-        mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+        mutate(Mod_Year = rep(start.year:end.year, length.out=nrow(.))) %>% 
         group_by(Age, Mod_Year) %>% 
         summarise(across(where(is.numeric), sum)) %>% 
         ungroup() %>%
@@ -272,15 +272,15 @@ zone.fish.age <- function(NTZ.Ages, F.Ages){
         dplyr::select(!Age) %>% 
         unlist()
       
-      temp2 <- array(temp, dim=c(30,59))
+      temp2 <- array(temp, dim=c(max.age,n.years))
       
       NTZ_Ages[,,SIM] <- temp2
       
       temp <- as.data.frame(colSums(SP_Pop_F[[SIM]])) %>% 
-        mutate(Age = seq(1:30)) %>% 
+        mutate(Age = seq(1:max.age)) %>% 
         pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
         mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", ""))) %>% 
-        mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+        mutate(Mod_Year = rep(start.year:end.year, length.out=nrow(.))) %>% 
         group_by(Age, Mod_Year) %>% 
         summarise(across(where(is.numeric), sum)) %>% 
         ungroup() %>% 
@@ -288,7 +288,7 @@ zone.fish.age <- function(NTZ.Ages, F.Ages){
         dplyr::select(!Age) %>% 
         unlist()
       
-      temp2 <- array(temp, dim=c(30,59))
+      temp2 <- array(temp, dim=c(max.age,n.years))
       
       F_Ages[,,SIM] <- temp2
     }
@@ -630,15 +630,59 @@ total.pop.format <- function(pop.file.list, scenario.names, nsim, nyears, starty
       
       median.ages <- rbind(median.ages, age.median)
     }
-    median.ages <- median.ages %>% 
-      # group_by(Year) %>% 
-      # summarise(Median_MatBio = median(MatBio), 
-      #           P_0.025 = quantile(MatBio, probs=c(0.025)),
-      #           P_0.975 = quantile(MatBio, probs=c(0.975))) %>% 
+    median.ages <- median.ages %>%
+      group_by(Year) %>%
+      summarise(Median_MatBio = median(MatBio),
+                P_0.025 = quantile(MatBio, probs=c(0.025)),
+                P_0.975 = quantile(MatBio, probs=c(0.975))) %>%
       mutate(Scenario = scenario.names[i])
 
     total_pop <- rbind(total_pop, median.ages)
   
+  }
+  
+  return(total_pop)
+  
+}
+
+## Whole population
+
+total.pop.format.full <- function(pop.file.list, scenario.names, nsim, nyears, startyear, maxage, mat, kg){
+  
+  total_pop <- NULL
+  mod_year <- seq(1960,2018,1)
+  
+  for(i in 1:length(pop.file.list)){
+    temp <- pop.file.list[[i]]
+    
+    median.ages <- NULL
+    
+    for(year in startyear:nyears){
+      
+      age <- temp[,year,]
+      
+      age.median <- age %>% 
+        as.data.frame()
+      
+      age.median <- age.median[ , ]*mat[,12]
+      age.median <- age.median[ , ]*kg[,12]
+      
+      age.median <- colSums(age.median[ ,1:nsim]) %>%   
+        as.data.frame() %>% 
+        mutate(Year = mod_year[year]) %>% 
+        rename(MatBio = ".")
+      
+      median.ages <- rbind(median.ages, age.median)
+    }
+    median.ages <- median.ages %>%
+      group_by(Year) %>%
+      # summarise(Median_MatBio = median(MatBio),
+      #           P_0.025 = quantile(MatBio, probs=c(0.025)),
+      #           P_0.975 = quantile(MatBio, probs=c(0.975))) %>%
+      mutate(Scenario = scenario.names[i])
+    
+    total_pop <- rbind(total_pop, median.ages)
+    
   }
   
   return(total_pop)
@@ -712,6 +756,475 @@ return(NTZ.F.Ages)
 
 }
 
+zone.pop.format.full <- function(ntz.list, f.list, scenario.name, nsim){
+  
+  NTZ_Ages_S00 <- NULL
+  F_Ages_S00 <- NULL
+  
+  for(SIM in 1:nsim){
+    
+    temp <- as.data.frame(colSums(ntz.list[[SIM]])) %>% 
+      mutate(Age = seq(1:30)) %>% 
+      pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+      mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+    
+    NTZ_Ages_S00 <- cbind(NTZ_Ages_S00, temp$Number)
+    
+    temp <- as.data.frame(colSums(f.list[[SIM]])) %>% 
+      mutate(Age = seq(1:30)) %>% 
+      pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
+      mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+    
+    F_Ages_S00 <- cbind(F_Ages_S00,temp$Number)
+  }
+  
+  NTZ_Ages_S00 <- as.data.frame(NTZ_Ages_S00) %>% 
+    mutate(Age = rep(1:30, each=59)) %>% 
+    mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+    mutate(Stage = ifelse(Age==1, "Recruit",
+                          ifelse(Age>1 & Age<3, "Sublegal",
+                                 ifelse(Age>=3 & Age<=10, "Legal",
+                                        ifelse(Age>10, "Large Legal",NA))))) %>% 
+    group_by(Stage, Mod_Year) %>% 
+    summarise(across(where(is.numeric) & !Age, sum)) %>% 
+    # ungroup() %>% 
+    # mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
+    # mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>%
+    # mutate(P_0.025 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.025))) %>%
+    # mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>%
+    mutate(Scenario = scenario.name) # %>% 
+    # dplyr::select(Mod_Year, Stage, Median_Pop, P_0.025, P_0.975, Scenario)
+  
+  
+  F_Ages_S00 <- as.data.frame(F_Ages_S00) %>% 
+    mutate(Age = rep(1:30, each=59)) %>% 
+    mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
+    mutate(Stage = ifelse(Age==1, "Recruit",
+                          ifelse(Age>1 & Age<3, "Sublegal",
+                                 ifelse(Age>=3 & Age<=10, "Legal",
+                                        ifelse(Age>10, "Large Legal",NA))))) %>% 
+    group_by(Stage, Mod_Year) %>% 
+    summarise(across(where(is.numeric) & !Age, sum)) %>% 
+    ungroup() %>% 
+    # mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>%
+    # mutate(Median_Pop = rowMedians(as.matrix(.[,3:nsim]))) %>%
+    # mutate(P_0.025 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.025))) %>%
+    # mutate(P_0.975 = rowQuantiles(as.matrix(.[,3:nsim]), probs=c(0.975))) %>%
+    mutate(Scenario = scenario.name)  #%>% 
+    # dplyr::select(Mod_Year, Stage, Median_Pop, P_0.025, P_0.975, Scenario)
+  
+  NTZ.F.Ages <- list()
+  NTZ.F.Ages[[1]] <- NTZ_Ages_S00
+  NTZ.F.Ages[[2]] <- F_Ages_S00
+  
+  return(NTZ.F.Ages)
+  
+}
+
+
+distance.abundance.format <- function(Pops, n.year, n.sim, n.row, n.dist, n.cell, n.scenario, fished.cells, 
+                                      LQ, HQ, distances, dist.names, scen.names, start.year, max.year,
+                                      start.year.mod, end.year.mod){
+  
+  temp <- array(0, dim=c(n.cell, max.year, n.sim))
+  
+  Pop.Dist.Mean <- list()
+  Pop.Dist.SD <- list()
+  Pop.Dist.Median <- list()
+  Pop.Dist.Quant <- list()
+  
+  Quantiles.10 <- array(0, dim=c(n.row, 2))
+  Quantiles.50 <- array(0, dim=c(n.row, 2))
+  Quantiles.100 <- array(0, dim=c(n.row, 2))
+  
+  
+  for(S in 1:n.scenario){
+    
+    Scenario <- Pops[[S]]
+    
+    Means <- array(0, dim=c(n.dist, max.year)) %>% 
+      as.data.frame(.)
+    SDs <- array(0, dim=c(n.dist, max.year))%>% 
+      as.data.frame(.)
+    Medians <- array(0, dim=c(n.dist, max.year)) %>% 
+      as.data.frame(.)
+    Quantiles <- array(0, dim=c((n.dist*2), max.year)) %>% 
+      as.data.frame(.)
+    
+    for(SIM in 1:n.sim){
+      temp[,,SIM] <- Scenario[[SIM]]
+    }
+    for(YEAR in start.year:max.year){
+      
+      temp1 <- temp[,YEAR,]
+      
+      temp2 <- as.data.frame(temp1) %>% 
+        mutate(CellID = row_number()) %>% 
+        mutate(Fished_17 = fished.cells$Fished_2017) 
+      
+      Dist.10km <- temp2 %>% 
+        filter(CellID %in% c(distances[[1]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(across(where(is.numeric), sum)) %>% 
+        mutate(Mean_Pop = rowMeans(.[1:n.sim])) %>% 
+        mutate(SD_Pop = rowSds(as.matrix(.[,1:n.sim]))) %>% 
+        mutate(Median_Pop = rowMedians(as.matrix(.[1:n.sim]))) %>% 
+        mutate(Distance = dist.names[1]) 
+      
+      Dist.50km <- temp2 %>% 
+        filter(CellID %in% c(distances[[2]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(across(where(is.numeric), sum)) %>% 
+        mutate(Mean_Pop = rowMeans(.[1:n.sim])) %>% 
+        mutate(SD_Pop = rowSds(as.matrix(.[,1:n.sim]))) %>% 
+        mutate(Median_Pop = rowMedians(as.matrix(.[1:n.sim]))) %>% 
+        mutate(Distance = dist.names[2])
+      
+      Dist.100km <- temp2 %>% 
+        filter(CellID %in% c(distances[[3]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(across(where(is.numeric), sum)) %>% 
+        mutate(Mean_Pop = rowMeans(.[1:n.sim])) %>% 
+        mutate(SD_Pop = rowSds(as.matrix(.[,1:n.sim]))) %>% 
+        mutate(Median_Pop = rowMedians(as.matrix(.[1:n.sim]))) %>% 
+        mutate(Distance = dist.names[3]) 
+      
+      temp2 <- as.matrix(Dist.10km[ , 1:n.sim])
+      
+      Quantiles.10 <- quantile(temp2, probs=c(LQ, HQ)) %>% 
+        as.data.frame() %>% 
+        mutate(Distance = dist.names[1]) 
+      
+      temp2 <- as.matrix(Dist.50km[ , 1:n.sim])
+      
+      Quantiles.50 <-quantile(temp2, probs=c(LQ, HQ)) %>% 
+        as.data.frame() %>% 
+        mutate(Distance = dist.names[2]) 
+      
+      temp2 <- as.matrix(Dist.100km[ , 1:n.sim])
+      
+      Quantiles.100 <-quantile(temp2, probs=c(LQ, HQ)) %>% 
+        as.data.frame() %>% 
+        mutate(Distance = dist.names[3]) 
+      
+      Means.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>% 
+        dplyr::select(Distance, Mean_Pop)
+      SDs.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>% 
+        dplyr::select(Distance, SD_Pop)
+      Medians.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>% 
+        dplyr::select(Distance, Median_Pop)
+      Quantiles.Full <- rbind(Quantiles.10, Quantiles.50, Quantiles.100) %>%
+        as.data.frame() 
+      Quantiles.Full$Quantile <- rownames(Quantiles.Full)
+      
+      Means[,YEAR] <- Means.Full$Mean_Pop
+      
+      SDs[ ,YEAR] <- SDs.Full$SD_Pop
+      
+      Medians[ ,YEAR] <- Medians.Full$Median_Pop
+      
+      Quantiles[, YEAR] <- Quantiles.Full$. 
+      Quantiles$Quantile <- Quantiles.Full$Quantile
+      
+      
+    }
+    Means <- as.data.frame(Means) %>% 
+      mutate(Scenario = scen.names[S]) %>% 
+      mutate(Distances = dist.names) %>% 
+      pivot_longer(cols=-c("Scenario", "Distances"), values_to = "Mean_Abundance", names_to = "Year") %>% 
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 3))
+    
+    SDs <- as.data.frame(SDs) %>% 
+      mutate(Scenario = scen.names[S]) %>% 
+      mutate(Distances = dist.names)%>% 
+      pivot_longer(cols=-c("Scenario", "Distances"), values_to = "SD_Abundance", names_to = "Year") %>% 
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 3))
+    
+    Medians <- as.data.frame(Medians) %>% 
+      mutate(Scenario = scen.names[S]) %>% 
+      mutate(Distances = dist.names)%>% 
+      pivot_longer(cols=-c("Scenario", "Distances"), values_to = "Median_Abundance", names_to = "Year") %>% 
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 3))
+    
+    Quantiles <- as.data.frame(Quantiles) %>%
+      mutate(Scenario = rep(scen.names[S], 6)) %>%
+      mutate(Distances = rep(Dist.Names, each=2)) %>%
+      pivot_longer(cols=-c("Scenario", "Distances", "Quantile"), values_to = "Quantile_Abundance", names_to = "Year") %>%
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 6)) %>% 
+      mutate(Quantile = str_replace(Quantile, "%[[:digit:]]$", "%")) %>% 
+      pivot_wider(names_from = "Quantile", values_from="Quantile_Abundance")
+    
+    Pop.Dist.Mean[[S]] <- Means
+    Pop.Dist.SD[[S]] <- SDs
+    Pop.Dist.Median[[S]] <- Medians
+    Pop.Dist.Quant[[S]] <- Quantiles
+    
+  }
+  results <- list()
+  results[[1]] <- Pop.Dist.Median
+  results[[2]] <- Pop.Dist.Quant
+  results[[3]] <- Pop.Dist.Mean
+  results[[4]] <- Pop.Dist.SD
+  
+  return(results)
+}
+
+distance.catch.format <- function(Pops, n.year, n.sim, n.row, n.dist, n.cell, n.scenario, fished.cells, 
+                                  LQ, HQ, distances, dist.names, scen.names, start.year, max.year,
+                                  start.year.mod, end.year.mod){
+  
+  temp <- array(0, dim=c(n.cell, max.year, n.sim))
+  
+  Pop.Catch.Mean <- list()
+  Pop.Catch.SD <- list()
+  Pop.Catch.Median <- list()
+  Pop.Catch.Quant<- list()
+  
+  for(S in 1:4){
+    
+    Scenario <- Pops[[S]]
+    
+    Means <- array(0, dim=c(n.dist, max.year)) %>%
+      as.data.frame(.)
+    SDs <- array(0, dim=c(n.dist, max.year))%>%
+      as.data.frame(.)
+    Medians <- array(0, dim=c(n.dist, n.row))%>% 
+      as.data.frame(.)
+    Quantiles <- array(0, dim=c((n.dist*2), n.row))%>% 
+      as.data.frame(.)
+    
+    for(SIM in 1:n.sim){
+      temp[,,SIM] <- Scenario[[SIM]]
+    }
+    
+    for(YEAR in 1:max.year){
+      
+      temp1 <- temp[,YEAR,]
+      
+      temp2 <- as.data.frame(temp1) %>% 
+        mutate(CellID = row_number()) %>% 
+        mutate(Fished_17 = fished.cells$Fished_2017) 
+      
+      Dist.10km <- temp2 %>% 
+        filter(CellID %in% c(distances[[1]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(across(where(is.numeric), sum)) %>%
+        mutate(Mean_Pop = rowMeans(.[1:n.sim])) %>%
+        mutate(SD_Pop = rowSds(as.matrix(.[,1:n.sim]))) %>%
+        mutate(Median_Pop = rowMedians(as.matrix(.[1:n.sim]))) %>%
+        mutate(Distance = dist.names[1])
+      
+      Dist.50km <- temp2 %>% 
+        filter(CellID %in% c(distances[[2]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(across(where(is.numeric), sum)) %>%
+        mutate(Mean_Pop = rowMeans(.[1:n.sim])) %>%
+        mutate(SD_Pop = rowSds(as.matrix(.[,1:n.sim]))) %>%
+        mutate(Median_Pop = rowMedians(as.matrix(.[1:n.sim]))) %>%
+        mutate(Distance = dist.names[2])
+        # 
+      Dist.100km <- temp2 %>% 
+        filter(CellID %in% c(distances[[3]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(across(where(is.numeric), sum)) %>%
+        mutate(Mean_Pop = rowMeans(.[1:n.sim])) %>%
+        mutate(SD_Pop = rowSds(as.matrix(.[,1:n.sim]))) %>%
+        mutate(Median_Pop = rowMedians(as.matrix(.[1:n.sim]))) %>%
+        mutate(Distance = dist.names[3])
+      
+      temp2 <- as.matrix(Dist.10km[ , 1:n.sim])
+      
+      Catch.Quantiles.10 <- quantile(temp2, probs=c(LQ, HQ)) %>% 
+        as.data.frame() %>% 
+        mutate(Distance = "10 km") 
+      
+      temp2 <- as.matrix(Dist.50km[ , 1:n.sim])
+      
+      Catch.Quantiles.50 <-quantile(temp2, probs=c(LQ, HQ)) %>% 
+        as.data.frame() %>% 
+        mutate(Distance = "50 km") 
+      
+      temp2 <- as.matrix(Dist.100km[ , 1:n.sim])
+      
+      Catch.Quantiles.100 <-quantile(temp2, probs=c(LQ, HQ)) %>% 
+        as.data.frame() %>% 
+        mutate(Distance = "100 km") 
+
+      Means.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>%
+        dplyr::select(Distance, Mean_Pop)
+      SDs.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>%
+        dplyr::select(Distance, SD_Pop)
+      Medians.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) %>%
+        dplyr::select(Distance, Median_Pop)
+      Quantiles.Full <- rbind(Catch.Quantiles.10, Catch.Quantiles.50, Catch.Quantiles.100) %>%
+        as.data.frame()
+      Quantiles.Full$Quantile <- rownames(Quantiles.Full)
+      
+      Means[,YEAR] <- Means.Full$Mean_Pop
+
+      SDs[ ,YEAR] <- SDs.Full$SD_Pop
+
+      Medians[ ,YEAR] <- Medians.Full$Median_Pop
+
+      Quantiles[, YEAR] <- Quantiles.Full$.
+      Quantiles$Quantile <- Quantiles.Full$Quantile
+    }
+    
+    Means <- as.data.frame(Means) %>%
+      mutate(Scenario = scen.names[S]) %>%
+      mutate(Distances = dist.names) %>%
+      pivot_longer(cols=-c("Scenario", "Distances"), values_to = "Mean_Catch", names_to = "Year") %>%
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 3))
+
+    SDs <- as.data.frame(SDs) %>%
+      mutate(Scenario = scen.names[S]) %>%
+      mutate(Distances = dist.names) %>%
+      pivot_longer(cols=-c("Scenario", "Distances"), values_to = "SD_Catch", names_to = "Year") %>%
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 3))
+    
+    Medians <- as.data.frame(Medians) %>% 
+      mutate(Scenario = scen.names[S]) %>%
+      mutate(Distances = dist.names) %>%
+      pivot_longer(cols=-c("Scenario", "Distances"), values_to = "Median_Catch", names_to = "Year") %>%
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 3))
+    
+    Quantiles <- as.data.frame(Quantiles) %>%
+      mutate(Scenario = rep(scen.names[S], 6)) %>%
+      mutate(Distances = rep(dist.names, each=2, times=1)) %>%
+      pivot_longer(cols=-c("Scenario", "Distances", "Quantile"), values_to = "Quantile_Catch", names_to = "Year") %>%
+      mutate(Year = rep(seq(start.year.mod,end.year.mod,1), times = 6)) %>%
+      mutate(Quantile = str_replace(Quantile, "%[[:digit:]]$", "%")) %>%
+      pivot_wider(names_from = "Quantile", values_from="Quantile_Catch")
+
+    Pop.Catch.Mean[[S]] <- Means
+    Pop.Catch.SD[[S]] <- SDs
+    Pop.Catch.Median[[S]] <- Medians
+    Pop.Catch.Quant[[S]] <- Quantiles
+    
+  }
+  results <- list()
+  results[[1]] <- Pop.Catch.Median
+  results[[2]] <- Pop.Catch.Quant
+  results[[3]] <- Pop.Catch.Mean
+  results[[4]] <- Pop.Catch.SD
+  
+  return(results)
+}
+
+
+dist.abundance.full <- function(Pops, n.year, n.cell, n.sim, n.scenario, fished.cells, 
+                            distances, dist.names, scen.names, mod.years, target.year){
+  Pop.Abundance <- list()
+  
+  for(S in 1:n.scenario){
+    
+    Scenario <- Pops[[S]]
+    
+    Abundance <- NULL
+    
+    temp <- array(0, dim=c(n.cell, n.year, n.sim))
+    
+    for(SIM in 1:n.sim){
+      temp[,,SIM] <- Scenario[[SIM]]
+    }
+    for(YEAR in target.year:target.year){
+      
+      temp1 <- temp[,59,]
+      
+      temp2 <- as.data.frame(temp1) %>% 
+        mutate(CellID = row_number()) %>% 
+        mutate(Fished_17 = fished.cells$Fished_2017) 
+      
+      Dist.10km <- temp2 %>% 
+        filter(CellID %in% c(distances[[1]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(Total=colSums(.[1:n.sim])) %>% 
+        mutate(Distance = dist.names[1]) %>% 
+        mutate(Scenario = scen.names[S]) %>%
+        mutate(Year = mod.years[target.year])
+      
+      Dist.50km <- temp2 %>% 
+        filter(CellID %in% c(distances[[2]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(Total=colSums(.[1:n.sim])) %>% 
+        mutate(Scenario = scen.names[S]) %>%
+        mutate(Distance = dist.names[2]) %>% 
+        mutate(Year = mod.years[YEAR])
+      
+      Dist.100km <- temp2 %>% 
+        filter(CellID %in% c(distances[[3]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(Total=colSums(.[1:n.sim])) %>% 
+        mutate(Scenario = scen.names[S]) %>%
+        mutate(Distance = dist.names[3])%>% 
+        mutate(Year = mod.years[YEAR])
+      
+      Abundance.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) 
+      
+      Abundance<- rbind(Abundance, Abundance.Full)
+      
+    }
+    Pop.Abundance[[S]] <- Abundance
+  }
+  return(Pop.Abundance) 
+}
+
+dist.catch.full <- function(Pops, n.year, n.cell, n.sim, n.scenario, fished.cells, 
+                               distances, dist.names, scen.names, mod.years, target.year){
+  Pop.Catch <- list()
+  
+  for(S in 1:n.scenario){
+    
+    Scenario <- Pops[[S]]
+    
+    Catch <- NULL
+    temp <- array(0, dim=c(n.cell, n.year, n.sim))
+    
+    for(SIM in 1:n.sim){
+      temp[,,SIM] <- Scenario[[SIM]]
+    }
+    for(YEAR in target.year:target.year){
+      
+      temp1 <- temp[,59,]
+      
+      temp2 <- as.data.frame(temp1) %>% 
+        mutate(CellID = row_number()) %>% 
+        mutate(Fished_17 = fished.cells$Fished_2017) 
+      
+      Dist.10km <- temp2 %>% 
+        filter(CellID %in% c(distances[[1]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(Total=colSums(.[1:n.sim])) %>% 
+        mutate(Distance = dist.names[1]) %>% 
+        mutate(Scenario = scen.names[S]) %>%
+        mutate(Year = mod.years[target.year])
+      
+      Dist.50km <- temp2 %>% 
+        filter(CellID %in% c(distances[[2]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(Total=colSums(.[1:n.sim])) %>% 
+        mutate(Scenario = scen.names[S]) %>%
+        mutate(Distance = dist.names[2]) %>% 
+        mutate(Year = mod.years[YEAR])
+      
+      Dist.100km <- temp2 %>% 
+        filter(CellID %in% c(distances[[3]])) %>% 
+        {if (S>0) filter(., Fished_17 =="Y") else .} %>% 
+        summarise(Total=colSums(.[1:n.sim])) %>% 
+        mutate(Scenario = scen.names[S]) %>%
+        mutate(Distance = dist.names[3])%>% 
+        mutate(Year = mod.years[YEAR])
+      Catch.Full <- rbind(Dist.10km, Dist.50km, Dist.100km) 
+      
+      Catch <- rbind(Catch, Catch.Full)
+      
+    }
+    Pop.Catch[[S]] <- Catch
+  }
+  return(Pop.Catch) 
+}
+
+
 #### PLOTTING FUNCTIONS ####
 
 age.group.plots <- function(age.group, data.to.plot, plot.label.1, plot.label.2, label.pos.y, label.pos.x){
@@ -720,23 +1233,24 @@ age.group.plots <- function(age.group, data.to.plot, plot.label.1, plot.label.2,
     filter(Stage %in% c(age.group)) %>% 
     filter(Zone %in% c("NTZ")) %>% 
     filter(Mod_Year >=1986) %>% 
-    mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                   ifelse(Scenario %in% c("Temporal Management Only") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                          ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+    mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs") & Mod_Year>1985, "Current NTZs", 
+                                                                   ifelse(Scenario %in% c("Temporal management") & Mod_Year>1985, "Temporal management", 
+                                                                          ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
     mutate(ColourGroup = as.factor(ColourGroup)) %>% 
     ggplot(.)+
     geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
     geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-    scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                                "Temporal\nmanagement only"="#BBCC33"),
+    scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                                "Temporal management"="#BBCC33"),
                       guide="none")+
-    scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                   "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
+    scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                   "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),name= "Spatial and temporal\nmanagement scenario")+ 
     theme_classic()+
     xlab(NULL)+
     ylab(NULL)+
     xlim(1987,2020)+
     ylim(0,NA)+
+    scale_y_continuous(breaks = pretty_breaks())+
     scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),guide = "none")+
     theme(legend.title = element_text(size=9), #change legend title font size
           legend.text = element_text(size=8), #change legend text font size
@@ -754,23 +1268,24 @@ age.group.plots <- function(age.group, data.to.plot, plot.label.1, plot.label.2,
     filter(Stage %in% c(age.group)) %>% 
     filter(Zone %in% c("F")) %>% 
     filter(Mod_Year >=1986) %>% 
-    mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Mod_Year>1985, "Historical and\ncurrent NTZs", 
-                                                                   ifelse(Scenario %in% c("Temporal Management Only") & Mod_Year>1985, "Temporal\nmanagement only", 
-                                                                          ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+    mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs") & Mod_Year>1985, "Current NTZs", 
+                                                                   ifelse(Scenario %in% c("Temporal management") & Mod_Year>1985, "Temporal management", 
+                                                                          ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
     mutate(ColourGroup = as.factor(ColourGroup)) %>% 
     ggplot(.)+
     geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
     geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-    scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                                "Temporal\nmanagement only"="#BBCC33"),
+    scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                                "Temporal management"="#BBCC33"),
                       guide="none")+
-    scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                   "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),name= "Spatial and temporal\nmanagement scenario")+ 
+    scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                   "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),name= "Spatial and temporal\nmanagement scenario")+ 
     theme_classic()+
     xlab(NULL)+
     ylab(NULL)+
     xlim(1987,2020)+
     ylim(0,NA)+
+    scale_y_continuous(breaks = pretty_breaks())+
     scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),guide = "none")+
     theme(legend.title = element_text(size=9), #change legend title font size
           legend.text = element_text(size=8), #change legend text font size
@@ -792,9 +1307,45 @@ age.group.plots <- function(age.group, data.to.plot, plot.label.1, plot.label.2,
 
 }
 
+## Work out abundance of each age group 
 
-
-
+age.to.length <- function(NTZ.ages, F.ages, max.age, n.scenarios, Linf, k, t0, LM, BigLM){
+  
+  lengths.out.NTZ <- list()
+  lengths.out.F <- list()
+  lengths.out <- list()
+  
+  for(S in 1:n.scenarios){
+    ages.NTZ <- NTZ.ages[[S]][,,50]
+      ages.F <- F.ages[[S]][,,50]
+      
+    temp.NTZ <- as.data.frame(colSums(ages.NTZ))
+    temp.F <- as.data.frame(colSums(ages.F))
+    
+    lengths.NTZ <- temp.NTZ %>% 
+      mutate(Age = seq(1,max.age,1)) %>% 
+      mutate(Length = Linf*(1-exp(-k*(Age-t0)))) %>% 
+      mutate(Length.Group = ifelse(Length<LM, "Too Small",
+                                   ifelse(Length>BigLM, "> Big LM", "> LM"))) %>% 
+      rename(Count = "colSums(ages.NTZ)")
+    
+    lengths.F <- temp.F %>% 
+      mutate(Age = seq(1,max.age,1)) %>% 
+      mutate(Length = Linf*(1-exp(-k*(Age-t0)))) %>% 
+      mutate(Length.Group = ifelse(Length<LM, "Too Small",
+                                   ifelse(Length>BigLM, "> Big LM", "> LM"))) %>% 
+      rename(Count = "colSums(ages.F)")
+    
+    lengths.out.NTZ[[S]] <- lengths.NTZ
+    lengths.out.F[[S]] <- lengths.F
+    
+  }
+  
+  lengths.out[[1]] <- lengths.out.NTZ
+  lengths.out[[2]] <- lengths.out.F
+  
+  return(lengths.out)
+}
 
 
 

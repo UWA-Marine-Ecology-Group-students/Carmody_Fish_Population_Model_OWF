@@ -29,6 +29,7 @@ library(rgeos)
 library(rnaturalearth)
 library(ggpattern)
 library(patchwork)
+library(viridis)
 
 rm(list = ls())
 
@@ -48,8 +49,6 @@ sim_dir <-  paste(working.dir, "Simulations", sep="/")
 setwd(working.dir)
 source("X_Functions.R")
 
-
-
 model.name <- "ningaloo"
 
 colours <- c("#69BE28", "#005594", "#8AD2D8", "#53AF8B")
@@ -64,11 +63,12 @@ gdacrs <- "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"
 sppcrs <- CRS("+proj=utm +zone=49 +south +datum=WGS84 +units=m +no_defs")       # crs for sp objects
 
 # Set cropping extent - larger than most zoomed out plot
-e <- ext(112, 120.0, -28, -16)
+# e <- ext(112, 120.0, -28, -16)
+e <- ext(112.5, 114.7, -24, -20)
 
 # Load necessary spatial files
 
-sf_use_s2(F)                                                                    # Switch off spatial geometry for cropping
+sf_use_s2(T)                                                                    # Switch off spatial geometry for cropping
 
 # Australian outline and state and commonwealth marine parks
 setwd(sp_dir)
@@ -91,7 +91,8 @@ plot(mpa$geometry)
 
 
 # State parks
-wampa <- st_read("WA_MPA_2020.shp")
+wampa <- st_read("WA_MPA_2020.shp") %>% 
+  st_make_valid()
 st_crs(wampa) <- gdacrs
 # Simplify names for plot legend
 wampa$waname <- gsub("( \\().+(\\))", "", wampa$ZONE_TYPE)
@@ -121,30 +122,16 @@ wampa$waname <- factor(wampa$waname, levels = c("Unassigned",
                                                 "Sanctuary Zone",
                                                 "Special Purpose Zone"))
 
-wampa <- st_crop(wampa, e)                                                      # Crop to the study area
+wampa <- st_crop(wampa, e) %>% 
+  st_make_valid()# Crop to the study area
 wasanc <- wampa[wampa$ZONE_TYPE %in% "Sanctuary Zone (IUCN IA)", ]
 plot(wampa$geometry)
 
-# Terrestrial parks
-# terrnp <- st_read("Legislated_Lands_and_Waters_DBCA_011.shp") %>%  # Terrestrial reserves
-#   dplyr::filter(leg_catego %in% c("Nature Reserve", "National Park"))
-# terrnp <- st_crop(terrnp, e)       # Crop to the study area - using a different extent as this is on land
+WHA <- st_read("2013_02_WorldHeritageMarineProgramme.shp") %>% 
+  st_transform(4283)%>%
+  st_make_valid %>% 
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5) 
 
-# Key Ecological Features
-# kef <- st_read("AU_DOEE_KEF_2015.shp")
-# kef <- st_crop(kef, e)                                                          # Crop
-# unique(kef$NAME)
-# # Simplify names for plot legend
-# unique(kef$NAME)
-# kef$NAME <- dplyr::recode(kef$NAME,
-#                           "Ancient coastline at 125 m depth contour" = "Ancient coastline",
-#                           "Continental Slope Demersal Fish Communities" = "Continental slope fish",
-#                           "Canyons linking the Cuvier Abyssal Plain and the Cape Range Peninsula" = "Cuvier Abyssal Plain canyons",
-#                           "Commonwealth waters adjacent to Ningaloo Reef" = "Ningaloo Reef")
-# # Reorder levels so everything plots nicely
-# # kef$NAME <- factor(kef$NAME, levels = c("Western rock lobster", "Western demersal fish", "Wallaby Saddle", 
-# #                                         "Abrolhos Islands", "Ancient coastline", 
-# #                                         "West coast canyons", "West coast lagoons"))
 
 # Coastal waters limit
 cwatr <- st_read("amb_coastal_waters_limit.shp")       # Coastal waters limit
@@ -154,7 +141,7 @@ cwatr <- st_crop(cwatr, e)
 cbathy <- raster("bath_250_good.tif")                    
 bath_r <- rast(cbathy)
 crs(bath_r) <- wgscrs
-bath_r <- crop(bath_r, ext(112, 120.0, -28, -16))
+bath_r <- crop(bath_r, ext(112.5, 114.7, -24, -20))
 bath_df <- as.data.frame(bath_r, xy = T, na.rm = T)                             # Dataframe - cropped and above 0 use for bath cross section
 bath_r <- clamp(bath_r, upper = 0, value = F)                               # Only data below 0
 bathy <- as.data.frame(bath_r, xy = T, na.rm = T)
@@ -189,7 +176,8 @@ fisheries_closures$name <- dplyr::recode(fisheries_closures$name,
 
 fisheries_closures <- fisheries_closures %>% 
   mutate(name = ifelse(name %in% "Pilbara Fish Trap and Trawl Fishery" & descript %in% "Schedule 3 (Item 3 - Zone 2 - Area 3)", "Pilbara Fish Trap, Trawl and Line Fishery", name)) %>%
-  mutate(pattern_dir = ifelse(name %in% c("Pilbara Fish Trap, Trawl and Line Fishery","Exmouth Gulf Prawn Fishery", "Shark Bay Prawn Fishery" ), "Left", "Right"))
+  mutate(pattern_dir = ifelse(name %in% c("Pilbara Fish Trap, Trawl and Line Fishery","Exmouth Gulf Prawn Fishery", "Shark Bay Prawn Fishery" ), "Left", "Right")) %>% 
+  filter(name %in% "Point Maud to Tantabiddi Closure")
 
 ## Make overview map
 nmpa_fills <- scale_fill_manual(values = c("National Park Zone" = "#7bbc63",
@@ -215,11 +203,13 @@ name = "State Marine Parks")
 closed_fills <- scale_pattern_color_manual(values= c("Pilbara Fish Trap and Trawl Fishery" = "deeppink",
                                             "Pilbara Fish Trap, Trawl and Line Fishery" = "blue4",
                                             "Exmouth Gulf Prawn Fishery" = "darkviolet",
-                                            "Point Maud to Tantabiddi Closure" = "goldenrod2",
+                                            "Point Maud to Tantabiddi Closure" = "red",
                                             "Shark Bay Prawn Fishery" = "red",
                                             "Gascoyne Demersal Scalefish Fishery" = "chartreuse4"),
                                            name = "Fishery Closures")
 closure_pattern <- scale_pattern_angle_manual(values = c(-30, 30), guide="none")
+
+wha_colour <- scale_colour_manual(values = c("Ningaloo Coast" = "darkgoldenrod4"), name="")
 
 # nmpa <- mpa %>%
 #   dplyr::filter(ResName %in% c("Ningaloo", "Shark Bay"))
@@ -254,19 +244,23 @@ p3 <- ggplot() +
   new_scale_fill() +
   geom_sf(data = cwatr, colour = "firebrick", alpha = 4/5, size = 0.4) +
   labs(x = NULL, y = NULL) +
-  guides(fill = guide_legend(order = 1)) +
-  annotate(geom = "text", x = c((114.1279 + 0.4), (113.6775 + 0.45)), 
-           y = c(-21.9323, -22.7212), label = c("Exmouth", "Pt Cloates"),
+  new_scale_fill() +
+  # geom_sf(data=WHA, aes(colour=Full_Name), fill=NA, linewidth=0.5)+
+  # wha_colour +
+  # guides(fill = guide_legend(order = 1)) +
+  annotate(geom = "text", x = c((114.1279 + 0.15), (113.6775 + 0.15)), 
+           y = c(-21.9323, -22.68), label = c("Exmouth", "Pt Cloates"),
            size = 3) +
   annotate(geom = "point", x = c(114.1279, 113.6775), 
            y = c(-21.9323, -22.7212)) +
-  coord_sf(xlim = c(112, 120.00), ylim = c(-26.5, -17.75)) +
+  coord_sf(xlim = c(112.5, 114.7), ylim = c(-24, -20.5)) +
   theme_minimal() +
   theme(legend.justification = "top",
-        legend.box.margin = margin(c(160,0,0,0)),
-        legend.text = element_text(size = 10),
-        legend.title = element_text(size = 11),
-        legend.spacing = unit(0.01, "cm"))
+        # legend.box.margin = margin(c(80,0,0,0)),
+        # legend.text = element_text(size = 10),
+        # legend.title = element_text(size = 11),
+        # legend.spacing = unit(0.01, "cm")
+        )
 p3 
 
 p3.1 <- ggplot() +
@@ -286,7 +280,7 @@ p3.1 <- ggplot() +
   xlab(NULL)
 p3.1
 
-p3 + inset_element(p3.1, left = -1.25, right = 2.874, top = 0.4, bottom = 0)  
+p3 + inset_element(p3.1, left = -1.25, right = 3.8, top = 0.5, bottom = 0.1)  
 
 setwd(fig_dir)
 ggsave('broad-site-plot.png', dpi = 200, width = 10, height = 10)
@@ -392,7 +386,7 @@ setwd(fig_dir)
 ggsave(map, filename="Whole_map.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 
-#### CATCH PER UNIT EFFORT MAP ####
+####EFFORT MAP ####
 
 Names <- c("Historical and Current Management", "No Spatial Management", 
            "Temporal and Spatial Management","Temporal Management Only" )
@@ -401,12 +395,12 @@ Effort_Scen <- list()
 Spatial_Qs <- list()
 
 setwd(sg_dir)
-Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing_test"))
+Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing"))
 Spatial_Qs[[1]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_NTZ"))
 Spatial_Qs[[2]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
 
 setwd(sim_dir)
-Effort_Scen[[2]] <- readRDS(paste0(model.name, sep="_", "burn_in_fishing_High_M"))
+Effort_Scen[[2]] <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
 Effort_Scen[[3]] <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
 Effort_Scen[[4]] <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
 
@@ -469,7 +463,8 @@ water_WHA_2 <- water_WHA %>%
 
 map <- ggplot()+
   geom_sf(data=water_WHA_2, aes(fill=Effort), color = NA, lwd=0)+
-  scale_fill_carto_c(bquote(Fishing~effort~(Boat~days~km^-1)), palette="BluYl", direction=-1)+
+  scale_fill_carto_c(bquote(Fishing~effort~(Boat~days~km^-1)), palette="Geyser", direction=1)+
+  #scale_fill_viridis(bquote(Fishing~effort~(Boat~days~km^-1)), option="turbo")+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   geom_sf(data=ausc)+
   geom_sf(data=BR)+
@@ -482,6 +477,6 @@ map
 
 setwd(fig_dir)
 a4.width <- 160
-ggsave(map, filename="ningaloo_spatial_Effort_Plot.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+ggsave(map, filename="ningaloo_spatial_Effort_Plot_Geyser.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 

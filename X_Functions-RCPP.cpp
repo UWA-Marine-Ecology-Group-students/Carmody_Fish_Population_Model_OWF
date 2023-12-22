@@ -132,6 +132,7 @@ arma::vec recruitmentfunc_cpp(const int Max_Cell, const int MaxAge, const double
     return settle_recs;
 }
 
+
 // [[Rcpp::export]]
 Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear, const int Max_Cell, const double Nat_Mort, const double BHa, const double BHb, const double PF, 
                                    arma::mat Adult_Move, arma::vec Mature, arma::mat Weight, arma::vec settlement,
@@ -208,4 +209,11 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
                             Rcpp::Named("Population") = Population);
   
 } // End function
+
+
+
+
+
+
+
 

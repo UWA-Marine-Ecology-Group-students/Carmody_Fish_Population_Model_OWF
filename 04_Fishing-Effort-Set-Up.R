@@ -444,6 +444,9 @@ for(Y in 1:708){
 check <- Full_Boat_Days %>% 
   mutate(Total = Tb_BR+Bd_BR+ExM_BR+CrB_BR)
 
+setwd(sg_dir)
+saveRDS(Full_Boat_Days, 'Boat_Days')
+
 #### CREATE SEPARATE VECTORS OF ROW IDS FROM THE NO TAKE LIST ####
 
 # Get the cell IDs/rows for the no take cells in each portion of the model
@@ -487,10 +490,14 @@ DistBR <- as.data.frame(t(network_matrix)) %>%
   rename("CrB_BR"=V4)
 
 
+
 #### SETTING UP UTILITY FUNCTION ####
 # Create a data frame with both the distances and the areas of the cells
 Cell_Vars <- DistBR %>% 
   mutate(Area = as.vector((water$cell_area)/1000000))#Cells are now in km^2 but with no units
+
+setwd(sg_dir)
+saveRDS(Cell_Vars, "CellVars")
 
 ## Now need to create a separate fishing surface for each month of each year based on distance to boat ramp, size of each
 ## cell and multiply that by the effort in the cell to spatially allocate the effort across the area
@@ -641,6 +648,9 @@ BR_Trips <- Full_Boat_Days %>% # This is just the trips from each boat ramp
   ungroup() %>% 
   mutate(NumYear = rep(59:1, each=12)) %>% #This is to turn the years into a count for the loop
   dplyr::select(NumYear, NumMonth, Bd_BR, ExM_BR, Tb_BR, CrB_BR)  
+
+setwd(sg_dir)
+saveRDS(BR_Trips, "BR_Trips")
 
 # 1960-1986
 Fishing_6086 <- array(0, dim=c(NCELL_6086, 12, 27)) #This array has a row for every cell, a column for every month, and a layer for every year

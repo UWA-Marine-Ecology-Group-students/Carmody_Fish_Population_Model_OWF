@@ -16,6 +16,8 @@ library(stringr)
 library(forcats)
 library(RColorBrewer)
 library(geosphere)
+library(Rcpp)
+library(RcppArmadillo)
 
 
 #### SET DIRECTORIES ####
@@ -36,7 +38,7 @@ my.colours <- "RdBu"
 ## Read in functions
 setwd(working.dir)
 source("X_Functions.R")
-source("03_Population-Set-Up.R")
+sourceCpp("X_Model_RccpArm.cpp")
 
 #### LOAD FILES ####
 setwd(sg_dir)
@@ -164,3 +166,104 @@ All.Movers <- NULL
 All.Movers <- cbind(All.Movers, Juv.Movement2)
 
 sum(Juv.Pop)
+
+
+#### RCPP FUNCTION TESTS ####
+setwd(sg_dir)
+Water <- readRDS("ningaloo_water")
+CellVars <- readRDS("CellVars")
+Select <- readRDS("selret")
+BoatDays <- readRDS("BR_Trips") %>%  
+  arrange(NumYear) 
+Spatial_q <- readRDS("ningaloo_Spatial_q_NTZ") # Will need to load in the right file for the scenario
+age_survived <- readRDS("age_survived") 
+
+BoatDays <- BoatDays[,4:6] %>% 
+  as.data.frame() %>% 
+  as.matrix()
+  
+BoatDays <- array(BoatDays, dim=c(12,4,59))
+
+
+DistBR <- as.matrix(CellVars[,1:4])
+CellArea_log <- log(CellVars[,5])
+
+Fished <- Water[,4:6] %>% 
+  st_drop_geometry() %>% 
+  unnest()
+
+Fished <- ifelse(Fished == "Y", 1, 0) %>% 
+  as.matrix() 
+rownames(Fished) <-NULL
+
+FuelPrice = array(1, dim=c(12,1))
+
+MaxAge = 30
+NBR = 4
+MaxCell = nrow(CellVars)
+MONTH = 1
+YEAR = 1
+
+
+### YOU CANNOT CHANGE THE ORDER OF THESE ####
+Part1 <- effortfunc_cpp(MaxAge, NBR, MaxCell, MONTH, YEAR,
+                          FuelPrice, CellArea_log, Fished,
+                          DistBR, Spatial_q,
+                          YearlyTotal, Select, BoatDays)
+
+CellU_Rcpp <- Part1[[4]]
+RowU_Rcpp <- Part1[[5]]
+CellU_NTZ_Rcpp <- Part1[[4]]
+Check <- Part1[[6]]
+Effort <- Part1[[7]]
+TotalEffort2 <- Part1[[8]]
+dim(Part1[["CellU"]])
+dim(Fished)
+
+
+MaxAge = 0+1
+NBR = 4
+MaxCell = nrow(CellVars)
+MONTH = 1+1
+YEAR = 40+1
+
+
+
+Catchable_Age <- matrix(0, nrow=MaxCell, ncol=MaxAge)
+
+for(Cell in 1:MaxCell){
+  for(Age in 1:MaxAge){
+    Catchable_Age[Cell,Age] <- age_survived[Cell,MONTH,Age]*Select[Age,MONTH,YEAR]
+  }
+}
+
+Catchable <- rowSums(Catchable_Age)
+
+
+CellCoef <- array(0, dim=c(MaxCell, NBR))
+for(Col in 1:NBR){
+  for(Row in 1:MaxCell){
+    CellCoef[Row, Col] <- (FuelPrice[1]*DistBR[Row,Col])+Catchable[Row];
+  }
+}
+
+cellU <- matrix(NA, ncol=4, nrow=MaxCell)
+
+for(RAMP in 1:4){
+  for(cell in 1:MaxCell){
+    U <- exp(CellCoef[cell,RAMP]+CellArea_log[cell])
+    cellU[cell, RAMP] <- U
+  }
+}
+
+cellU2 <- cellU[ , ] * Fished[,2] 
+
+rowU2 <- as.data.frame(colSums(cellU2))
+
+for (RAMP in 1:4){
+  for (cell in 1:NCELL_6086){
+    BR_U_6086[cell,RAMP] <- exp(CellCoef[cell,RAMP]+CellArea_log[cell])/rowU[RAMP,1]
+  }
+}
+colSums(BR_U_6086)
+

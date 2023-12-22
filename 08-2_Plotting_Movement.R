@@ -186,1909 +186,638 @@ total_pop_plot <- total_pop %>%
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")
 total_pop_plot
 
-#* Read zone Data ####
-setwd(pop_dir)
-SP_Pop_NTZ_S00_slow <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_slow_movement"))
-SP_Pop_F_S00_slow <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_slow_movement"))
-
-SP_Pop_NTZ_S00_medium <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_medium_movement"))
-SP_Pop_F_S00_medium <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_medium_movement"))
-
-SP_Pop_NTZ_S00_fast <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_fast_movement"))
-SP_Pop_F_S00_fast <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_fast_movement"))
-
-
 
 #* Format zone data ####
+setwd(pop_dir)
+SP_Pop_NTZ_S00 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_fast_movement"))
+SP_Pop_F_S00 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_fast_movement"))
+
+SP_Pop_NTZ_S01 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S01_fast_movement"))
+SP_Pop_F_S01 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S01_fast_movement"))
+
+SP_Pop_NTZ_S02 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S02_fast_movement"))
+SP_Pop_F_S02 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S02_fast_movement"))
+
+SP_Pop_NTZ_S03 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S03_fast_movement"))
+SP_Pop_F_S03 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S03_fast_movement"))
+
 #### CHANGE NUMBERS BACK TO 100/200 ###
 ## S00 - Normal
 
-NTZ_Ages_S00_medium <- NULL
-F_Ages_S00_medium <- NULL
+NTZ.F.Ages.S00 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S00, f.list = SP_Pop_NTZ_S00, scenario.name = Names[1], nsim = 100)
 
-for(SIM in 1:10){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S00_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S00_medium <- cbind(NTZ_Ages_S00_medium, temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S00_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S00_medium <- cbind(F_Ages_S00_medium,temp$Number)
-}
+NTZ.S00 <- NTZ.F.Ages.S00[[1]]
+F.S00 <- NTZ.F.Ages.S00[[2]]
 
-NTZ_Ages_S00_medium <- as.data.frame(NTZ_Ages_S00_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
-
-
-F_Ages_S00_medium <- as.data.frame(F_Ages_S00_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
 
 ## S01 - No NTZs (and no temporal closure)
-NTZ_Ages_S00_slow <- NULL
-F_Ages_S00_slow <- NULL
+NTZ.F.Ages.S01 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S01, f.list = SP_Pop_NTZ_S01, scenario.name = Names[2], nsim = 100)
 
-for(SIM in 1:10){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S00_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S00_slow <- cbind(NTZ_Ages_S00_slow,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S00_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S00_slow <- cbind(F_Ages_S00_slow,temp$Number)
-}
+NTZ.S01 <- NTZ.F.Ages.S01[[1]]
+F.S01 <- NTZ.F.Ages.S01[[2]]
 
-NTZ_Ages_S00_slow <- as.data.frame(NTZ_Ages_S00_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
-  mutate(Scenario = "Reduced Movement") 
-
-F_Ages_S00_slow <- as.data.frame(F_Ages_S00_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Reduced Movement") 
 
 ## S02 - Temporal Closure, no NTZs
-NTZ_Ages_S00_fast <- NULL
-F_Ages_S00_fast <- NULL
+NTZ.F.Ages.S02 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S02, f.list = SP_Pop_NTZ_S02, scenario.name = Names[3], nsim = 100)
 
-for(SIM in 1:10){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S00_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S00_fast <- cbind(NTZ_Ages_S00_fast,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S00_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S00_fast <- cbind(F_Ages_S00_fast,temp$Number)
-}
-
-NTZ_Ages_S00_fast <- as.data.frame(NTZ_Ages_S00_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
-
-F_Ages_S00_fast <- as.data.frame(F_Ages_S00_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
+NTZ.S02 <- NTZ.F.Ages.S02[[1]]
+F.S02 <- NTZ.F.Ages.S02[[2]]
 
 
-Whole_Pop_Ages_NTZ <- rbind(NTZ_Ages_S00_medium, NTZ_Ages_S00_slow, NTZ_Ages_S00_fast) %>% 
+## S03 - Temporal Closure and NTZs
+NTZ.F.Ages.S03 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S03, f.list = SP_Pop_NTZ_S03, scenario.name = Names[4], nsim = 100)
+
+NTZ.S03 <- NTZ.F.Ages.S03[[1]]
+F.S03 <- NTZ.F.Ages.S03[[2]]
+
+
+## Put everything together
+Whole_Pop_Ages_NTZ <- rbind(NTZ.S00, NTZ.S01, NTZ.S02, NTZ.S03) %>% 
   mutate(Zone = "NTZ")
 
-Whole_Pop_Ages_F <- rbind(F_Ages_S00_medium, F_Ages_S00_slow, F_Ages_S00_fast) %>% 
+Whole_Pop_Ages_F <- rbind(F.S00, F.S01, F.S02, F.S03) %>% 
   mutate(Zone = "F")
 
 
 Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
 
-temp <- as.matrix(Whole_Pop_Ages) 
-temp <- as.numeric(temp[ ,3:12])
-dim(temp) <- c(nrow(Whole_Pop_Ages),10)
-
-Quantiles <- array(0, dim=c(nrow(Whole_Pop_Ages), 2))
-
-for(Y in 1:nrow(Whole_Pop_Ages)){
-  
-  temp2 <- temp[Y, 1:10]
-  Quantiles[Y, ] <-quantile(temp2, probs=c(0.025, 0.975))
-  
-}
-
-Quantiles <- as.data.frame(Quantiles)
-
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) %>% 
-  dplyr::select(Mean_Pop, Median_Pop, SD_Pop,SE_Pop, Scenario, Stage, Mod_Year, Zone) %>% 
-  mutate(P_0.025 = Quantiles$V1,
-         P_0.975 = Quantiles$V2)
 
 #### ZONE PLOTS BY AGE #####
 
 #* Recruits ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Recruit"))
 
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Recruit")) 
-# mutate(Mean_Pop = ifelse(Mod_Year==1960, Mean_Pop*40, Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop*(10^16), SD_Pop))
-
-Recruit_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.recruit <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,4)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=25, label="(a) Recruits", size = 2.5, fontface=1)
-line.recruit
-
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(b) Recruits", label.pos.y = 10, label.pos.x = 1990)
+recruit.ntz <- recruit.plots[[1]]
+recruit.F <- recruit.plots[[2]]
 
 #* Sublegal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Sublegal"))#  %>%
-# mutate(SD_Pop = ifelse(Mod_Year==1960, (SD_Pop*(10^15))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1961, (SD_Pop*(10^14.5))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year<1962, Mean_Pop*rnorm(1, mean=1, sd=0.05), Mean_Pop))
 
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Sublegal"))# %>%
-# mutate(SD_Pop = ifelse(Mod_Year<1962, SD_Pop*(10^14.6), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year<1962, SD_Pop+rnorm(1, mean=0.000075, sd=0.0000075), SD_Pop))
-
-Sublegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.sublegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,20)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=20, label="(b) Juveniles", size = 2.5, fontface=1)
-line.sublegal
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(c) Juveniles", plot.label.2 = "(d) Juveniles", label.pos.y = 10, label.pos.x = 1991)
+sublegal.ntz <- sublegal.plots[[1]]
+sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, (SD_Pop*(10^13.9))+rnorm(12, mean=0.01, sd=0.001), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop+rnorm(4, mean=0.1, sd=0.01), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1962, SD_Pop*3.5, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1963, (Mean_Pop+rnorm(12, mean=0, sd=0.05)), Mean_Pop))
 
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, SD_Pop*(10^14), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1964, (Mean_Pop+rnorm(12, mean=0, sd=0.02)), Mean_Pop),
-#        #Mean_Pop = ifelse(Mod_Year==1962, (Mean_Pop*1.6), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1963, (SD_Pop+rnorm(12, mean=0.05, sd=0.001)), SD_Pop))
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(b) Mature", plot.label.2 = "(b) Mature", label.pos.y = 15, label.pos.x = 1990)
+legal.ntz.fast <- legal.plots[[1]]
+legal.F <- legal.plots[[2]]
 
 
-legal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.legal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=legal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=legal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  #ylim(0,10)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=10, label="(a) 3-10 years old", size = 2.5, fontface=1)
-line.legal
 
 #* Large Legal ####
-Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1971, SD_Pop*(10^13.3), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.005)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.2, sd=0.009), SD_Pop))
-
-Pre_1987_F <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year %in% c(1960,1961,1963,1964), SD_Pop*(10^14), SD_Pop),
-#        SD_Pop = ifelse(SD_Pop>0.1, SD_Pop/10, SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1964, SD_Pop-0.1, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.0025)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.06, sd=0.00002), SD_Pop))
-
-LargeLegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
+Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+  filter(Stage == "Large Legal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1996, P_0.025/1.5, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
 
 
-line.largeLegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-    scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                      guide="none")+
-    scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-    # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-    # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-    # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-    # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-    theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  #ylim(0,0.5)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.05, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
-  ggplot2::annotate("text", x=1990, y=1.5, label="(b) 10-30 years old", size = 2.5, fontface=1)
-line.largeLegal
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 3, label.pos.x = 1993)
+large.legal.ntz.fast <- large.legal.plots[[1]]
+large.legal.F <- large.legal.plots[[2]]
 
-#* Read zone Data ####
+# Slow movement 
 setwd(pop_dir)
-SP_Pop_NTZ_S01_medium <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S01_medium_movement"))
-SP_Pop_F_S01_medium <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S01_medium_movement"))
+SP_Pop_NTZ_S00 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_slow_movement"))
+SP_Pop_F_S00 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_slow_movement"))
 
-SP_Pop_NTZ_S01_slow <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S01_slow_movement"))
-SP_Pop_F_S01_slow <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S01_slow_movement"))
+SP_Pop_NTZ_S01 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S01_slow_movement"))
+SP_Pop_F_S01 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S01_slow_movement"))
 
-SP_Pop_NTZ_S01_fast <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S01_fast_movement"))
-SP_Pop_F_S01_fast <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S01_fast_movement"))
+SP_Pop_NTZ_S02 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S02_slow_movement"))
+SP_Pop_F_S02 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S02_slow_movement"))
 
+SP_Pop_NTZ_S03 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S03_slow_movement"))
+SP_Pop_F_S03 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S03_slow_movement"))
 
-
-#* Format zone data ####
 #### CHANGE NUMBERS BACK TO 100/200 ###
-## S01 - Normal
+## S00 - Normal
 
-NTZ_Ages_S01_medium <- NULL
-F_Ages_S01_medium <- NULL
+NTZ.F.Ages.S00 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S00, f.list = SP_Pop_NTZ_S00, scenario.name = Names[1], nsim = 100)
 
-for(SIM in 1:length(SP_Pop_NTZ_S01_medium)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S01_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S01_medium <- cbind(NTZ_Ages_S01_medium, temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S01_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S01_medium <- cbind(F_Ages_S01_medium,temp$Number)
-}
+NTZ.S00 <- NTZ.F.Ages.S00[[1]]
+F.S00 <- NTZ.F.Ages.S00[[2]]
 
-NTZ_Ages_S01_medium <- as.data.frame(NTZ_Ages_S01_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
-
-
-F_Ages_S01_medium <- as.data.frame(F_Ages_S01_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
 
 ## S01 - No NTZs (and no temporal closure)
-NTZ_Ages_S01_slow <- NULL
-F_Ages_S01_slow <- NULL
+NTZ.F.Ages.S01 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S01, f.list = SP_Pop_NTZ_S01, scenario.name = Names[2], nsim = 100)
 
-for(SIM in 1:length(SP_Pop_NTZ_S01_slow)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S01_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S01_slow <- cbind(NTZ_Ages_S01_slow,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S01_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S01_slow <- cbind(F_Ages_S01_slow,temp$Number)
-}
+NTZ.S01 <- NTZ.F.Ages.S01[[1]]
+F.S01 <- NTZ.F.Ages.S01[[2]]
 
-NTZ_Ages_S01_slow <- as.data.frame(NTZ_Ages_S01_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
-  mutate(Scenario = "Reduced Movement") 
-
-F_Ages_S01_slow <- as.data.frame(F_Ages_S01_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Reduced Movement") 
 
 ## S02 - Temporal Closure, no NTZs
-NTZ_Ages_S01_fast <- NULL
-F_Ages_S01_fast <- NULL
+NTZ.F.Ages.S02 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S02, f.list = SP_Pop_NTZ_S02, scenario.name = Names[3], nsim = 100)
 
-for(SIM in 1:length(SP_Pop_NTZ_S01_fast)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S01_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S01_fast <- cbind(NTZ_Ages_S01_fast,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S01_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S01_fast <- cbind(F_Ages_S01_fast,temp$Number)
-}
-
-NTZ_Ages_S01_fast <- as.data.frame(NTZ_Ages_S01_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
-
-F_Ages_S01_fast <- as.data.frame(F_Ages_S01_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
+NTZ.S02 <- NTZ.F.Ages.S02[[1]]
+F.S02 <- NTZ.F.Ages.S02[[2]]
 
 
-Whole_Pop_Ages_NTZ <- rbind(NTZ_Ages_S01_medium, NTZ_Ages_S01_slow, NTZ_Ages_S01_fast) %>% 
+## S03 - Temporal Closure and NTZs
+NTZ.F.Ages.S03 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S03, f.list = SP_Pop_NTZ_S03, scenario.name = Names[4], nsim = 100)
+
+NTZ.S03 <- NTZ.F.Ages.S03[[1]]
+F.S03 <- NTZ.F.Ages.S03[[2]]
+
+
+## Put everything together
+Whole_Pop_Ages_NTZ <- rbind(NTZ.S00, NTZ.S01, NTZ.S02, NTZ.S03) %>% 
   mutate(Zone = "NTZ")
 
-Whole_Pop_Ages_F <- rbind(F_Ages_S01_medium, F_Ages_S01_slow, F_Ages_S01_fast) %>% 
+Whole_Pop_Ages_F <- rbind(F.S00, F.S01, F.S02, F.S03) %>% 
   mutate(Zone = "F")
 
 
 Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
 
-temp <- as.matrix(Whole_Pop_Ages) 
-temp <- as.numeric(temp[ ,3:12])
-dim(temp) <- c(nrow(Whole_Pop_Ages),10)
-
-Quantiles <- array(0, dim=c(nrow(Whole_Pop_Ages), 2))
-
-for(Y in 1:nrow(Whole_Pop_Ages)){
-  
-  temp2 <- temp[Y, 1:10]
-  Quantiles[Y, ] <-quantile(temp2, probs=c(0.025, 0.975))
-  
-}
-
-Quantiles <- as.data.frame(Quantiles)
-
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) %>% 
-  dplyr::select(Mean_Pop, Median_Pop, SD_Pop,SE_Pop, Scenario, Stage, Mod_Year, Zone) %>% 
-  mutate(P_0.025 = Quantiles$V1,
-         P_0.975 = Quantiles$V2)
 
 #### ZONE PLOTS BY AGE #####
 
 #* Recruits ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Recruit"))
 
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Recruit")) 
-# mutate(Mean_Pop = ifelse(Mod_Year==1960, Mean_Pop*40, Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop*(10^16), SD_Pop))
-
-Recruit_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.recruit <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,4)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=25, label="(a) Recruits", size = 2.5, fontface=1)
-line.recruit
-
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(b) Recruits", label.pos.y = 10, label.pos.x = 1990)
+recruit.ntz <- recruit.plots[[1]]
+recruit.F <- recruit.plots[[2]]
 
 #* Sublegal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Sublegal"))#  %>%
-# mutate(SD_Pop = ifelse(Mod_Year==1960, (SD_Pop*(10^15))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1961, (SD_Pop*(10^14.5))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year<1962, Mean_Pop*rnorm(1, mean=1, sd=0.05), Mean_Pop))
 
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Sublegal"))# %>%
-# mutate(SD_Pop = ifelse(Mod_Year<1962, SD_Pop*(10^14.6), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year<1962, SD_Pop+rnorm(1, mean=0.000075, sd=0.0000075), SD_Pop))
-
-Sublegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.sublegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,20)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=20, label="(b) Juveniles", size = 2.5, fontface=1)
-line.sublegal
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(c) Juveniles", plot.label.2 = "(d) Juveniles", label.pos.y = 10, label.pos.x = 1991)
+sublegal.ntz <- sublegal.plots[[1]]
+sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, (SD_Pop*(10^13.9))+rnorm(12, mean=0.01, sd=0.001), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop+rnorm(4, mean=0.1, sd=0.01), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1962, SD_Pop*3.5, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1963, (Mean_Pop+rnorm(12, mean=0, sd=0.05)), Mean_Pop))
 
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, SD_Pop*(10^14), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1964, (Mean_Pop+rnorm(12, mean=0, sd=0.02)), Mean_Pop),
-#        #Mean_Pop = ifelse(Mod_Year==1962, (Mean_Pop*1.6), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1963, (SD_Pop+rnorm(12, mean=0.05, sd=0.001)), SD_Pop))
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Mature", plot.label.2 = "(b) Mature", label.pos.y = 15, label.pos.x = 1990)
+legal.ntz.slow <- legal.plots[[1]]
+legal.F <- legal.plots[[2]]
 
 
-legal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.legal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=legal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=legal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  #ylim(0,6)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=10, label="(a) 3-10 years old", size = 2.5, fontface=1)
-line.legal
 
 #* Large Legal ####
-Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1971, SD_Pop*(10^13.3), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.005)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.2, sd=0.009), SD_Pop))
-
-Pre_1987_F <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year %in% c(1960,1961,1963,1964), SD_Pop*(10^14), SD_Pop),
-#        SD_Pop = ifelse(SD_Pop>0.1, SD_Pop/10, SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1964, SD_Pop-0.1, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.0025)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.06, sd=0.00002), SD_Pop))
-
-LargeLegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
+Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+  filter(Stage == "Large Legal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1996, P_0.025/1.5, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
 
 
-line.largeLegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  ylim(0,0.3)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.05, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
-  ggplot2::annotate("text", x=1990, y=0.3, label="(b) 10-30 years old", size = 2.5, fontface=1)
-line.largeLegal
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 3, label.pos.x = 1993)
+large.legal.ntz.slow <- large.legal.plots[[1]]
+large.legal.F <- large.legal.plots[[2]]
 
-#### SCENARIO S02 ####
 
-#* Read zone Data ####
+#* Put them together and save ####
+setwd(fig_dir)
+x.label <- textGrob("Year", gp=gpar(fontsize=9))
+y.label <- textGrob("Median No. Fish per"~km^2, gp=gpar(fontsize=9), rot=90)
+legend <- gtable_filter(ggplotGrob(large.legal.ntz), "guide-box")
+
+LinePlotsxGroup.FastxSlow <-grid.arrange(arrangeGrob(legal.ntz.slow + theme(legend.position="none"),
+                                                     legal.ntz.fast + theme(legend.position="none"),
+                                                     large.legal.ntz.slow + theme(legend.position="none"),
+                                                     large.legal.ntz.fast + theme(legend.position="none"),
+                                                     left=y.label,
+                                                     bottom=x.label,
+                                                     right=legend))
+
+ggsave(LinePlotsxGroup.FastxSlow, filename="Large_Movement_Combined_1987.png",height = a4.width*1, width = a4.width*1.2, units  ="mm", dpi = 300 )
+
+#### DISTANCE ABUNDANCE AND CATCH PLOTS ####
+#* Work out which cells are within 100km of each of the boat ramps ####
+setwd(sg_dir)
+
+water <- readRDS(paste0(model.name, sep="_","water"))
+BR <- st_as_sf(BR)
+st_crs(BR) <- NA 
+
+BR <- BR %>% 
+  mutate(name = c("Bundegi","Exmouth","Tantabiddi","CoralBay"))
+
+centroids <- st_centroid_within_poly(water)
+points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the bottom left and then work their way their way right
+  mutate(ID=row_number()) 
+points_sf <- st_as_sf(points, coords = c("X", "Y")) 
+st_crs(points_sf) <- NA
+
+
+network <- as_sfnetwork(network, directed = FALSE) %>%
+  activate("edges") %>%
+  mutate(weight = edge_length())
+
+net <- activate(network, "nodes")
+network_matrix <- st_network_cost(net, from=BR, to=points_sf)
+network_matrix <- network_matrix*111
+dim(network_matrix)
+
+DistBR <- as.data.frame(t(network_matrix)) %>% 
+  rename("Bd_BR"=V1) %>% 
+  rename("ExM_BR" = V2) %>% 
+  rename("Tb_BR" = V3) %>% 
+  rename("CrB_BR"=V4) %>% 
+  mutate(CellID = row_number()) 
+
+DistBR.WHA <- DistBR[c(as.numeric(model_WHA$row.id)), ]
+
+NCELL.WHA <- nrow(DistBR.WHA)
+BR.10km <- NULL
+temp <- array(0, dim=c(NCELL.WHA,2)) %>% 
+  as.data.frame() %>% 
+  rename(.,"Distance" = V1,
+         "CellID" = V2)
+
+for(RAMP in 1:4){
+  temp[,1:2] <- DistBR.WHA[,c(RAMP, 5)]
+  
+  Dist10 <- temp %>% 
+    filter(Distance <=10)
+  
+  BR.10km <- rbind(BR.10km, Dist10)
+}
+
+BR.10km <- unique(BR.10km$CellID)
+
+BR.50km <- NULL
+temp <- array(0, dim=c(NCELL.WHA,2)) %>% 
+  as.data.frame() %>% 
+  rename(.,"Distance" = V1,
+         "CellID" = V2)
+
+for(RAMP in 1:4){
+  temp[,1:2] <- DistBR.WHA[,c(RAMP, 5)]
+  
+  Dist50 <- temp %>% 
+    filter(Distance>10 & Distance <=50)
+  
+  BR.50km <- rbind(BR.50km, Dist50)
+}
+
+BR.50km <- unique(BR.50km$CellID)
+
+BR.100km <- NULL
+temp <- array(0, dim=c(NCELL.WHA,2)) %>% 
+  as.data.frame() %>% 
+  rename(.,"Distance" = V1,
+         "CellID" = V2)
+
+for(RAMP in 1:4){
+  temp[,1:2] <- DistBR.WHA[,c(RAMP, 5)]
+  
+  Dist100 <- temp %>% 
+    filter(Distance >50 & Distance <=100)
+  
+  BR.100km <- rbind(BR.100km, Dist100)
+}
+
+BR.100km <- unique(BR.100km$CellID)
+
+Distances <- list()
+
+Distances[[1]] <- BR.10km
+Distances[[2]] <- BR.50km
+Distances[[3]] <- BR.100km
+
+Dist.Names <- as.character(c("0-10 km", "10-50 km", "50-100 km"))
+
+#* Abundance ####
 setwd(pop_dir)
-SP_Pop_NTZ_S02_medium <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S02_medium_movement"))
-SP_Pop_F_S02_medium <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S02_medium_movement"))
 
-SP_Pop_NTZ_S02_slow <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S02_slow_movement"))
-SP_Pop_F_S02_slow <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S02_slow_movement"))
+# Each layer is a simulation, rows are cells and columns are years
+Pop.Dist <- list()
 
-SP_Pop_NTZ_S02_fast <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S02_fast_movement"))
-SP_Pop_F_S02_fast <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S02_fast_movement"))
+Pop.Dist[[1]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S00", sep="_", "slow_movement"))
+Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S01", sep="_", "slow_movement"))
+Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02", sep="_", "slow_movement"))
+Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03", sep="_", "slow_movement"))
 
+Names <- c("Historical and Current NTZs", "Neither NTZs nor Temporal Management", 
+           "Temporal and Spatial Management","Temporal Management Only")
 
+Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=100, n.row=nrow(Whole_Pop_Ages), n.dist=3, 
+                                       n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
+                                       dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
-#* Format zone data ####
-#### CHANGE NUMBERS BACK TO 100/200 ###
-## S02 - Normal
+Pop.Dist.Median.slow <- Dists.res[1]
+Pop.Dist.Quant.slow <- Dists.res[2]
+Pop.Dist.Mean.slow <- Dists.res[3]
+Pop.Dist.SD.slow <- Dists.res[4]
 
-NTZ_Ages_S02_medium <- NULL
-F_Ages_S02_medium <- NULL
+# Each layer is a simulation, rows are cells and columns are years
+Pop.Dist <- list()
 
-for(SIM in 1:length(SP_Pop_NTZ_S02_medium)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S02_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S02_medium <- cbind(NTZ_Ages_S02_medium, temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S02_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S02_medium <- cbind(F_Ages_S02_medium,temp$Number)
-}
+Pop.Dist[[1]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S00", sep="_", "fast_movement"))
+Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S01", sep="_", "fast_movement"))
+Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02", sep="_", "fast_movement"))
+Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03", sep="_", "fast_movement"))
 
-NTZ_Ages_S02_medium <- as.data.frame(NTZ_Ages_S02_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
+Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=00, n.row=nrow(Whole_Pop_Ages), n.dist=3, 
+                                       n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
+                                       dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
+
+Pop.Dist.Median.fast <- Dists.res[1]
+Pop.Dist.Quant.fast <- Dists.res[2]
+Pop.Dist.Mean.fast <- Dists.res[3]
+Pop.Dist.SD.fast <- Dists.res[4]
 
 
-F_Ages_S02_medium <- as.data.frame(F_Ages_S02_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
-
-## S01 - No NTZs (and no temporal closure)
-NTZ_Ages_S02_slow <- NULL
-F_Ages_S02_slow <- NULL
-
-for(SIM in 1:length(SP_Pop_NTZ_S02_slow)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S02_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S02_slow <- cbind(NTZ_Ages_S02_slow,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S02_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S02_slow <- cbind(F_Ages_S02_slow,temp$Number)
-}
-
-NTZ_Ages_S02_slow <- as.data.frame(NTZ_Ages_S02_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
-  mutate(Scenario = "Reduced Movement") 
-
-F_Ages_S02_slow <- as.data.frame(F_Ages_S02_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Reduced Movement") 
-
-## S02 - Temporal Closure, no NTZs
-NTZ_Ages_S02_fast <- NULL
-F_Ages_S02_fast <- NULL
-
-for(SIM in 1:length(SP_Pop_NTZ_S02_fast)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S02_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S02_fast <- cbind(NTZ_Ages_S02_fast,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S02_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S02_fast <- cbind(F_Ages_S02_fast,temp$Number)
-}
-
-NTZ_Ages_S02_fast <- as.data.frame(NTZ_Ages_S02_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
-
-F_Ages_S02_fast <- as.data.frame(F_Ages_S02_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
-
-
-Whole_Pop_Ages_NTZ <- rbind(NTZ_Ages_S02_medium, NTZ_Ages_S02_slow, NTZ_Ages_S02_fast) %>% 
-  mutate(Zone = "NTZ")
-
-Whole_Pop_Ages_F <- rbind(F_Ages_S02_medium, F_Ages_S02_slow, F_Ages_S02_fast) %>% 
-  mutate(Zone = "F")
-
-
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
-
-temp <- as.matrix(Whole_Pop_Ages) 
-temp <- as.numeric(temp[ ,3:12])
-dim(temp) <- c(nrow(Whole_Pop_Ages),10)
-
-Quantiles <- array(0, dim=c(nrow(Whole_Pop_Ages), 2))
-
-for(Y in 1:nrow(Whole_Pop_Ages)){
-  
-  temp2 <- temp[Y, 1:10]
-  Quantiles[Y, ] <-quantile(temp2, probs=c(0.025, 0.975))
-  
-}
-
-Quantiles <- as.data.frame(Quantiles)
-
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) %>% 
-  dplyr::select(Mean_Pop, Median_Pop, SD_Pop,SE_Pop, Scenario, Stage, Mod_Year, Zone) %>% 
-  mutate(P_0.025 = Quantiles$V1,
-         P_0.975 = Quantiles$V2)
-
-#### ZONE PLOTS BY AGE #####
-
-#* Recruits ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Recruit"))
-
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Recruit")) 
-# mutate(Mean_Pop = ifelse(Mod_Year==1960, Mean_Pop*40, Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop*(10^16), SD_Pop))
-
-Recruit_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.recruit <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,4)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=25, label="(a) Recruits", size = 2.5, fontface=1)
-line.recruit
-
-
-#* Sublegal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Sublegal"))#  %>%
-# mutate(SD_Pop = ifelse(Mod_Year==1960, (SD_Pop*(10^15))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1961, (SD_Pop*(10^14.5))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year<1962, Mean_Pop*rnorm(1, mean=1, sd=0.05), Mean_Pop))
-
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Sublegal"))# %>%
-# mutate(SD_Pop = ifelse(Mod_Year<1962, SD_Pop*(10^14.6), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year<1962, SD_Pop+rnorm(1, mean=0.000075, sd=0.0000075), SD_Pop))
-
-Sublegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.sublegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,20)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=20, label="(b) Juveniles", size = 2.5, fontface=1)
-line.sublegal
-
-#* Legal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, (SD_Pop*(10^13.9))+rnorm(12, mean=0.01, sd=0.001), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop+rnorm(4, mean=0.1, sd=0.01), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1962, SD_Pop*3.5, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1963, (Mean_Pop+rnorm(12, mean=0, sd=0.05)), Mean_Pop))
-
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, SD_Pop*(10^14), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1964, (Mean_Pop+rnorm(12, mean=0, sd=0.02)), Mean_Pop),
-#        #Mean_Pop = ifelse(Mod_Year==1962, (Mean_Pop*1.6), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1963, (SD_Pop+rnorm(12, mean=0.05, sd=0.001)), SD_Pop))
-
-
-legal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.legal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=legal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=legal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  ylim(0,20)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=35, label="(a) 3-10 years old", size = 2.5, fontface=1)
-line.legal
-
-#* Large Legal ####
-Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1971, SD_Pop*(10^13.3), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.005)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.2, sd=0.009), SD_Pop))
-
-Pre_1987_F <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year %in% c(1960,1961,1963,1964), SD_Pop*(10^14), SD_Pop),
-#        SD_Pop = ifelse(SD_Pop>0.1, SD_Pop/10, SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1964, SD_Pop-0.1, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.0025)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.06, sd=0.00002), SD_Pop))
-
-LargeLegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-
-line.largeLegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1986,2020)+
-  ylim(0,7.5)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.05, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
-  ggplot2::annotate("text", x=1990, y=7.5, label="(b) 10-30 years old", size = 2.5, fontface=1)
-line.largeLegal
-
-#### SCENARIO S03 ####
-
-#* Read zone Data ####
+#* Catch ####
 setwd(pop_dir)
-SP_Pop_NTZ_S03_medium <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S03_medium_movement"))
-SP_Pop_F_S03_medium <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S03_medium_movement"))
 
-SP_Pop_NTZ_S03_slow <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S03_slow_movement"))
-SP_Pop_F_S03_slow <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S03_slow_movement"))
+Pop.Catch.slow <- list()
 
-SP_Pop_NTZ_S03_fast <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S03_fast_movement"))
-SP_Pop_F_S03_fast <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S03_fast_movement"))
+# Each layer is a simulation, rows are cells and columns are years
+Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00", sep="_", "slow_movement"))
+Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01", sep="_", "slow_movement"))
+Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02", sep="_", "slow_movement"))
+Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03", sep="_", "slow_movement"))
+
+Catch.res <- distance.catch.format(Pops = Pop.Catch, n.row=59, max.year=59, n.sim=100, n.dist=3, 
+                                   n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
+                                   dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
 
 
-#* Format zone data ####
-#### CHANGE NUMBERS BACK TO 100/200 ###
-## S03 - Normal
 
-NTZ_Ages_S03_medium <- NULL
-F_Ages_S03_medium <- NULL
+Pop.Catch.Median.slow <- Catch.res[1]
+Pop.Catch.Quant.slow <- Catch.res[2]
+Pop.Catch.Mean.slow <- Catch.res[3]
+Pop.Catch.SD.slow <- Catch.res[4]
 
-for(SIM in 1:length(SP_Pop_NTZ_S03_medium)){
+# Fast 
+
+Pop.Catch <- list()
+
+# Each layer is a simulation, rows are cells and columns are years
+Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00", sep="_", "fast_movement"))
+Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01", sep="_", "fast_movement"))
+Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02", sep="_", "fast_movement"))
+Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03", sep="_", "fast_movement"))
+
+Catch.res <- distance.catch.format(Pops = Pop.Catch, n.row=59, max.year=59, n.sim=100, n.dist=3, 
+                                   n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
+                                   dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
+
+
+Pop.Catch.Median.fast <- Catch.res[1]
+Pop.Catch.Quant.fast <- Catch.res[2]
+Pop.Catch.Mean.fast <- Catch.res[3]
+Pop.Catch.SD.fast <- Catch.res[4]
+
+#* Slow ####
+
+abundance.0_10.slow <- NULL
+catch.0_10.slow <- NULL
+
+for (S in 1:1){
+  temp.mean <- Pop.Dist.Mean.slow[[S]] %>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.SD <- Pop.Dist.SD.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.median <- Pop.Dist.Median.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.quant <- Pop.Dist.Quant.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
   
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S03_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+  temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+    rename(SD_Abundance = "temp.SD$SD_Abundance",
+           Median_Abundance = "temp.median$Median_Abundance",
+           Q2.5 = "temp.quant$`2.5%`",
+           Q97.5 = "temp.quant$`97.5%`") %>% 
+    filter(Distances %in% c("0-10 km"))
   
-  NTZ_Ages_S03_medium <- cbind(NTZ_Ages_S03_medium, temp$Number)
+  abundance.0_10.slow <- rbind(abundance.0_10.slow, temp.all)
   
-  temp <- as.data.frame(colSums(SP_Pop_F_S03_medium[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
+  temp.mean <- Pop.Catch.Mean.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.SD <- Pop.Catch.SD.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.median <- Pop.Catch.Median.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.quant <- Pop.Catch.Quant.slow[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
   
-  F_Ages_S03_medium <- cbind(F_Ages_S03_medium,temp$Number)
+  temp.all <- cbind(temp.mean, temp.SD$SD_Catch, temp.median$Median_Catch, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+    rename(SD_Catch = "temp.SD$SD_Catch",
+           Median_Catch = "temp.median$Median_Catch",
+           Q2.5 = "temp.quant$`2.5%`",
+           Q97.5 = "temp.quant$`97.5%`") %>% 
+    filter(Distances %in% c("0-10 km"))
+  
+  catch.0_10.slow <- rbind(catch.0_10.slow, temp.all)
 }
 
-NTZ_Ages_S03_medium <- as.data.frame(NTZ_Ages_S03_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>%
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
-
-
-F_Ages_S03_medium <- as.data.frame(F_Ages_S03_medium) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Medium Movement") 
-
-## S01 - No NTZs (and no temporal closure)
-NTZ_Ages_S03_slow <- NULL
-F_Ages_S03_slow <- NULL
-
-for(SIM in 1:length(SP_Pop_NTZ_S03_slow)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S03_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S03_slow <- cbind(NTZ_Ages_S03_slow,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S03_slow[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S03_slow <- cbind(F_Ages_S03_slow,temp$Number)
-}
-
-NTZ_Ages_S03_slow <- as.data.frame(NTZ_Ages_S03_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(100)) %>% 
-  mutate(Scenario = "Reduced Movement") 
-
-F_Ages_S03_slow <- as.data.frame(F_Ages_S03_slow) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Reduced Movement") 
-
-## S03 - Temporal Closure, no NTZs
-NTZ_Ages_S03_fast <- NULL
-F_Ages_S03_fast <- NULL
-
-for(SIM in 1:length(SP_Pop_NTZ_S03_fast)){
-  
-  temp <- as.data.frame(colSums(SP_Pop_NTZ_S03_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  NTZ_Ages_S03_fast <- cbind(NTZ_Ages_S03_fast,temp$Number)
-  
-  temp <- as.data.frame(colSums(SP_Pop_F_S03_fast[[SIM]])) %>% 
-    mutate(Age = seq(1:30)) %>% 
-    pivot_longer(cols=V1:V59, names_to="Num_Year", values_to="Number") %>% 
-    mutate(Num_Year = as.numeric(str_replace(Num_Year, "V", "")))
-  
-  F_Ages_S03_fast <- cbind(F_Ages_S03_fast,temp$Number)
-}
-
-NTZ_Ages_S03_fast <- as.data.frame(NTZ_Ages_S03_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaNT)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
-
-F_Ages_S03_fast <- as.data.frame(F_Ages_S03_fast) %>% 
-  mutate(Age = rep(1:30, each=59)) %>% 
-  mutate(Mod_Year = rep(1960:2018, length.out=nrow(.))) %>% 
-  mutate(Stage = ifelse(Age==1, "Recruit",
-                        ifelse(Age>1 & Age<3, "Sublegal",
-                               ifelse(Age>=3 & Age<=10, "Legal",
-                                      ifelse(Age>10, "Large Legal",NA))))) %>% 
-  group_by(Stage, Mod_Year) %>% 
-  summarise(across(where(is.numeric) & !Age, sum)) %>% 
-  ungroup() %>% 
-  mutate(across(where(is.numeric) & !Mod_Year, ~./AreaFished)) %>% 
-  mutate(Median_Pop = rowMedians(as.matrix(.[,3:12]))) %>% 
-  mutate(Mean_Pop = rowMeans(.[,3:12])) %>%
-  mutate(SD_Pop = rowSds(as.matrix(.[,3:12]))) %>%
-  mutate(SE_Pop = SD_Pop/sqrt(10)) %>% 
-  mutate(Scenario = "Increased Movement") 
-
-
-Whole_Pop_Ages_NTZ <- rbind(NTZ_Ages_S03_medium, NTZ_Ages_S03_slow, NTZ_Ages_S03_fast) %>% 
-  mutate(Zone = "NTZ")
-
-Whole_Pop_Ages_F <- rbind(F_Ages_S03_medium, F_Ages_S03_slow, F_Ages_S03_fast) %>% 
-  mutate(Zone = "F")
-
-
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
-
-temp <- as.matrix(Whole_Pop_Ages) 
-temp <- as.numeric(temp[ ,3:12])
-dim(temp) <- c(nrow(Whole_Pop_Ages),10)
-
-Quantiles <- array(0, dim=c(nrow(Whole_Pop_Ages), 2))
-
-for(Y in 1:nrow(Whole_Pop_Ages)){
-  
-  temp2 <- temp[Y, 1:10]
-  Quantiles[Y, ] <-quantile(temp2, probs=c(0.025, 0.975))
-  
-}
-
-Quantiles <- as.data.frame(Quantiles)
-
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) %>% 
-  dplyr::select(Mean_Pop, Median_Pop, SD_Pop,SE_Pop, Scenario, Stage, Mod_Year, Zone) %>% 
-  mutate(P_0.025 = Quantiles$V1,
-         P_0.975 = Quantiles$V2)
-
-#### ZONE PLOTS BY AGE #####
-
-#* Recruits ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Recruit"))
-
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Recruit")) 
-# mutate(Mean_Pop = ifelse(Mod_Year==1960, Mean_Pop*40, Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop*(10^16), SD_Pop))
-
-Recruit_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.recruit <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Recruit")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+abundance.0_10.plot.slow <- abundance.0_10.slow %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
+                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  filter(Year>1985) %>%
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>%
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.2, Q97.5)) %>%
   ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
+  geom_line(aes(x=Year, y=Median_Abundance, group=Scenario, colour=ColourGroup), size=0.7)+
+  geom_ribbon(aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+  
+  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                              "Temporal\nmanagement only"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
+  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
+                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+                      name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,4)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=25, label="(a) Recruits", size = 2.5, fontface=1)
-line.recruit
-
-
-#* Sublegal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Sublegal"))#  %>%
-# mutate(SD_Pop = ifelse(Mod_Year==1960, (SD_Pop*(10^15))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1961, (SD_Pop*(10^14.5))+rnorm(1, mean=0.0075, sd=0.00075), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year<1962, Mean_Pop*rnorm(1, mean=1, sd=0.05), Mean_Pop))
-
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Sublegal"))# %>%
-# mutate(SD_Pop = ifelse(Mod_Year<1962, SD_Pop*(10^14.6), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year<1962, SD_Pop+rnorm(1, mean=0.000075, sd=0.0000075), SD_Pop))
-
-Sublegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.sublegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Sublegal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=Recruit_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
-  xlim(1987,2020)+
-  #ylim(0,20)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=20, label="(b) Juveniles", size = 2.5, fontface=1)
-line.sublegal
-
-#* Legal ####
-# Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("NTZ")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, (SD_Pop*(10^13.9))+rnorm(12, mean=0.01, sd=0.001), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1960, SD_Pop+rnorm(4, mean=0.1, sd=0.01), SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1962, SD_Pop*3.5, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1963, (Mean_Pop+rnorm(12, mean=0, sd=0.05)), Mean_Pop))
-
-# Pre_1987_F <- Whole_Pop_Ages %>% 
-#   filter(Mod_Year<1987) %>% 
-#   filter(Zone %in% c("F")) %>% 
-#   filter(Stage %in% c("Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1963, SD_Pop*(10^14), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1964, (Mean_Pop+rnorm(12, mean=0, sd=0.02)), Mean_Pop),
-#        #Mean_Pop = ifelse(Mod_Year==1962, (Mean_Pop*1.6), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1963, (SD_Pop+rnorm(12, mean=0.05, sd=0.001)), SD_Pop))
-
-
-legal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-line.legal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
-  ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=legal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=legal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
-                    guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
-  theme_classic()+
-  xlab(NULL)+
-  ylab(NULL)+
+  ylab("Abundance within\n0-10km of boat ramp")+
   xlim(1986,2020)+
-  #ylim(0,6)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
+  #ylim(0, 500)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
         legend.key.size = unit(2,"line")) +
   guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=9))+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1990, y=15, label="(a) 3-10 years old", size = 2.5, fontface=1)
-line.legal
+  ggplot2::annotate("text", x=1988, y=2000, label="(a)", size = 2.5, fontface=1)
+abundance.0_10.plot.slow
 
-#* Large Legal ####
-Pre_1987_NTZ <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year<1971, SD_Pop*(10^13.3), SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960 & Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.005)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.2, sd=0.009), SD_Pop))
-
-Pre_1987_F <- Whole_Pop_Ages %>% 
-  filter(Mod_Year<1987) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Stage %in% c("Large Legal")) #%>% 
-# mutate(SD_Pop = ifelse(Mod_Year %in% c(1960,1961,1963,1964), SD_Pop*(10^14), SD_Pop),
-#        SD_Pop = ifelse(SD_Pop>0.1, SD_Pop/10, SD_Pop),
-#        SD_Pop = ifelse(Mod_Year==1964, SD_Pop-0.1, SD_Pop),
-#        Mean_Pop = ifelse(Mod_Year>1960&Mod_Year<1970, (Mean_Pop+rnorm(36, mean=0.01, sd=0.0025)), Mean_Pop),
-#        SD_Pop = ifelse(Mod_Year>1960&Mod_Year<1971, SD_Pop+rnorm(36, mean=0.06, sd=0.00002), SD_Pop))
-
-LargeLegal_F <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("F")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) 
-
-
-line.largeLegal <- Whole_Pop_Ages %>% 
-  filter(Stage %in% c("Large Legal")) %>% 
-  filter(Zone %in% c("NTZ")) %>% 
-  filter(Mod_Year >=1986) %>% 
-  mutate(ColourGroup = ifelse(Mod_Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Medium Movement") & Mod_Year>1985, "Medium Movement", 
-                                                                 ifelse(Scenario %in% c("Reduced Movement") & Mod_Year>1985, "Reduced Movement", 
-                                                                        ifelse(Scenario %in% c("Increased Movement"), "Increased Movement", NA)))))%>% 
-  mutate(ColourGroup = as.factor(ColourGroup)) %>% 
+Catch.0_10.plot.slow <- catch.0_10.slow %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
+                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  filter(Year>1985) %>%
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>%
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) %>%
   ggplot(.)+
-  geom_line(aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  geom_line(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, group=interaction(Zone,Scenario), colour=ColourGroup, linetype=Zone), size=0.7)+
-  geom_ribbon(data=LargeLegal_F, aes(x=Mod_Year, y=Median_Pop, ymin=P_0.025, ymax=P_0.975, fill=ColourGroup, group=interaction(Zone,Scenario)), alpha=0.2)+
-  scale_fill_manual(values= c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"),
+  geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
+  geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                              "Temporal\nmanagement only"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("Medium Movement"="#36753B", "Reduced Movement"="#302383" ,"Increased Movement"="#66CCEE"), breaks= c("Medium Movement", "Reduced Movement", "Increased Movement"), name= "Level of Movement")+ 
-  # geom_line(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_NTZ, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20",alpha=0.2)+
-  # geom_line(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, color="grey20", group=Scenario, linetype=Zone), size=0.7)+
-  # geom_ribbon(data=Pre_1987_F, aes(x=Mod_Year, y=Mean_Pop, ymin=Mean_Pop-SD_Pop, ymax=Mean_Pop+SD_Pop, group=Scenario), fill="grey20", alpha=0.2)+
+  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
+                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+                      name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   xlab(NULL)+
-  ylab(NULL)+
+  ylab("Median catch within\n0-10km of boat ramp")+
   xlim(1986,2020)+
-  ylim(0,1)+
-  scale_linetype_manual(values = c("solid", "longdash" ), breaks=c("NTZ", "F") ,labels=c("NTZ area", "Always fished"),name="Model area")+
+  ylim(0,300)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.05, "cm"),
+        legend.spacing.y = unit(0.1, "cm"),
         legend.key.size = unit(2,"line")) +
   guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=9))+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20") +
-  ggplot2::annotate("text", x=1990, y=1, label="(b) 10-30 years old", size = 2.5, fontface=1)
-line.largeLegal
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=300, label="(c)", size = 2.5)
+Catch.0_10.plot.slow
 
+
+#* Fast ####
+
+abundance.0_10.fast <- NULL
+catch.0_10.fast <- NULL
+
+for (S in 1:1){
+  temp.mean <- Pop.Dist.Mean.fast[[S]] %>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.SD <- Pop.Dist.SD.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.median <- Pop.Dist.Median.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.quant <- Pop.Dist.Quant.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  
+  temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+    rename(SD_Abundance = "temp.SD$SD_Abundance",
+           Median_Abundance = "temp.median$Median_Abundance",
+           Q2.5 = "temp.quant$`2.5%`",
+           Q97.5 = "temp.quant$`97.5%`") %>% 
+    filter(Distances %in% c("0-10 km"))
+  
+  abundance.0_10.fast <- rbind(abundance.0_10.fast, temp.all)
+  
+  temp.mean <- Pop.Catch.Mean.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.SD <- Pop.Catch.SD.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.median <- Pop.Catch.Median.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  temp.quant <- Pop.Catch.Quant.fast[[S]]%>% 
+    do.call("rbind",.) %>% 
+    filter(Distances %in% "0-10 km")
+  
+  temp.all <- cbind(temp.mean, temp.SD$SD_Catch, temp.median$Median_Catch, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+    rename(SD_Catch = "temp.SD$SD_Catch",
+           Median_Catch = "temp.median$Median_Catch",
+           Q2.5 = "temp.quant$`2.5%`",
+           Q97.5 = "temp.quant$`97.5%`") %>% 
+    filter(Distances %in% c("0-10 km"))
+  
+  catch.0_10.fast <- rbind(catch.0_10.fast, temp.all)
+}
+
+abundance.0_10.plot.fast <- abundance.0_10.fast %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
+                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  filter(Year>1985) %>%
+  mutate(Q2.5 = ifelse(Year < 1986, Q2.5*0.8, Q2.5)) %>%
+  mutate(Q97.5 = ifelse(Year < 1986, Q97.5*1, Q97.5)) %>%
+  ggplot(.)+
+  geom_line(aes(x=Year, y=Median_Abundance, group=Scenario, colour=ColourGroup), size=0.7)+
+  geom_ribbon(aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+  
+  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                              "Temporal\nmanagement only"="#BBCC33"),
+                    guide="none")+
+  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
+                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+                      name= "Spatial and temporal\nmanagement scenario")+ 
+  theme_classic()+
+  xlab(NULL)+
+  ylab("Abundance within\n0-10km of boat ramp")+
+  xlim(1986,2020)+
+  #ylim(0, 500)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=9))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=2000, label="(b)", size = 2.5, fontface=1)
+abundance.0_10.plot.fast
+
+Catch.0_10.plot.fast <- catch.0_10.fast %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
+                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  filter(Year>1985) %>%
+  mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>%
+  mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) %>%
+  ggplot(.)+
+  geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
+  geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
+                              "Temporal\nmanagement only"="#BBCC33"),
+                    guide="none")+
+  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
+                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+                      name= "Spatial and temporal\nmanagement scenario")+ 
+  theme_classic()+
+  xlab(NULL)+
+  ylab("Median catch within\n0-10km of boat ramp")+
+  xlim(1986,2020)+
+  #ylim(0,300)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=9))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1988, y=400, label="(d)", size = 2.5)
+Catch.0_10.plot.fast
+
+
+## Put it together
+setwd(fig_dir)
+x.label <- textGrob("Year", gp=gpar(fontsize=9))
+legend <- gtable_filter(ggplotGrob(Catch.0_10.plot.slow), "guide-box")
+
+Catch.AbundancexDistancexMovement <-grid.arrange(arrangeGrob(
+                                                    abundance.0_10.plot.slow + theme(legend.position="none"),
+                                                    abundance.0_10.plot.fast + theme(legend.position="none"),
+                                                    Catch.0_10.plot.slow + theme(legend.position="none"),
+                                                    Catch.0_10.plot.fast + theme(legend.position="none"),
+                                                    bottom=x.label,
+                                                    right=legend))
+ggsave(Catch.AbundancexDistancexMovement, filename="Distance_Catch_Movement.png",height = a4.width*1, width = a4.width*1.2, units  ="mm", dpi = 300 )
 
 line.largeLegal
