@@ -102,7 +102,6 @@ AMP <- st_read("NTZ and Fished areas for status.shp") %>%
   st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)
 plot(AMP)
 
-
 AMP_NTZ <- AMP %>% 
   filter(ResName == "Ningaloo"|COMMENTS == "Cloates Sanctuary Zone") %>% # Select just Cloates
   mutate(Year.Sanct = ifelse(ResName %in% c("Ningaloo"), 2017, 2005)) %>% 
@@ -469,27 +468,31 @@ Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=200, 
                                        n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
                                        dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
-Pop.Dist.Median <- Dists.res[1]
-Pop.Dist.Quant <- Dists.res[2]
-Pop.Dist.Mean <- Dists.res[3]
-Pop.Dist.SD <- Dists.res[4]
+Pop.Dist.Median <- Dists.res[[1]]
+Pop.Dist.Quant <- Dists.res[[2]]
+Pop.Dist.Mean <- Dists.res[[3]]
+Pop.Dist.SD <- Dists.res[[4]]
 
 
 S00.means <- Pop.Dist.Mean[[1]]
 S00.medians <- Pop.Dist.Median[[1]]
 S00.SD <- Pop.Dist.SD[[1]]
 S00.Quant <- Pop.Dist.Quant[[1]]
-S00.data <- cbind(S00.means, S00.SD$SD_Abundance, S00.medians$Median_Abundance, S00.Quant$`2.5%`, S00.Quant$`97.5%`) %>% 
-  rename(SD_Abundance = "S00.SD$SD_Abundance",
-         Median_Abundance = "S00.medians$Median_Abundance",
-         Q2.5 = "S00.Quant$`2.5%`",
-         Q97.5 = "S00.Quant$`97.5%`")
+S00.data <- cbind(S00.means$Mean_Abundance, S00.SD$SD_Abundance, S00.medians$Median_Abundance, S00.Quant$`2.5%`, S00.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Abundance = "V1",
+         SD_Abundance = "V2",
+         Median_Abundance = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>% 
+  mutate(Distance = S00.means$Distances,
+         Year = S00.means$Year)
 
 
 S00.abundance.dist.plot <- ggplot()+
-  geom_line(data=S00.data, aes(x=Year, y=Median_Abundance, group=Distances, linetype=Distances),col="#36753B")+
+  geom_line(data=S00.data, aes(x=Year, y=Median_Abundance, group=Distance, linetype=Distance),col="#36753B")+
   scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
-  geom_ribbon(data=S00.data, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#36753B", alpha=0.2)+
+  geom_ribbon(data=S00.data, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, group=Distance), fill="#36753B", alpha=0.2)+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
@@ -505,18 +508,22 @@ S00.abundance.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=7700, label="(a)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1987, y=7700, label="(b)", size = 2.5, fontface=1, hjust=0)
 S00.abundance.dist.plot
 
 S01.means <- Pop.Dist.Mean[[2]]
 S01.SD <- Pop.Dist.SD[[2]]
 S01.medians <- Pop.Dist.Median[[2]]
 S01.Quant <- Pop.Dist.Quant[[2]]
-S01.data <- cbind(S01.means, S01.SD$SD_Abundance, S01.medians$Median_Abundance, S01.Quant$`2.5%`, S01.Quant$`97.5%`) %>% 
-  rename(SD_Abundance = "S01.SD$SD_Abundance",
-         Median_Abundance = "S01.medians$Median_Abundance",
-         Q2.5 = "S01.Quant$`2.5%`",
-         Q97.5 = "S01.Quant$`97.5%`")
+S01.data <- cbind(S01.means$Mean_Abundance, S01.SD$SD_Abundance, S01.medians$Median_Abundance, S01.Quant$`2.5%`, S01.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Abundance = "V1",
+         SD_Abundance = "V2",
+         Median_Abundance = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>%
+  mutate(Distances = S01.means$Distances,
+         Year = S01.means$Year)
 
 S01.abundance.dist.plot <- ggplot()+
   geom_line(data=S01.data, aes(x=Year, y=Median_Abundance, group=Distances, linetype=Distances),col="#302383")+
@@ -537,23 +544,64 @@ S01.abundance.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=7700, label="(b)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1987, y=7700, label="(d)", size = 2.5, fontface=1, hjust=0)
 S01.abundance.dist.plot
 
 S02.means <- Pop.Dist.Mean[[3]]
 S02.SD <- Pop.Dist.SD[[3]]
 S02.medians <- Pop.Dist.Median[[3]]
 S02.Quant <- Pop.Dist.Quant[[3]]
-S02.data <- cbind(S02.means, S02.SD$SD_Abundance, S02.medians$Median_Abundance, S02.Quant$`2.5%`, S02.Quant$`97.5%`) %>% 
-  rename(SD_Abundance = "S02.SD$SD_Abundance",
-         Median_Abundance = "S02.medians$Median_Abundance",
-         Q2.5 = "S02.Quant$`2.5%`",
-         Q97.5 = "S02.Quant$`97.5%`")
+S02.data <- cbind(S02.means$Mean_Abundance, S02.SD$SD_Abundance, S02.medians$Median_Abundance, S02.Quant$`2.5%`, S02.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Abundance = "V1",
+         SD_Abundance = "V2",
+         Median_Abundance = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>%
+  mutate(Distances = S02.means$Distances,
+         Year = S02.means$Year)
 
 S02.abundance.dist.plot <- ggplot()+
   geom_line(data=S02.data, aes(x=Year, y=Median_Abundance, group=Distances, linetype=Distances),col="#66CCEE")+
   scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
-  geom_ribbon(data=S02.data, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#66CCEE", alpha=0.1)+
+  geom_ribbon(data=S02.data, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#66CCEE", alpha=0.2)+
+  theme_classic()+
+  ylab(NULL)+
+  xlab(NULL)+
+  xlim(1986,2020)+
+  ylim(0,8000)+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8))+
+  theme(axis.text=element_text(size=8))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+  ggplot2::annotate("text", x=1987, y=7700, label="(a)", size = 2.5, fontface=1, hjust=0)
+S02.abundance.dist.plot
+
+
+S03.means <- Pop.Dist.Mean[[4]]
+S03.SD <- Pop.Dist.SD[[4]]
+S03.medians <- Pop.Dist.Median[[4]]
+S03.Quant <- Pop.Dist.Quant[[4]]
+S03.data <- cbind(S03.means$Mean_Abundance, S03.SD$SD_Abundance, S03.medians$Median_Abundance, S03.Quant$`2.5%`, S03.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Abundance = "V1",
+         SD_Abundance = "V2",
+         Median_Abundance = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>%
+  mutate(Distances = S03.means$Distances,
+         Year = S03.means$Year)
+
+S03.abundance.dist.plot <- ggplot()+
+  geom_line(data=S03.data, aes(x=Year, y=Median_Abundance, group=Distances, linetype=Distances),col="#BBCC33")+
+  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"))+
+  geom_ribbon(data=S03.data, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#BBCC33", alpha=0.2)+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
@@ -570,39 +618,6 @@ S02.abundance.dist.plot <- ggplot()+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
   ggplot2::annotate("text", x=1987, y=7700, label="(c)", size = 2.5, fontface=1, hjust=0)
-S02.abundance.dist.plot
-
-
-S03.means <- Pop.Dist.Mean[[4]]
-S03.SD <- Pop.Dist.SD[[4]]
-S03.medians <- Pop.Dist.Median[[4]]
-S03.Quant <- Pop.Dist.Quant[[4]]
-S03.data <- cbind(S03.means, S03.SD$SD_Abundance, S03.medians$Median_Abundance, S03.Quant$`2.5%`, S03.Quant$`97.5%`) %>% 
-  rename(SD_Abundance = "S03.SD$SD_Abundance",
-         Median_Abundance = "S03.medians$Median_Abundance",
-         Q2.5 = "S03.Quant$`2.5%`",
-         Q97.5 = "S03.Quant$`97.5%`")
-
-S03.abundance.dist.plot <- ggplot()+
-  geom_line(data=S03.data, aes(x=Year, y=Median_Abundance, group=Distances, linetype=Distances),col="#BBCC33")+
-  scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"))+
-  geom_ribbon(data=S03.data, aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#BBCC33", alpha=0.1)+
-  theme_classic()+
-  ylab(NULL)+
-  xlab(NULL)+
-  xlim(1986,2020)+
-  ylim(0,8000)+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8))+
-  theme(axis.text=element_text(size=8))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=7700, label="(d)", size = 2.5, fontface=1, hjust=0)
 S03.abundance.dist.plot
 
 legend.plot <- ggplot()+
@@ -613,13 +628,13 @@ legend.plot <- ggplot()+
 ## Put it all together
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
-y.label <- textGrob("Median abundance", gp=gpar(fontsize=9), rot=90)
+y.label <- textGrob("Median abundance of greater than age at MLL (no. fish)", gp=gpar(fontsize=9), rot=90)
 legend <- gtable_filter(ggplotGrob(legend.plot), "guide-box")
 
-AbundancexDistance <-grid.arrange(arrangeGrob(S00.abundance.dist.plot + theme(legend.position="none"),
-                                              S01.abundance.dist.plot + theme(legend.position="none"),
-                                              S02.abundance.dist.plot + theme(legend.position="none"),
+AbundancexDistance <-grid.arrange(arrangeGrob(S02.abundance.dist.plot + theme(legend.position="none"),
+                                              S00.abundance.dist.plot + theme(legend.position="none"),
                                               S03.abundance.dist.plot + theme(legend.position="none"),
+                                              S01.abundance.dist.plot + theme(legend.position="none"),
                                               left=y.label,
                                               bottom=x.label,
                                               right=legend))
@@ -645,20 +660,24 @@ Catch.res <- distance.catch.format(Pops = Pop.Catch, n.row=59, max.year=59, n.si
 
 
 
-Pop.Catch.Median <- Catch.res[1]
-Pop.Catch.Quant <- Catch.res[2]
-Pop.Catch.Mean <- Catch.res[3]
-Pop.Catch.SD <- Catch.res[4]
+Pop.Catch.Median <- Catch.res[[1]]
+Pop.Catch.Quant <- Catch.res[[2]]
+Pop.Catch.Mean <- Catch.res[[3]]
+Pop.Catch.SD <- Catch.res[[4]]
 
 S00.means <- Pop.Catch.Mean[[1]]
 S00.medians <- Pop.Catch.Median[[1]]
 S00.SD <- Pop.Catch.SD[[1]]
 S00.Quant <- Pop.Catch.Quant[[1]]
-S00.data <- cbind(S00.means, S00.SD$SD_Catch, S00.medians$Median_Catch, S00.Quant$`2.5%`, S00.Quant$`97.5%`) %>% 
-  rename(SD_Catch = "S00.SD$SD_Catch",
-         Median_Catch = "S00.medians$Median_Catch",
-         Q2.5 = "S00.Quant$`2.5%`",
-         Q97.5 = "S00.Quant$`97.5%`")%>% 
+S00.data <- cbind(S00.means$Mean_Catch, S00.SD$SD_Catch, S00.medians$Median_Catch, S00.Quant$`2.5%`, S00.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Catch = "V1",
+         SD_Catch = "V2",
+         Median_Catch = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>% 
+  mutate(Distance = S00.means$Distances,
+         Year = S00.means$Year) %>% 
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
@@ -690,13 +709,18 @@ S01.means <- Pop.Catch.Mean[[2]]
 S01.medians <- Pop.Catch.Median[[2]]
 S01.SD <- Pop.Catch.SD[[2]]
 S01.Quant <- Pop.Catch.Quant[[2]]
-S01.data <- cbind(S01.means, S01.SD$SD_Catch, S01.medians$Median_Catch, S01.Quant$`2.5%`, S01.Quant$`97.5%`) %>% 
-  rename(SD_Catch = "S01.SD$SD_Catch",
-         Median_Catch = "S01.medians$Median_Catch",
-         Q2.5 = "S01.Quant$`2.5%`",
-         Q97.5 = "S01.Quant$`97.5%`") %>% 
+S01.data <- cbind(S01.means$Mean_Catch, S01.SD$SD_Catch, S01.medians$Median_Catch, S01.Quant$`2.5%`, S01.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Catch = "V1",
+         SD_Catch = "V2",
+         Median_Catch = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>% 
+  mutate(Distance = S01.means$Distances,
+         Year = S01.means$Year) %>% 
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
+
 
 S01.catch.dist.plot <- ggplot()+
   geom_line(data=S01.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#302383")+
@@ -724,11 +748,15 @@ S02.means <- Pop.Catch.Mean[[3]]
 S02.medians <- Pop.Catch.Median[[3]]
 S02.SD <- Pop.Catch.SD[[3]]
 S02.Quant <- Pop.Catch.Quant[[3]]
-S02.data <- cbind(S02.means, S02.SD$SD_Catch, S02.medians$Median_Catch, S02.Quant$`2.5%`, S02.Quant$`97.5%`) %>% 
-  rename(SD_Catch = "S02.SD$SD_Catch",
-         Median_Catch = "S02.medians$Median_Catch",
-         Q2.5 = "S02.Quant$`2.5%`",
-         Q97.5 = "S02.Quant$`97.5%`") %>% 
+S02.data <- cbind(S02.means$Mean_Catch, S02.SD$SD_Catch, S02.medians$Median_Catch, S02.Quant$`2.5%`, S02.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Catch = "V1",
+         SD_Catch = "V2",
+         Median_Catch = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>% 
+  mutate(Distance = S02.means$Distances,
+         Year = S02.means$Year) %>% 
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
 
@@ -759,13 +787,18 @@ S03.means <- Pop.Catch.Mean[[4]]
 S03.medians <- Pop.Catch.Median[[4]]
 S03.SD <- Pop.Catch.SD[[4]]
 S03.Quant <- Pop.Catch.Quant[[4]]
-S03.data <- cbind(S03.means, S03.SD$SD_Catch, S03.medians$Median_Catch, S03.Quant$`2.5%`, S03.Quant$`97.5%`) %>% 
-  rename(SD_Catch = "S03.SD$SD_Catch",
-         Median_Catch = "S03.medians$Median_Catch",
-         Q2.5 = "S03.Quant$`2.5%`",
-         Q97.5 = "S03.Quant$`97.5%`") %>% 
+S03.data <- cbind(S03.means$Mean_Catch, S03.SD$SD_Catch, S03.medians$Median_Catch, S03.Quant$`2.5%`, S03.Quant$`97.5%`) %>% 
+  as.data.frame() %>% 
+  rename(Mean_Catch = "V1",
+         SD_Catch = "V2",
+         Median_Catch = "V3",
+         Q2.5 = "V4",
+         Q97.5 = "V5") %>% 
+  mutate(Distance = S03.means$Distances,
+         Year = S03.means$Year) %>% 
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>% 
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) 
+
 
 S03.catch.dist.plot <- ggplot()+
   geom_line(data=S03.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#BBCC33")+
@@ -823,6 +856,7 @@ for (S in 1:4){
   temp.quant <- Pop.Dist.Quant[[S]]
   
   temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+    as.data.frame() %>% 
     rename(SD_Abundance = "temp.SD$SD_Abundance",
            Median_Abundance = "temp.median$Median_Abundance",
            Q2.5 = "temp.quant$`2.5%`",
@@ -837,6 +871,7 @@ for (S in 1:4){
   temp.quant <- Pop.Catch.Quant[[S]]
   
   temp.all <- cbind(temp.mean, temp.SD$SD_Catch, temp.median$Median_Catch, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+    as.data.frame() %>% 
     rename(SD_Catch = "temp.SD$SD_Catch",
            Median_Catch = "temp.median$Median_Catch",
            Q2.5 = "temp.quant$`2.5%`",
@@ -883,12 +918,12 @@ abundance.0_10.plot <- abundance.0_10 %>%
 abundance.0_10.plot
 
 
-Catch.Pre_1987 <- catch.10_50 %>% 
+Catch.Pre_1987 <- catch.0_10 %>% 
   filter(Year>1984) %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent NTZs", 
                                                              ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
                                                                     ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))
-Catch.10_50.plot <- catch.10_50 %>% 
+Catch.10_50.plot <- catch.0_10%>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
@@ -999,8 +1034,8 @@ for(D in 1:3){
 
 
 ## 0-10km all scenarios
-cpue.0_10 <- catch.10_50 %>% 
-  mutate(Effort = Boat_Days_sum[[1]]$Effort) %>% 
+cpue.0_10 <- catch.0_10 %>% 
+  mutate(Effort = Effort_Dist[[1]]$Effort) %>% 
   mutate(Median_CPUE = Median_Catch/Effort,
          CPUE_2.5 = Q2.5/Effort,
          CPUE_97.5 = Q97.5/Effort)
@@ -1024,7 +1059,7 @@ CPUE.0_10.plot <- cpue.0_10 %>%
                       name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   xlab(NULL)+
-  ylab("CPUE within\n0-10km of boat ramp")+
+  ylab(bquote(CPUE~(Fish~Boat~days^-1~~km^-1)))+
   xlim(1987,2020)+
   #ylim(0,0.08)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
@@ -1038,20 +1073,31 @@ CPUE.0_10.plot <- cpue.0_10 %>%
   geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=0.8, label="(b)", size = 2.5)
+  ggplot2::annotate("text", x=1988, y=0.8, label="(a)", size = 2.5)
 CPUE.0_10.plot
+
 
 ## Save the plot
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
+y.label <- textGrob(bquote(CPUE~(Fish~Boat~days^-1~~km^-1)),gp=gpar(fontsize=9), rot=90)
 legend <- gtable_filter(ggplotGrob(Catch.10_50.plot), "guide-box")
 
 CPUE.AbundancexDistance <-grid.arrange(arrangeGrob(abundance.10_50.plot + theme(legend.position="none"),
                                                    CPUE.0_10.plot + theme(legend.position="none"),
                                                     bottom=x.label,
                                                     right=legend))
+
 ggsave(CPUE.AbundancexDistance, filename="CPUE_Distance_Combined.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
+CPUE.Distance.Scenarios <-grid.arrange(arrangeGrob(CPUE.0_10.plot + theme(legend.position="none")+ylab(NULL),
+                                                   CPUE.10_50.plot + theme(legend.position="none")+ylab(NULL),
+                                                   CPUE.50_100.plot + theme(legend.position="none")+ylab(NULL),
+                                                   bottom=x.label,
+                                                   left=y.label,
+                                                   right=legend))
+
+ggsave(CPUE.Distance.Scenarios, filename="CPUE_Distance_All_Scenarios.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 #### CPUE PLOTS FOR ALL DISTANCES BY SCENARIO ####
 
@@ -1194,8 +1240,8 @@ for(S in 1:4){
     mutate(Quantile = str_replace(Quantile, "%[[:digit:]]$", "%")) %>% 
     pivot_wider(names_from = "Quantile", values_from="Quantile_Catch")
   
-  Pop.Catch.Mean[[S]] <- Means
-  Pop.Catch.SD[[S]] <- SDs
+  # Pop.Catch.Mean[[S]] <- Means
+  # Pop.Catch.SD[[S]] <- SDs
   Pop.Catch.Median[[S]] <- Medians
   Pop.Catch.Quant[[S]] <- Quantiles
   
@@ -1220,7 +1266,7 @@ S00.CPUE.dist.plot <- ggplot()+
   ylab(NULL)+
   xlab(NULL)+
   xlim(1986, 2020)+
-  #ylim(0,1000)+
+  ylim(0,2)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -1231,7 +1277,7 @@ S00.CPUE.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=2, label="(a)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=2, label="(b)", size = 2.5, fontface=1, hjust=0)
 S00.CPUE.dist.plot
 
 
@@ -1253,7 +1299,7 @@ S01.CPUE.dist.plot <- ggplot()+
   ylab(NULL)+
   xlab(NULL)+
   xlim(1986,2020)+
-  #ylim(0,1000)+
+  ylim(0,2)+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
         legend.spacing.y = unit(0.1, "cm"),
@@ -1264,7 +1310,7 @@ S01.CPUE.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=2, label="(b)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=2, label="(d)", size = 2.5, fontface=1, hjust=0)
 S01.CPUE.dist.plot
 
 # S02.means <- Pop.Catch.Mean[[3]]
@@ -1280,7 +1326,7 @@ S02.data <- cbind(S02.medians, S02.Quant$`2.5%`, S02.Quant$`97.5%`) %>%
 S02.CPUE.dist.plot <- ggplot()+
   geom_line(data=S02.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#66CCEE")+
   scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"), name="Distance from\nboat ramp")+
-  geom_ribbon(data=S02.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#66CCEE", alpha=0.1)+
+  geom_ribbon(data=S02.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#66CCEE", alpha=0.2)+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
@@ -1296,7 +1342,7 @@ S02.CPUE.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=2, label="(c)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=2, label="(a)", size = 2.5, fontface=1, hjust=0)
 S02.CPUE.dist.plot
 
 
@@ -1313,7 +1359,7 @@ S03.data <- cbind(S03.medians, S03.Quant$`2.5%`, S03.Quant$`97.5%`) %>%
 S03.CPUE.dist.plot <- ggplot()+
   geom_line(data=S03.data, aes(x=Year, y=Median_Catch, group=Distances, linetype=Distances),col="#BBCC33")+
   scale_linetype_manual(values=c("0-10 km"="solid", "10-50 km"="dashed", "50-100 km" = "dotted"))+
-  geom_ribbon(data=S03.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#BBCC33", alpha=0.1)+
+  geom_ribbon(data=S03.data, aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, group=Distances), fill="#BBCC33", alpha=0.2)+
   theme_classic()+
   ylab(NULL)+
   xlab(NULL)+
@@ -1329,7 +1375,7 @@ S03.CPUE.dist.plot <- ggplot()+
   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=2, label="(d)", size = 2.5, fontface=1, hjust=0)
+  ggplot2::annotate("text", x=1988, y=2, label="(c)", size = 2.5, fontface=1, hjust=0)
 S03.CPUE.dist.plot
 
 legend.plot <- ggplot()+
@@ -1340,13 +1386,13 @@ legend.plot <- ggplot()+
 ## Put it all together
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
-y.label <- textGrob("CPUE", gp=gpar(fontsize=9), rot=90)
+y.label <- ylab(bquote(CPUE~(Fish~Boat~days^-1~~km^-1)))
 legend <- gtable_filter(ggplotGrob(legend.plot), "guide-box")
 
-CPUExDistance <-grid.arrange(arrangeGrob(S00.CPUE.dist.plot + theme(legend.position="none"),
-                                          S01.CPUE.dist.plot + theme(legend.position="none"),
-                                          S02.CPUE.dist.plot + theme(legend.position="none"),
+CPUExDistance <-grid.arrange(arrangeGrob(S02.CPUE.dist.plot + theme(legend.position="none"),
+                                          S00.CPUE.dist.plot + theme(legend.position="none"),
                                           S03.CPUE.dist.plot + theme(legend.position="none"),
+                                          S01.CPUE.dist.plot + theme(legend.position="none"),
                                           left=y.label,
                                           bottom=x.label,
                                           right=legend))

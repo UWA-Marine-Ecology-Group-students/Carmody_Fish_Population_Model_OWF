@@ -416,17 +416,17 @@ Dists.res <- dist.abundance.full(Pops = Pop.Dist, n.year=59, n.sim=200, n.cell=N
                                  dist.names=Dist.Names, scen.names=Names, mod.years = seq(1960,2018,1), target.year = 59)
 
 
-# S00.Abundance <- Dists.res[[1]]
-# S01.Abundance <- Dists.res[[2]]
-# S02.Abundance <- Dists.res[[3]]
-# S03.Abundance <- Dists.res[[4]]
+S00.Abundance <- Dists.res[[1]]
+S01.Abundance <- Dists.res[[2]]
+S02.Abundance <- Dists.res[[3]]
+S03.Abundance <- Dists.res[[4]]
 
 # Function is doing something really weird so I've done it manually by running the inside of the function
-
-S00.Abundance <- Pop.Abundance[[1]]
-S01.Abundance <- Pop.Abundance[[2]]
-S02.Abundance <- Pop.Abundance[[3]]
-S03.Abundance <- Pop.Abundance[[4]]
+# 
+# S00.Abundance <- Pop.Abundance[[1]]
+# S01.Abundance <- Pop.Abundance[[2]]
+# S02.Abundance <- Pop.Abundance[[3]]
+# S03.Abundance <- Pop.Abundance[[4]]
 
 Dist.Abundance <- rbind(S00.Abundance, S01.Abundance, S02.Abundance, S03.Abundance)
 
@@ -456,6 +456,7 @@ Dist.Abundance.100km <- Dist.Abundance %>%
 mod1.100km <- lm(log(Total) ~ Scenario, dat=Dist.Abundance.100km)
 summary(mod1.100km)
 plot(mod1.10km$residuals)
+
 #* Catch ####
 Effort_Scen <- list()
 Spatial_Qs <- list()
@@ -534,17 +535,17 @@ Catch.res <- dist.catch.full(Pops = Pop.Catch, n.year=59, n.sim=200, n.cell=NCEL
                                        dist.names=Dist.Names, scen.names=Names, mod.years = seq(1960,2018,1), target.year=59)
 
 
-# Pop.Catch.S00 <- Catch.res[[1]]
-# Pop.Catch.S01 <- Catch.res[[2]]
-# Pop.Catch.S02 <- Catch.res[[3]]
-# Pop.Catch.S03 <- Catch.res[[4]]
+Pop.Catch.S00 <- Catch.res[[1]]
+Pop.Catch.S01 <- Catch.res[[2]]
+Pop.Catch.S02 <- Catch.res[[3]]
+Pop.Catch.S03 <- Catch.res[[4]]
 
 ## Function is running weirdly so I've run the inside of the function manually as I can't be bothered to fix it right now
 
-Pop.Catch.S00 <- Pop.Catch[[1]]
-Pop.Catch.S01 <- Pop.Catch[[2]]
-Pop.Catch.S02 <- Pop.Catch[[3]]
-Pop.Catch.S03 <- Pop.Catch[[4]]
+# Pop.Catch.S00 <- Pop.Catch[[1]]
+# Pop.Catch.S01 <- Pop.Catch[[2]]
+# Pop.Catch.S02 <- Pop.Catch[[3]]
+# Pop.Catch.S03 <- Pop.Catch[[4]]
 
 Dist.Catch <- rbind(Pop.Catch.S00, Pop.Catch.S01, Pop.Catch.S02, Pop.Catch.S03)
 

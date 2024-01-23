@@ -54,6 +54,7 @@ R0 = 1 # Initial recruitment
 # Selectivity
 A50 = 3 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
 A95 = 4 # https://researchlibrary.agric.wa.gov.au/cgi/viewcontent.cgi?article=1029&context=fr_rr
+# Next runs this probably needs to come up to five
 MaxAge = 30
 nYears= 59
 
