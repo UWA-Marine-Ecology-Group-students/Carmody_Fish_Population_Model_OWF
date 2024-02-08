@@ -1386,7 +1386,7 @@ legend.plot <- ggplot()+
 ## Put it all together
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
-y.label <- ylab(bquote(CPUE~(Fish~Boat~days^-1~~km^-1)))
+y.label <- ylab(bquote(CPUE~(Fish~per~boat~days~per~km^2)))
 legend <- gtable_filter(ggplotGrob(legend.plot), "guide-box")
 
 CPUExDistance <-grid.arrange(arrangeGrob(S02.CPUE.dist.plot + theme(legend.position="none"),

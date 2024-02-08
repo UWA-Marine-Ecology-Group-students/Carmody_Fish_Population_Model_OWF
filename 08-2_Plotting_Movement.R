@@ -23,6 +23,7 @@ library(purrr)
 library(matrixStats)
 library(sfnetworks)
 library(rcartocolor)
+library(scales)
 
 
 rm(list = ls())
@@ -476,6 +477,68 @@ Distances[[3]] <- BR.100km
 
 Dist.Names <- as.character(c("0-10 km", "10-50 km", "50-100 km"))
 
+#* Calculate effort for CPUE plots ####
+
+Effort_Scen <- list()
+Spatial_Qs <- list()
+
+setwd(sg_dir)
+Effort_Scen[[1]] <- readRDS(paste0(model.name, sep="_", "fishing"))
+Spatial_Qs[[1]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_NTZ"))
+Spatial_Qs[[2]] <- readRDS(paste0(model.name, sep="_", "Spatial_q_No_NTZ"))
+
+setwd(sim_dir)
+Effort_Scen[[2]] <- readRDS(paste0(model.name, sep="_", "S01_fishing"))
+Effort_Scen[[3]] <- readRDS(paste0(model.name, sep="_", "S02_fishing"))
+Effort_Scen[[4]] <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+
+#* Convert back to effort in boat days ####
+
+Boat_Days <- list()
+
+Boat_Days_Scen <- array(0, dim=c(NCELL, 12, 59))
+
+for(S in 1:4){
+  
+  if(S==1|S==3){
+    for (YEAR in 1:59){
+      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[1]][,YEAR]
+    }
+  } else {
+    for (YEAR in 1:59){
+      Boat_Days_Scen[,,YEAR] <- Effort_Scen[[S]][,,YEAR] / Spatial_Qs[[2]][,YEAR]
+    }
+  }
+  Boat_Days_Scen[is.nan(Boat_Days_Scen)] <- 0
+  
+  Boat_Days[[S]] <- Boat_Days_Scen
+}
+
+#* Sum up effort for every year in each of the scenarios
+Effort_Dist <-list()
+
+for(D in 1:3){
+  
+  Boat_Days_sum <- NULL
+  
+  for(S in 1:4){
+    temp <- Boat_Days[[S]]
+    temp2 <- temp[as.numeric(Distances[[D]]), ,] %>% 
+      colSums(., dim=2) %>% 
+      as.data.frame() %>% 
+      mutate(Scenario = Names[S]) %>% 
+      mutate(Distance = Dist.Names[D]) %>% 
+      mutate(Year = seq(1960,2018,1))
+    
+    Boat_Days_sum <- rbind(Boat_Days_sum, temp2)
+  }
+  
+  Boat_Days_sum <- Boat_Days_sum %>% 
+    rename(Effort = ".")
+  Effort_Dist[[D]] <- Boat_Days_sum
+}
+
+
 #* Abundance ####
 setwd(pop_dir)
 
@@ -487,17 +550,17 @@ Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_",
 Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02", sep="_", "slow_movement"))
 Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03", sep="_", "slow_movement"))
 
-Names <- c("Historical and Current NTZs", "Neither NTZs nor Temporal Management", 
-           "Temporal and Spatial Management","Temporal Management Only")
+Names <- c("Current NTZs", "No temporal management or NTZs", 
+           "Temporal and NTZs","Temporal management")
 
 Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=100, n.row=nrow(Whole_Pop_Ages), n.dist=3, 
                                        n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
                                        dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
-Pop.Dist.Median.slow <- Dists.res[1]
-Pop.Dist.Quant.slow <- Dists.res[2]
-Pop.Dist.Mean.slow <- Dists.res[3]
-Pop.Dist.SD.slow <- Dists.res[4]
+Pop.Dist.Median.slow <- Dists.res[[1]]
+Pop.Dist.Quant.slow <- Dists.res[[2]]
+Pop.Dist.Mean.slow <- Dists.res[[3]]
+Pop.Dist.SD.slow <- Dists.res[[4]]
 
 # Each layer is a simulation, rows are cells and columns are years
 Pop.Dist <- list()
@@ -507,14 +570,14 @@ Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_",
 Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02", sep="_", "fast_movement"))
 Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03", sep="_", "fast_movement"))
 
-Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=00, n.row=nrow(Whole_Pop_Ages), n.dist=3, 
+Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=100, n.row=nrow(Whole_Pop_Ages), n.dist=3, 
                                        n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
                                        dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
-Pop.Dist.Median.fast <- Dists.res[1]
-Pop.Dist.Quant.fast <- Dists.res[2]
-Pop.Dist.Mean.fast <- Dists.res[3]
-Pop.Dist.SD.fast <- Dists.res[4]
+Pop.Dist.Median.fast <- Dists.res[[1]]
+Pop.Dist.Quant.fast <- Dists.res[[2]]
+Pop.Dist.Mean.fast <- Dists.res[[3]]
+Pop.Dist.SD.fast <- Dists.res[[4]]
 
 
 #* Catch ####
@@ -523,22 +586,22 @@ setwd(pop_dir)
 Pop.Catch.slow <- list()
 
 # Each layer is a simulation, rows are cells and columns are years
-Pop.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00", sep="_", "slow_movement"))
-Pop.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01", sep="_", "slow_movement"))
-Pop.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02", sep="_", "slow_movement"))
-Pop.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03", sep="_", "slow_movement"))
+Pop.Catch.slow[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00", sep="_", "slow_movement"))
+Pop.Catch.slow[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01", sep="_", "slow_movement"))
+Pop.Catch.slow[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02", sep="_", "slow_movement"))
+Pop.Catch.slow[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03", sep="_", "slow_movement"))
 
-Catch.res <- distance.catch.format(Pops = Pop.Catch, n.row=59, max.year=59, n.sim=100, n.dist=3, 
+Catch.res <- distance.catch.format(Pops = Pop.Catch.slow, n.row=59, max.year=59, n.sim=100, n.dist=3, 
                                    n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
                                    dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
 
 
 
-Pop.Catch.Median.slow <- Catch.res[1]
-Pop.Catch.Quant.slow <- Catch.res[2]
-Pop.Catch.Mean.slow <- Catch.res[3]
-Pop.Catch.SD.slow <- Catch.res[4]
+Pop.Catch.Median.slow <- Catch.res[[1]]
+Pop.Catch.Quant.slow <- Catch.res[[2]]
+Pop.Catch.Mean.slow <- Catch.res[[3]]
+Pop.Catch.SD.slow <- Catch.res[[4]]
 
 # Fast 
 
@@ -555,28 +618,28 @@ Catch.res <- distance.catch.format(Pops = Pop.Catch, n.row=59, max.year=59, n.si
                                    dist.names=Dist.Names, scen.names=Names, start.year=26, start.year.mod=1960, end.year.mod=2018)
 
 
-Pop.Catch.Median.fast <- Catch.res[1]
-Pop.Catch.Quant.fast <- Catch.res[2]
-Pop.Catch.Mean.fast <- Catch.res[3]
-Pop.Catch.SD.fast <- Catch.res[4]
+Pop.Catch.Median.fast <- Catch.res[[1]]
+Pop.Catch.Quant.fast <- Catch.res[[2]]
+Pop.Catch.Mean.fast <- Catch.res[[3]]
+Pop.Catch.SD.fast <- Catch.res[[4]]
 
 #* Slow ####
 
 abundance.0_10.slow <- NULL
 catch.0_10.slow <- NULL
 
-for (S in 1:1){
+for (S in 1:4){
   temp.mean <- Pop.Dist.Mean.slow[[S]] %>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.SD <- Pop.Dist.SD.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.median <- Pop.Dist.Median.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.quant <- Pop.Dist.Quant.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   
   temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
@@ -589,32 +652,41 @@ for (S in 1:1){
   abundance.0_10.slow <- rbind(abundance.0_10.slow, temp.all)
   
   temp.mean <- Pop.Catch.Mean.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.SD <- Pop.Catch.SD.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.median <- Pop.Catch.Median.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.quant <- Pop.Catch.Quant.slow[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
+ 
+   total.boat <- Effort_Dist[[1]]
+  
+  temp.effort <- total.boat %>% 
+    filter(Scenario %in% Names[S])
   
   temp.all <- cbind(temp.mean, temp.SD$SD_Catch, temp.median$Median_Catch, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
     rename(SD_Catch = "temp.SD$SD_Catch",
            Median_Catch = "temp.median$Median_Catch",
            Q2.5 = "temp.quant$`2.5%`",
            Q97.5 = "temp.quant$`97.5%`") %>% 
-    filter(Distances %in% c("0-10 km"))
+    filter(Distances %in% c("0-10 km")) %>% 
+    mutate(CPUE = Median_Catch/temp.effort$Effort) %>% 
+    mutate(CPUE_2.5 = Q2.5/temp.effort$Effort) %>% 
+    mutate(CPUE_97.5 = Q97.5/temp.effort$Effort)
   
   catch.0_10.slow <- rbind(catch.0_10.slow, temp.all)
 }
 
+
 abundance.0_10.plot.slow <- abundance.0_10.slow %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal management"), "Temporal management", 
+                                                                    ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
   filter(Year>1985) %>%
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>%
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.2, Q97.5)) %>%
@@ -622,11 +694,11 @@ abundance.0_10.plot.slow <- abundance.0_10.slow %>%
   geom_line(aes(x=Year, y=Median_Abundance, group=Scenario, colour=ColourGroup), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
   
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
+  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                              "Temporal management"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),
                       name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   xlab(NULL)+
@@ -648,20 +720,20 @@ abundance.0_10.plot.slow <- abundance.0_10.slow %>%
 abundance.0_10.plot.slow
 
 Catch.0_10.plot.slow <- catch.0_10.slow %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal management"), "Temporal management", 
+                                                                    ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
   filter(Year>1985) %>%
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>%
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) %>%
   ggplot(.)+
   geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
+  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                              "Temporal management"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),
                       name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   xlab(NULL)+
@@ -682,24 +754,60 @@ Catch.0_10.plot.slow <- catch.0_10.slow %>%
   ggplot2::annotate("text", x=1988, y=300, label="(c)", size = 2.5)
 Catch.0_10.plot.slow
 
+CPUE.0_10.plot.slow <- catch.0_10.slow %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal management"), "Temporal management", 
+                                                                    ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
+  filter(Year>1985) %>%
+  mutate(CPUE_2.5 = ifelse(Year < 1988, (CPUE_2.5*0.7), CPUE_2.5)) %>%
+  mutate(CPUE_97.5 = ifelse(Year < 1988, (CPUE_97.5*1.5), CPUE_97.5)) %>%
+  ggplot(.)+
+  geom_line(aes(x=Year, y=CPUE, group=Scenario, colour=ColourGroup), size=0.7)+
+  geom_ribbon(aes(x=Year, y=CPUE, ymin=CPUE_2.5, ymax=CPUE_97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                              "Temporal management"="#BBCC33"),
+                    guide="none")+
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),
+                      name= "Spatial and temporal\nmanagement scenario")+ 
+  theme_classic()+
+  xlab(NULL)+
+  ylab(NULL)+
+  xlim(1986,2020)+
+  ylim(0,1)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=9))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20") # +
+  # ggplot2::annotate("text", x=1988, y=0.75, label="(c)", size = 2.5)
+CPUE.0_10.plot.slow
+
+
 
 #* Fast ####
 
 abundance.0_10.fast <- NULL
 catch.0_10.fast <- NULL
 
-for (S in 1:1){
+for (S in 1:4){
   temp.mean <- Pop.Dist.Mean.fast[[S]] %>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.SD <- Pop.Dist.SD.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.median <- Pop.Dist.Median.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.quant <- Pop.Dist.Quant.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   
   temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
@@ -712,32 +820,40 @@ for (S in 1:1){
   abundance.0_10.fast <- rbind(abundance.0_10.fast, temp.all)
   
   temp.mean <- Pop.Catch.Mean.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.SD <- Pop.Catch.SD.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.median <- Pop.Catch.Median.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
   temp.quant <- Pop.Catch.Quant.fast[[S]]%>% 
-    do.call("rbind",.) %>% 
+    # do.call("rbind",.) %>% 
     filter(Distances %in% "0-10 km")
+  
+  total.boat <- Effort_Dist[[1]]
+  
+  temp.effort <- total.boat %>% 
+    filter(Scenario %in% Names[S])
   
   temp.all <- cbind(temp.mean, temp.SD$SD_Catch, temp.median$Median_Catch, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
     rename(SD_Catch = "temp.SD$SD_Catch",
            Median_Catch = "temp.median$Median_Catch",
            Q2.5 = "temp.quant$`2.5%`",
            Q97.5 = "temp.quant$`97.5%`") %>% 
-    filter(Distances %in% c("0-10 km"))
+    filter(Distances %in% c("0-10 km")) %>% 
+    mutate(CPUE = Median_Catch/temp.effort$Effort) %>% 
+    mutate(CPUE_2.5 = Q2.5/temp.effort$Effort) %>% 
+    mutate(CPUE_97.5 = Q97.5/temp.effort$Effort)
   
   catch.0_10.fast <- rbind(catch.0_10.fast, temp.all)
 }
 
 abundance.0_10.plot.fast <- abundance.0_10.fast %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+                                                            ifelse(Scenario %in% c("Temporal management"), "Temporal management", 
+                                                                   ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
   filter(Year>1985) %>%
   mutate(Q2.5 = ifelse(Year < 1986, Q2.5*0.8, Q2.5)) %>%
   mutate(Q97.5 = ifelse(Year < 1986, Q97.5*1, Q97.5)) %>%
@@ -745,12 +861,12 @@ abundance.0_10.plot.fast <- abundance.0_10.fast %>%
   geom_line(aes(x=Year, y=Median_Abundance, group=Scenario, colour=ColourGroup), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_Abundance, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
   
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "No NTZs or\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
+  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                              "Temporal management"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
-                      name= "Spatial and temporal\nmanagement scenario")+ 
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),
+                      name= "Spatial and temporal\nmanagement scenario")+  
   theme_classic()+
   xlab(NULL)+
   ylab("Abundance within\n0-10km of boat ramp")+
@@ -771,24 +887,24 @@ abundance.0_10.plot.fast <- abundance.0_10.fast %>%
 abundance.0_10.plot.fast
 
 Catch.0_10.plot.fast <- catch.0_10.fast %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs"), "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only"), "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))%>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal management"), "Temporal management", 
+                                                                    ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
   filter(Year>1985) %>%
   mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.7, Q2.5)) %>%
   mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.5, Q97.5)) %>%
   ggplot(.)+
   geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
-  scale_fill_manual(values= c("Historical and\ncurrent NTZs"="#36753B", "Neither NTZs nor\ntemporal management"="#302383" ,"NTZs and\ntemporal management"="#66CCEE",
-                              "Temporal\nmanagement only"="#BBCC33"),
+  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                              "Temporal management"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("NTZs and\ntemporal management"="#66CCEE","Historical and\ncurrent NTZs"="#36753B", "Temporal\nmanagement only"="#BBCC33", 
-                                 "Neither NTZs nor\ntemporal management"="#302383"), breaks= c("NTZs and\ntemporal management", "Historical and\ncurrent NTZs", "Temporal\nmanagement only", "Neither NTZs nor\ntemporal management"),
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),
                       name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   xlab(NULL)+
-  ylab("Median catch within\n0-10km of boat ramp")+
+  ylab("Median CPUE within 0-10km of boat ramp")+
   xlim(1986,2020)+
   #ylim(0,300)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
@@ -805,10 +921,45 @@ Catch.0_10.plot.fast <- catch.0_10.fast %>%
   ggplot2::annotate("text", x=1988, y=400, label="(d)", size = 2.5)
 Catch.0_10.plot.fast
 
+CPUE.0_10.plot.fast <- catch.0_10.fast %>% 
+  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+                                                             ifelse(Scenario %in% c("Temporal management"), "Temporal management", 
+                                                                    ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
+  filter(Year>1985) %>%
+  mutate(CPUE_2.5 = ifelse(Year < 1988, CPUE_2.5*0.7, CPUE_2.5)) %>%
+  mutate(CPUE_97.5 = ifelse(Year < 1988, CPUE_97.5*1.5, CPUE_97.5)) %>%
+  ggplot(.)+
+  geom_line(aes(x=Year, y=CPUE, group=Scenario, colour=ColourGroup), size=0.7)+
+  geom_ribbon(aes(x=Year, y=CPUE, ymin=CPUE_2.5, ymax=CPUE_97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+                              "Temporal management"="#BBCC33"),
+                    guide="none")+
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),
+                      name= "Spatial and temporal\nmanagement scenario")+ 
+  theme_classic()+
+  xlab(NULL)+
+  ylab(NULL)+
+  xlim(1986,2020)+
+  ylim(0,1)+
+  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  theme(axis.text=element_text(size=8),
+        axis.title = element_text(size=9))+
+  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")
+CPUE.0_10.plot.fast
+
 
 ## Put it together
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
+y.label <- textGrob(bquote(CPUE~(Fish~per~boat~days~per~km^2)),gp=gpar(fontsize=9), rot=90)
 legend <- gtable_filter(ggplotGrob(Catch.0_10.plot.slow), "guide-box")
 
 Catch.AbundancexDistancexMovement <-grid.arrange(arrangeGrob(
@@ -820,4 +971,12 @@ Catch.AbundancexDistancexMovement <-grid.arrange(arrangeGrob(
                                                     right=legend))
 ggsave(Catch.AbundancexDistancexMovement, filename="Distance_Catch_Movement.png",height = a4.width*1, width = a4.width*1.2, units  ="mm", dpi = 300 )
 
-line.largeLegal
+
+CPUExDistancexMovement <-grid.arrange(arrangeGrob(
+                                                    CPUE.0_10.plot.slow + theme(legend.position="none") + ylab(NULL),
+                                                    CPUE.0_10.plot.fast + theme(legend.position="none") + ylab(NULL),
+                                                    ncol=2,
+                                                    bottom=x.label,
+                                                    left=y.label,
+                                                    right=legend))
+ggsave(CPUExDistancexMovement, filename="Distance_Catch_Only_Movement.png",height = a4.width*1, width = a4.width*1.4, units  ="mm", dpi = 300 )
