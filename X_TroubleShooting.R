@@ -62,4 +62,16 @@ for (Y in 1:59){
   }
 }
 
+## Checking Baranov catch with catch approximation
+setwd(pop_dir)
+Approximation <- readRDS("ningaloo_Catch_by_Age_S03_medium_movement")
+Baranov <- readRDS("ningaloo_Catch_by_Age_Baranov_S03_Medium")
+
+Approximation <-colSums(Approximation[[1]])
+Baranov <- colSums(Baranov[[1]])
+
+plot(Approximation)
+plot(Baranov)
+
+
 

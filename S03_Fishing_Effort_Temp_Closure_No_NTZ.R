@@ -316,7 +316,7 @@ Boat_Days_Year <- Full_Boat_Days %>%
 
 # Closed May, June, Aug, Sept, Oct 
 Boat_Days_Closed <- Full_Boat_Days %>% 
-  mutate(Total_Boat_Days = ifelse(Year>=1987 & NumMonth>4 & NumMonth <7|Year>=1987 & NumMonth>7 & NumMonth<11, 0, Total_Boat_Days)) %>% 
+  mutate(Total_Boat_Days = ifelse(Year>=2005 & NumMonth>4 & NumMonth <7|Year>=1987 & NumMonth>7 & NumMonth<11, 0, Total_Boat_Days)) %>% 
   group_by(Year) %>% 
   summarise(Yearly.Total.Closed = sum(Total_Boat_Days))
 
@@ -325,7 +325,7 @@ Boat_Days_Year <- Boat_Days_Year %>%
   mutate(Diff.Closed = Target-Closure.Total)
 
 Boat_Days_Closed <- Full_Boat_Days %>% 
-  mutate(Total_Boat_Days = ifelse(Year>=1987 & NumMonth>4 & NumMonth <7|Year>=1987 & NumMonth>7 & NumMonth<11, 0, Total_Boat_Days)) 
+  mutate(Total_Boat_Days = ifelse(Year>=2005 & NumMonth>4 & NumMonth <7|Year>=1987 & NumMonth>7 & NumMonth<11, 0, Total_Boat_Days)) 
 
 Full_Boat_Days <- Full_Boat_Days %>% 
   ungroup() %>% 

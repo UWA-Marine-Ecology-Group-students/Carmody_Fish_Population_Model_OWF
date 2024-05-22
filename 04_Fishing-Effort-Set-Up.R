@@ -301,14 +301,26 @@ MonthPlot <- Full_Boat_Days %>%
   ggplot() +
   geom_point(aes(x=Unique, y=Total_Boat_Days))
 
+setwd(data_dir)
+boat_days_real <- read.csv("Boat_Days_Ningaloo.csv") %>% 
+  mutate(real_boat_days = Boat_Days_State + Boat_Days_Commonwealth) %>% 
+  group_by(Survey_Year) %>% 
+  summarise(total_real = sum(real_boat_days)) %>% 
+  mutate(Year = c(NA, 2011, 2013, 2016, 2017)) %>% 
+  filter(!is.na(Year))
+
+
 EffortPlot <- Full_Boat_Days %>%
   group_by(Year) %>% 
   summarise(., sum(Total_Boat_Days)) %>% 
+  filter(Year>1986) %>% 
   ggplot() +
   geom_line(aes(x=Year, y=`sum(Total_Boat_Days)`)) + 
+  geom_point(data=boat_days_real, aes(x=Year, y= total_real)) +
   theme_classic()+
   xlim(1986, NA)+
   ylab("Effort (Boat days)")+
+  scale_x_continuous(breaks=c(1985,1990,1995,2000,2005,2010,2015,2020))+
   geom_vline(xintercept=1991, linetype="dotted", color="#302383")+
   geom_vline(xintercept=1995, linetype="dashed", colour="#66CCEE")
 EffortPlot
@@ -818,7 +830,7 @@ BR_Trips <- BR_Trips %>%
   mutate(BR_Prop_08 = c(0.3031544, 0.1577101, 0.3119251, 0.2272104)) # Create separate proportions for Bundegi before 2008 as the boat ramp pretty much didn't exist, have allocated 10% of its boats to the other Exmouth Boat Ramps
 
 # Fishing parameters
-eq.init.fish = 0.05
+eq.init.fish = 0.025
 q = 0.00001
 Effort = (-log(1-eq.init.fish))/q # We assume the same level of nominal effort in each year
 
@@ -987,37 +999,6 @@ for(YEAR in 1:50){
 }
 colSums(Burn_In_Fishing[,,40])
 saveRDS(Burn_In_Fishing, file=paste0("ningaloo", sep="_", "burn_in_fishing_High_M"))
-
-#### FOR SMALL MODEL ####
-## Small model burn in
-model.name <- "small"
-
-setwd(sp_dir)
-small_water <- readRDS(paste0(model.name, sep="_", "water"))
-water <- readRDS("water")
-
-setwd(sg_dir)
-burn_in <- readRDS("ningaloo_burn_in_fishing")
-
-small_water_id <- st_intersects(small_water, water) %>%
-  as.data.frame(.) %>%
-  distinct(row.id, .keep_all = T)
-
-small_burn_in <- burn_in[as.numeric(small_water_id$col.id),,]
-
-setwd(sg_dir)
-saveRDS(small_burn_in, file=paste0(model.name, sep="_", "burn_in_fishing"))
-## Don't want to redo fishing effort because then we'd have an insane amount of fishing effort in this small area, just want to take the appropriate cells and keep the fishing effort as if it was the larger model
-
-setwd(sg_dir)
-Fishing <- readRDS("ningaloo_fishing")
-
-small_fishing <- Fishing[as.numeric(small_water_id$col.id),,]
-small_fishing <- small_fishing/10
-
-setwd(sg_dir)
-saveRDS(small_fishing, file=paste0(model.name, sep="_", "fishing"))
-
 
 
 

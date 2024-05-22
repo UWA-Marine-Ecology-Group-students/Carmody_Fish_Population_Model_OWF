@@ -111,9 +111,6 @@ for(d in 1:dim(YearlyTotal)[3]){ # This allocates fish to cells randomly with th
 PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population, all ages are summed and each column is a month (each layer is a year)
 
 #### RUN MODEL ####
-BurnIn = F #This is to swap the model between burn in and running the model properly
-# setwd(sim_dir)
-set.seed(1313) # This is the burn in seed number
 
 Start=Sys.time()
 for (YEAR in 0:50){
@@ -131,7 +128,7 @@ for (YEAR in 0:50){
   water$pop <- PopTotal[ , 12, YEAR+1] # We just want the population at the end of the year
   
   Total[YEAR+1,1] <- sum(water$pop)
-  print(Total[YEAR+1,1])
+  #print(Total[YEAR+1,1])
  
 
 }
@@ -183,7 +180,7 @@ for (YEAR in 0:30){
   water$pop <- PopTotal[ , 12, YEAR+1] # We just want the population at the end of the year
   
   Total[YEAR+1,1] <- sum(water$pop)
-  print(Total[YEAR+1,1])
+  #print(Total[YEAR+1,1])
   
   
 }
@@ -200,5 +197,18 @@ setwd(sg_dir)
 saveRDS(YearlyTotal, file=paste0(model.name, sep="_", "BurnInPop_High_M"))
 
 
+setwd(sg_dir)
+unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 
+temp <- unfished.bio[,12,]
+temp2 <- colSums(temp)
+temp3 <- temp2 * maturity[,12]
+Unf.Mat.Bio <- sum(temp3 * Weight[,12])
+
+
+fished.bio <- YearlyTotal
+temp <- fished.bio[,12,]
+temp2 <- colSums(temp)
+temp3 <- temp2 * maturity[,12]
+Mat.Bio <- sum(temp3 * Weight[,12])
 

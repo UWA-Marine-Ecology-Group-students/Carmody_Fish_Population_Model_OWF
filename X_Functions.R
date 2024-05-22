@@ -1244,7 +1244,7 @@ age.group.plots <- function(age.group, data.to.plot, plot.label.1, plot.label.2,
                                 "Temporal management"="#BBCC33"),
                       guide="none")+
     scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
-                                   "No temporal management\nor NTZs"="#302383"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal management", "No temporal management\nor NTZs"),name= "Spatial and temporal\nmanagement scenario")+ 
+                                   "No temporal management\nor NTZs"="#302383"), breaks= c("Current NTZs", "No temporal management\nor NTZs", "Temporal management", "Temporal management\nand NTZs"),name= "Spatial and temporal\nmanagement scenario")+ 
     theme_classic()+
     xlab(NULL)+
     ylab(NULL)+

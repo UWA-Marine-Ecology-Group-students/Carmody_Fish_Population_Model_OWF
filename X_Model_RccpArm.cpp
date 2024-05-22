@@ -33,7 +33,7 @@ arma::vec movementfunc_cpp(const int AGE, const int MONTH, const int MaxCell, ar
 
 // [[Rcpp::export]]
 Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, const int YEAR, const double NatMort,
-                             arma::mat Weight, arma::cube Selectivity, arma::cube YearlyTotal, Rcpp::NumericVector TotalEffort) {
+                             arma::mat Weight, arma::cube Selectivity, arma::cube YearlyTotal, arma::cube Effort) {
 
   int Cell_rw;
   //double NatMort;
@@ -44,6 +44,7 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
   arma::vec caught_weight(MaxCell);
   arma::vec Z(MaxCell);
   arma::vec YPR(MaxCell);
+  arma::vec Baranov(MaxCell);
   
   // arma::vec tot_survived(MaxCell);
   // arma::vec sel_effort(MaxCell);
@@ -52,16 +53,18 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
   
   //Nat_Mort = 1-exp(-NatMort/12);
   for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-    tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * ((exp(-TotalEffort(Cell_rw) * Selectivity(AGE,MONTH,YEAR))) * exp(-NatMort/12));
-    caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-(exp(-TotalEffort(Cell_rw) * Selectivity(AGE,MONTH,YEAR))));
+    tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * ((exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))) * exp(-NatMort/12));
+    caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-(exp(-Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))));
     // tot_survived(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (1-((Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR)) + Nat_Mort));
     // caught(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) * (Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR));
     tot_died(Cell_rw) = YearlyTotal(Cell_rw,MONTH,AGE) - tot_survived(Cell_rw);
-    finite_f(Cell_rw) = (exp(-TotalEffort(Cell_rw) * Selectivity(AGE,MONTH,YEAR)));
-    caught_weight(Cell_rw) = caught(Cell_rw) * Weight(AGE, MONTH);
+    finite_f(Cell_rw) = Effort(Cell_rw, MONTH, YEAR) * Selectivity(AGE,MONTH,YEAR); // This isn't actually finite but I can't be bothered changing it's name
     
-    Z(Cell_rw) = (TotalEffort(Cell_rw) * Selectivity(AGE,MONTH,YEAR)) + NatMort/12;
-    YPR(Cell_rw) = tot_survived(Cell_rw)*((TotalEffort(Cell_rw) * Selectivity(AGE,MONTH,YEAR))/Z(Cell_rw)) * (1-(exp(-Z(Cell_rw)))) * Weight(AGE, MONTH);
+    Z(Cell_rw) = (Effort(Cell_rw, MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR)) + NatMort/12;
+    YPR(Cell_rw) = tot_survived(Cell_rw)*((Effort(Cell_rw,MONTH,YEAR) * Selectivity(AGE,MONTH,YEAR))/Z(Cell_rw)) * (1-(exp(-Z(Cell_rw)))) * Weight(AGE, MONTH);
+    
+    Baranov(Cell_rw) = tot_survived(Cell_rw) * (finite_f(Cell_rw)/Z(Cell_rw)) * (1-(exp(-Z(Cell_rw))));
+    caught_weight(Cell_rw) = Baranov(Cell_rw) * Weight(AGE, MONTH);
   }
 
 
@@ -72,13 +75,14 @@ Rcpp::List mortalityfunc_cpp(const int AGE, const int MaxCell, const int MONTH, 
                             Rcpp::Named("Catch") = caught,
                             Rcpp::Named("finite_f") = finite_f,
                             Rcpp::Named("Catch_weight") = caught_weight,
-                            Rcpp::Named("YPR") = YPR);
+                            Rcpp::Named("YPR") = YPR,
+                            Rcpp::Named("Age_Baranov") = Baranov);
 }
 
 
 // [[Rcpp::export]]
 Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double BHa, const double BHb, const double PF, 
-                              arma::mat Mature, arma::mat Weight, arma::vec Settlement, arma::cube YearlyTotal) {
+                               arma::mat Mature, arma::mat Weight, arma::vec Settlement, arma::cube YearlyTotal) {
   
   
   int AGE;
@@ -106,180 +110,32 @@ Rcpp::List recruitmentfunc_cpp(const int MaxCell, const int MaxAge, const double
   
   tot_recs = (sum(recs_variable)) * (R::rlnorm(1, 0.6));
   //std::cout << "vec recruitmentfunc_cpp: recs " << recs << std::endl;
-    
-    for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 
-      settle_recs(Cell_rw) = Settlement(Cell_rw) * tot_recs; 
-    }
-    
-    return Rcpp::List::create(Rcpp::Named("settle_recs") = settle_recs,
-                              Rcpp::Named("BH_recs") = recs,
-                              Rcpp::Named("Fem_adults") = Fem_adults, // All these go once fixed
-                              Rcpp::Named("SB") = SB,
-                              Rcpp::Named("TotFemSB") = TotFemSB,
-                              Rcpp::Named("tot_recs") = tot_recs);
-    
-    //return settle_recs;
+  
+  for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) { 
+    settle_recs(Cell_rw) = Settlement(Cell_rw) * tot_recs; 
+  }
+  
+  return Rcpp::List::create(Rcpp::Named("settle_recs") = settle_recs,
+                            Rcpp::Named("BH_recs") = recs,
+                            Rcpp::Named("Fem_adults") = Fem_adults, // All these go once fixed
+                            Rcpp::Named("SB") = SB,
+                            Rcpp::Named("TotFemSB") = TotFemSB,
+                            Rcpp::Named("tot_recs") = tot_recs);
+  
+  //return settle_recs;
 }
 
-
 // [[Rcpp::export]]
-Rcpp::List effortfunc_cpp(const int MaxAge, const int NBR, const int MaxCell, const int MONTH, const int YEAR,        // MONTH and YEAR will become part of larger loop
-                          arma::vec FuelPrice, arma::vec CellArea_log, arma::mat Fished,
-                          arma::mat DistBR, arma::mat Spatial_q,
-                          arma::cube YearlyTotal, arma::cube Select, arma::cube BoatDays){
-  int Cell_rw;
-  int Cell_col;
-  int AGE;
-  int ramp;
-  double U;
-  
-  Rcpp::List Res;
-  
-  Rcpp::NumericVector RowU(NBR);
-  //Rcpp::NumericVector Check(NBR);
-  Rcpp::NumericVector Catchable(MaxCell);
-  Rcpp::NumericVector Total_Effort(MaxCell);
-  
-  arma::mat CellU(MaxCell,NBR);
-  arma::mat CellCoef(MaxCell,NBR);
-  arma::mat BR_U(MaxCell,NBR);
-  arma::mat Catchable_Age(MaxCell,MaxAge);
-  arma::mat Effort(MaxCell,NBR);
-  
-  //Calculates the number of fish that can be caught in each cell in each month
-  for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-    for(AGE=0; AGE<MaxAge; AGE++){
-      
-      Catchable_Age(Cell_rw,AGE) = YearlyTotal(Cell_rw,MONTH,AGE) * Select(AGE,MONTH,YEAR);
-    }
-    
-    for(Cell_col=0; Cell_col<MaxAge; Cell_col++){
-      Catchable(Cell_rw) = Catchable(Cell_rw)+Catchable_Age(Cell_rw, Cell_col);
-    }
-    
-  } // End catchable loop
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "Catchable Done " << std::endl;
-  
-  // Calculates the coefficients for each of the cells
-  for(Cell_col=0; Cell_col<NBR; Cell_col++){
-    for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-      CellCoef(Cell_rw, Cell_col) = (FuelPrice(MONTH)*DistBR(Cell_rw, Cell_col)) + Catchable(Cell_rw);
-    } // CHECK THIS WITH MATT
-  } // End cell coefficients
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "Coefficients Done " << std::endl;
-  
-  // Calculate the utility of each cell
-  for(ramp=0; ramp<NBR; ramp++){
-    for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-      U = exp(CellCoef(Cell_rw,ramp)+CellArea_log(Cell_rw));
-      CellU(Cell_rw, ramp) = U;
-    }
-  } // End cell utility
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "Cell utility Done " << std::endl;
-  
-  // Change values of no-take cells to 0 so they don't impact the sum utility
-  for(ramp=0; ramp<NBR; ramp++){
-    for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-      if(YEAR>24){
-        CellU(Cell_rw, ramp) = Fished(Cell_rw,0) * CellU(Cell_rw, ramp);
-      }
-      if(YEAR>44 & YEAR<56){
-        CellU(Cell_rw, ramp) = Fished(Cell_rw,1) * CellU(Cell_rw, ramp);
-      }
-      if(YEAR>56){
-        CellU(Cell_rw, ramp) = Fished(Cell_rw,2) * CellU(Cell_rw, ramp);
-      }
-    }
-  } // End setting NTZs
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "NTZs Done " << std::endl;
-  
-  // Sum utlity to get utility of going to all cells from each boat ramp
-  for(ramp=0; ramp<NBR; ramp++){
-    for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-      RowU(ramp) = RowU(ramp) + CellU(Cell_rw,ramp);
-    }
-  } // End summing utility
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "Summing Utility Done " << std::endl;
-  
-  // Work out utility of going to that cell from each boat ramp
-  for (ramp=0; ramp<NBR; ramp++){
-    for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-      BR_U(Cell_rw,ramp) = CellU(Cell_rw,ramp)/(RowU(ramp));
-    }
-  } // End working out utility from boat ramps
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "Calculating utility Done " << std::endl;
-  
-  // // Check everything sums to 0
-  // for (ramp=0; ramp<NBR; ramp++){
-  //   for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-  //     Check(ramp) = Check(ramp) + BR_U(Cell_rw,ramp);
-  //   }
-  // } // End check loop
-  
-  // Allocate trips to each of the cells
-  for(ramp=0; ramp<NBR; ramp++){
-    for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-      Effort(Cell_rw,ramp) = BR_U(Cell_rw,ramp)*BoatDays(MONTH,ramp,YEAR);
-    }
-  } // End allocating trips loop
-  //std::cout << "CharlottesModelfunc_cpp: " << "Allocating Done " << std::endl;
-  
-  // Sum across ramps
-  for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-    for(ramp=0; ramp<NBR; ramp++){
-      Total_Effort(Cell_rw) = Total_Effort(Cell_rw)+Effort(Cell_rw, ramp);
-    }
-  } // End summing ramps loop
-  
-  //std::cout << "CharlottesModelfunc_cpp: " << "Summing ramps Done " << std::endl;
-  
-  // Add in catchability
-  for(Cell_rw=0; Cell_rw<MaxCell; Cell_rw++){
-    Total_Effort(Cell_rw) = Total_Effort(Cell_rw)*Spatial_q(Cell_rw, YEAR);
-    
-    // NaN (or Inf) won't compare to itself so we can use this to set it to 0
-    if(Total_Effort[Cell_rw] != Total_Effort[Cell_rw] ){ 
-      Total_Effort[Cell_rw] = 0; 
-    } 
-    
-  } // End catchability loop
-  //std::cout << "CharlottesModelfunc_cpp: " << "Catchability Done " << std::endl;
-  
-  return Rcpp::List::create(Rcpp::Named("Catchable_Fish") = Catchable,
-                            Rcpp::Named("Catchable_Age") = Catchable_Age,
-                            Rcpp::Named("CellCoef") = CellCoef,
-                            Rcpp::Named("CellU") = CellU,
-                            Rcpp::Named("RowU") = RowU,
-                            //Rcpp::Named("Check") = Check,
-                            Rcpp::Named("Effort") = Effort,
-                            Rcpp::Named("Total_Effort") = Total_Effort
-  );
-}
-
-
-// [[Rcpp::export]]
-Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear, const int MaxCell, const int NBR, const double NatMort, const double BHa, const double BHb, const double PF, 
-                            arma::vec Settlement, arma::vec FuelPrice, arma::vec CellArea_log, arma::mat Fished,
-                                   arma::mat AdultMove, arma::mat Mature, arma::mat Weight, arma::mat DistBR, arma::mat Spatial_q,
-                                   arma::cube YearlyTotal, arma::cube Select, arma::cube BoatDays) {
+Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear, const int MaxCell, const double NatMort, const double BHa, const double BHb, const double PF, 
+                            arma::mat AdultMove, arma::mat Mature, arma::mat Weight, arma::vec Settlement,
+                            arma::cube YearlyTotal, arma::cube Select, arma::cube Effort) {
   
   // int Year;
   int MONTH;
   int AGE;
   int Cell_rw;
-  // int Cell_col;
-  // int ramp;
-  // double U;
-  
   Rcpp::List Res;
   Rcpp::List recruits;
-  
   Rcpp::NumericVector Fish_catch(MaxCell);
   Rcpp::NumericVector tot_mort(MaxCell);
   Rcpp::NumericVector caught(MaxCell);
@@ -295,7 +151,6 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
   Rcpp::NumericVector Z(MaxCell);
   Rcpp::NumericVector YPR(MaxCell);
   Rcpp::NumericVector YPR_month(MaxCell);
-  Rcpp::NumericVector TotalEffort(MaxCell);
   
   arma::cube month_catch(MaxCell, 12, MaxAge);
   arma::cube month_catch_weight(MaxCell, 12, MaxAge);
@@ -306,94 +161,79 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
   arma::cube month_YPR(MaxCell, 12, MaxAge);
   
   // for (Year=0; Year<MaxYear; Year++) { 
-    for (MONTH=0; MONTH<12; MONTH++) { 
-      // std::cout << " Month " << MONTH << std::endl; 
+  for (MONTH=0; MONTH<12; MONTH++) { 
+    // std::cout << " Month " << MONTH << std::endl; 
+    // move fish
+    for (AGE=0; AGE<MaxAge; AGE++) { 
       
-      // move fish
-      for (AGE=0; AGE<MaxAge; AGE++) { 
-        
-        All_Movers = movementfunc_cpp(AGE, MONTH, MaxCell, AdultMove, YearlyTotal);
-
-        for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-          YearlyTotal(Cell_rw,MONTH,AGE) = All_Movers(Cell_rw);
-        } // Cell_rw
-        
-      } // AGE
+      All_Movers = movementfunc_cpp(AGE, MONTH, MaxCell, AdultMove, YearlyTotal);
+      // std::cout << "CharlottesModelfunc_cpp: AGE " << AGE << "All_Movers " << All_Movers << std::endl;
       
-      //std::cout << "CharlottesModelfunc_cpp: " << "Movement Done " << std::endl;
+      for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
+        YearlyTotal(Cell_rw,MONTH,AGE) = All_Movers(Cell_rw);
+      } // Cell_rw
       
-      // Calcualte the effort for the next month here 
-      Res = effortfunc_cpp(MaxAge, NBR, MaxCell, MONTH, YEAR, FuelPrice, CellArea_log, Fished,
-                           DistBR, Spatial_q, YearlyTotal, Select, BoatDays);
+    } // AGE
+    // kill fish
+    for (AGE=0; AGE<MaxAge; AGE++) {
       
-      TotalEffort = Res["Total_Effort"];
-      
-      //std::cout << "CharlottesModelfunc_cpp: " << "Effort Done " << TotalEffort <<std::endl;
-      
-      // kill fish
-      for (AGE=0; AGE<MaxAge; AGE++) {
-        
-        if (MONTH==11) {
-          // if (AGE<=1) {
-            if (AGE<(MaxAge-1)) {
-              
-              Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, TotalEffort);
-              
-              tot_survived = Res["tot_survived"];
-              tot_died = Res["tot_died"];
-              caught = Res["Catch"];
-              caught_weight = Res["Catch_weight"];
-              YPR_month = Res["YPR"];
-              
-              
-              for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-                YearlyTotal(Cell_rw,0,AGE+1) = tot_survived(Cell_rw);
-              }
-            } // AGE<MaxAge
-          // } // AGE>1
-        } else if (MONTH<11){ // Month==11
+      if (MONTH==11) {
+        // if (AGE<=1) {
+        if (AGE<(MaxAge-1)) {
           
-          Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, TotalEffort);
+          Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort);
           
           tot_survived = Res["tot_survived"];
           tot_died = Res["tot_died"];
-          caught = Res["Catch"];
+          caught = Res["Age_Baranov"];
           caught_weight = Res["Catch_weight"];
           YPR_month = Res["YPR"];
           
+          
           for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-            YearlyTotal(Cell_rw,MONTH+1,AGE) = tot_survived(Cell_rw);
+            YearlyTotal(Cell_rw,0,AGE+1) = tot_survived(Cell_rw);
           }
-        } // if
-        // setting other outputs 
-        for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-          month_catch(Cell_rw,MONTH,AGE) = caught(Cell_rw);
-          month_catch_weight(Cell_rw,MONTH,AGE) = caught_weight(Cell_rw);
-          age_dead(Cell_rw,MONTH,AGE) = tot_died(Cell_rw);
-          age_survived(Cell_rw,MONTH,AGE) = tot_survived(Cell_rw);
-          month_YPR(Cell_rw, MONTH, AGE) = YPR_month(Cell_rw);
-        }
-      } // AGE
-      
-      //std::cout << "CharlottesModelfunc_cpp: " << "Mortality Done " << std::endl;
-      
-      // recruit fish
-      if (MONTH==9) { // October
-        recruits = recruitmentfunc_cpp(MaxCell, MaxAge, BHa, BHb, PF, Mature, Weight, Settlement, YearlyTotal);
+        } // AGE<MaxAge
+        // } // AGE>1
+      } else if (MONTH<11){ // Month==11
         
-        settle_recs = recruits["settle_recs"];
-        BH_recs = recruits["BH_recs"];
-        Fem_SB = recruits["TotFemSB"];
-        // std::cout << "CharlottesModelfunc_cpp: settle_recs " << settle_recs << std::endl;
+        Res = mortalityfunc_cpp(AGE, MaxCell, MONTH, YEAR, NatMort, Weight, Select, YearlyTotal, Effort);
+        
+        tot_survived = Res["tot_survived"];
+        tot_died = Res["tot_died"];
+        caught = Res["Age_Baranov"];
+        caught_weight = Res["Catch_weight"];
+        YPR_month = Res["YPR"];
         
         for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
-          YearlyTotal(Cell_rw,0,0) = settle_recs(Cell_rw);
+          YearlyTotal(Cell_rw,MONTH+1,AGE) = tot_survived(Cell_rw);
         }
+      } // if
+      // setting other outputs 
+      for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
+        month_catch(Cell_rw,MONTH,AGE) = caught(Cell_rw);
+        month_catch_weight(Cell_rw,MONTH,AGE) = caught_weight(Cell_rw);
+        age_dead(Cell_rw,MONTH,AGE) = tot_died(Cell_rw);
+        age_survived(Cell_rw,MONTH,AGE) = tot_survived(Cell_rw);
+        month_YPR(Cell_rw, MONTH, AGE) = YPR_month(Cell_rw);
       }
-     // std::cout << "CharlottesModelfunc_cpp: " << "Recruitment Done " << std::endl;
-    } // Month
- // } // Year
- 
+    } // AGE
+    // recruit fish
+    if (MONTH==9) { // October
+      recruits = recruitmentfunc_cpp(MaxCell, MaxAge, BHa, BHb, PF, Mature, Weight, Settlement, YearlyTotal);
+      
+      settle_recs = recruits["settle_recs"];
+      BH_recs = recruits["BH_recs"];
+      Fem_SB = recruits["TotFemSB"];
+      // std::cout << "CharlottesModelfunc_cpp: settle_recs " << settle_recs << std::endl;
+      
+      for (Cell_rw=0; Cell_rw<MaxCell; Cell_rw++) {
+        YearlyTotal(Cell_rw,0,0) = settle_recs(Cell_rw);
+      }
+    }
+  } // Month
+  // } // Year
+  
   return Rcpp::List::create(Rcpp::Named("YearlyTotal") = YearlyTotal,
                             Rcpp::Named("settle_recs") = settle_recs,
                             Rcpp::Named("BH_recs") = BH_recs,
@@ -405,8 +245,3 @@ Rcpp::List RunModelfunc_cpp(const int YEAR, const int MaxAge, const int MaxYear,
                             Rcpp::Named("Fem_SB") = Fem_SB);
   
 } // End function
-
-
-
-
-
