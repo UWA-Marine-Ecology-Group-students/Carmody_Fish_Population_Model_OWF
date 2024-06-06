@@ -55,15 +55,15 @@ source("X_Functions.R")
 pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150)
 my.colours <- "PuBu"
 
-model.name <- "ningaloo"
-Movement_Speed = "medium_movement"
+model.name = "ningaloo"
+Movement_Speed = "fast_movement"
 
 #### LOAD FILES ####
 
 ## Normal Model Files
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement_medium"))
-Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_fast"))
+Settlement <- readRDS(paste0(model.name, sep="_","recruitment"))
 # Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water")) %>% 
@@ -182,7 +182,7 @@ SIM.Weight.Catches <- list()
 
 #### RUN MODEL ####
 Start=Sys.time()
-for (SIM in 1:200){ # Simulation loop
+for (SIM in 1:100){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()

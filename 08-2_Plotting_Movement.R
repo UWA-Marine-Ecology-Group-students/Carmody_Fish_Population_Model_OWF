@@ -60,6 +60,8 @@ Names <- c("Slow Movement", "Medium Movement", "Fast Movement")
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water"))
+maturity <- readRDS("maturity")
+Weight <- readRDS("weight")
 
 setwd(sp_dir)
 bathy <- raster("ga_bathy_ningaloocrop.tif")
@@ -203,6 +205,9 @@ SP_Pop_NTZ_S03 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S03_fas
 SP_Pop_F_S03 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S03_fast_movement"))
 
 #### CHANGE NUMBERS BACK TO 100/200 ###
+Names <- c("Current NTZs", "No temporal management or NTZs", 
+           "Temporal management and NTZs","Temporal management")
+
 ## S00 - Normal
 
 NTZ.F.Ages.S00 <- zone.pop.format(ntz.list = SP_Pop_NTZ_S00, f.list = SP_Pop_NTZ_S00, scenario.name = Names[1], nsim = 100)
@@ -347,7 +352,7 @@ sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
 
-legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Mature", plot.label.2 = "(b) Mature", label.pos.y = 15, label.pos.x = 1990)
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Mature", plot.label.2 = "(b) Mature", label.pos.y = 15, label.pos.x = 1988)
 legal.ntz.slow <- legal.plots[[1]]
 legal.F <- legal.plots[[2]]
 
@@ -360,7 +365,7 @@ Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>%
          P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
 
 
-large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 3, label.pos.x = 1993)
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 3, label.pos.x = 1991)
 large.legal.ntz.slow <- large.legal.plots[[1]]
 large.legal.F <- large.legal.plots[[2]]
 
@@ -369,7 +374,7 @@ large.legal.F <- large.legal.plots[[2]]
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
 y.label <- textGrob("Median No. Fish per"~km^2, gp=gpar(fontsize=9), rot=90)
-legend <- gtable_filter(ggplotGrob(large.legal.ntz), "guide-box")
+legend <- gtable_filter(ggplotGrob(large.legal.ntz.fast), "guide-box")
 
 LinePlotsxGroup.FastxSlow <-grid.arrange(arrangeGrob(legal.ntz.slow + theme(legend.position="none"),
                                                      legal.ntz.fast + theme(legend.position="none"),
@@ -550,8 +555,6 @@ Pop.Dist[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_",
 Pop.Dist[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02", sep="_", "slow_movement"))
 Pop.Dist[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03", sep="_", "slow_movement"))
 
-Names <- c("Current NTZs", "No temporal management or NTZs", 
-           "Temporal and NTZs","Temporal management")
 
 Dists.res <- distance.abundance.format(Pops = Pop.Dist, max.year=59, n.sim=100, n.row=nrow(Whole_Pop_Ages), n.dist=3, 
                                        n.cell=NCELL, n.scenario=4, fished.cells=water, LQ=0.025, HQ=0.975, distances=Distances,
@@ -582,6 +585,9 @@ Pop.Dist.SD.fast <- Dists.res[[4]]
 
 #* Catch ####
 setwd(pop_dir)
+
+Names <- c("Current NTZs", "No temporal management or NTZs", 
+           "Temporal and NTZs","Temporal management")
 
 Pop.Catch.slow <- list()
 
@@ -629,27 +635,27 @@ abundance.0_10.slow <- NULL
 catch.0_10.slow <- NULL
 
 for (S in 1:4){
-  temp.mean <- Pop.Dist.Mean.slow[[S]] %>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  temp.SD <- Pop.Dist.SD.slow[[S]]%>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  temp.median <- Pop.Dist.Median.slow[[S]]%>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  temp.quant <- Pop.Dist.Quant.slow[[S]]%>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  
-  temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
-    rename(SD_Abundance = "temp.SD$SD_Abundance",
-           Median_Abundance = "temp.median$Median_Abundance",
-           Q2.5 = "temp.quant$`2.5%`",
-           Q97.5 = "temp.quant$`97.5%`") %>% 
-    filter(Distances %in% c("0-10 km"))
-  
-  abundance.0_10.slow <- rbind(abundance.0_10.slow, temp.all)
+  # temp.mean <- Pop.Dist.Mean.slow[[S]] %>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # temp.SD <- Pop.Dist.SD.slow[[S]]%>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # temp.median <- Pop.Dist.Median.slow[[S]]%>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # temp.quant <- Pop.Dist.Quant.slow[[S]]%>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # 
+  # temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+  #   rename(SD_Abundance = "temp.SD$SD_Abundance",
+  #          Median_Abundance = "temp.median$Median_Abundance",
+  #          Q2.5 = "temp.quant$`2.5%`",
+  #          Q97.5 = "temp.quant$`97.5%`") %>% 
+  #   filter(Distances %in% c("0-10 km"))
+  # 
+  # abundance.0_10.slow <- rbind(abundance.0_10.slow, temp.all)
   
   temp.mean <- Pop.Catch.Mean.slow[[S]]%>% 
     # do.call("rbind",.) %>% 
@@ -797,27 +803,27 @@ abundance.0_10.fast <- NULL
 catch.0_10.fast <- NULL
 
 for (S in 1:4){
-  temp.mean <- Pop.Dist.Mean.fast[[S]] %>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  temp.SD <- Pop.Dist.SD.fast[[S]]%>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  temp.median <- Pop.Dist.Median.fast[[S]]%>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  temp.quant <- Pop.Dist.Quant.fast[[S]]%>% 
-    # do.call("rbind",.) %>% 
-    filter(Distances %in% "0-10 km")
-  
-  temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
-    rename(SD_Abundance = "temp.SD$SD_Abundance",
-           Median_Abundance = "temp.median$Median_Abundance",
-           Q2.5 = "temp.quant$`2.5%`",
-           Q97.5 = "temp.quant$`97.5%`") %>% 
-    filter(Distances %in% c("0-10 km"))
-  
-  abundance.0_10.fast <- rbind(abundance.0_10.fast, temp.all)
+  # temp.mean <- Pop.Dist.Mean.fast[[S]] %>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # temp.SD <- Pop.Dist.SD.fast[[S]]%>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # temp.median <- Pop.Dist.Median.fast[[S]]%>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # temp.quant <- Pop.Dist.Quant.fast[[S]]%>% 
+  #   # do.call("rbind",.) %>% 
+  #   filter(Distances %in% "0-10 km")
+  # 
+  # temp.all <- cbind(temp.mean, temp.SD$SD_Abundance, temp.median$Median_Abundance, temp.quant$`2.5%`, temp.quant$`97.5%`) %>% 
+  #   rename(SD_Abundance = "temp.SD$SD_Abundance",
+  #          Median_Abundance = "temp.median$Median_Abundance",
+  #          Q2.5 = "temp.quant$`2.5%`",
+  #          Q97.5 = "temp.quant$`97.5%`") %>% 
+  #   filter(Distances %in% c("0-10 km"))
+  # 
+  # abundance.0_10.fast <- rbind(abundance.0_10.fast, temp.all)
   
   temp.mean <- Pop.Catch.Mean.fast[[S]]%>% 
     # do.call("rbind",.) %>% 
@@ -960,7 +966,7 @@ CPUE.0_10.plot.fast
 setwd(fig_dir)
 x.label <- textGrob("Year", gp=gpar(fontsize=9))
 y.label <- textGrob(bquote(CPUE~(Fish~per~boat~days~per~km^2)),gp=gpar(fontsize=9), rot=90)
-legend <- gtable_filter(ggplotGrob(Catch.0_10.plot.slow), "guide-box")
+legend <- gtable_filter(ggplotGrob(CPUE.0_10.plot.slow), "guide-box")
 
 Catch.AbundancexDistancexMovement <-grid.arrange(arrangeGrob(
                                                     abundance.0_10.plot.slow + theme(legend.position="none"),
@@ -979,4 +985,4 @@ CPUExDistancexMovement <-grid.arrange(arrangeGrob(
                                                     bottom=x.label,
                                                     left=y.label,
                                                     right=legend))
-ggsave(CPUExDistancexMovement, filename="Distance_Catch_Only_Movement.png",height = a4.width*1, width = a4.width*1.4, units  ="mm", dpi = 300 )
+ggsave(CPUExDistancexMovement, filename="Distance_CPUE_Only_Movement.png",height = a4.width*1, width = a4.width*1.4, units  ="mm", dpi = 300 )

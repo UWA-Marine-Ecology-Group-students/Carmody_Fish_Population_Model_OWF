@@ -45,14 +45,14 @@ my.colours <- "PuBu"
 
 model.name <- "ningaloo"
 
-Names <- c("Historical and Current NTZs", "Neither NTZs nor Temporal Management", 
-           "Temporal and Spatial Management","Temporal Management Only")
+Names <- c("Current NTZs", "No temporal management or NTZs", 
+           "Temporal management and NTZs","Temporal management")
 
 #### LOAD FILES ####
 
 ## Normal Model Files
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement_fast"))
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_medium"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
 Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -62,6 +62,8 @@ BurnInPop <- readRDS(paste0(model.name, sep="_", "BurnInPop_High_M"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
 Weight <- readRDS("weight")
+
+NCELL <- nrow(Water)
 
 #* WHOLE POPULATION LMs ####
 
@@ -84,11 +86,8 @@ total_pop <- total_pop %>%
          Scenario = as.factor(Scenario)) %>% 
   mutate(Movement = "Medium")
 
-mod <- lm(log(MatBio) ~ Scenario, data = total_pop)
+mod <- aov(log(MatBio) ~ Scenario, data = total_pop)
 summary(mod)
-
-pwr.f2.test(u = 2, v = 397, f2 = (0.02917/(1-0.02917)), sig.level = 0.05)
-# If I've done this right my power is 0.88
 
 total_pop %>% group_by(Scenario) %>% 
   summarise(mean = mean(MatBio),
@@ -101,16 +100,10 @@ ggplot()+
 summary(mod)
 plot(mod$residuals)
 
-mod.aov <- aov(mod)
-mod.tukey <- TukeyHSD(mod.aov)
+mod.tukey <- TukeyHSD(mod)
+mod.tukey
 
-
-plot(mod2)
-plot(mod2$residuals)
-mod2$fitted.values
-hist(rstandard(mod2))
-
-#* ZONE LINEAR MODELS ####
+#* ZONE MODELS ####
 setwd(pop_dir)
 SP_Pop_NTZ_S00 <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ_S00_medium_movement"))
 SP_Pop_F_S00 <- readRDS(paste0(model.name, sep="_","Sp_Population_F_S00_medium_movement"))
@@ -167,7 +160,7 @@ Whole_Pop_Ages_NTZ <- rbind(NTZ.S00, NTZ.S01, NTZ.S02, NTZ.S03) %>%
 Whole_Pop_Ages_F <- rbind(F.S00, F.S01, F.S02, F.S03) %>% 
   mutate(Zone = "F")
 
-NTZ_data_Medium <- Whole_Pop_Ages_NTZ %>% 
+NTZ_data <- Whole_Pop_Ages_NTZ %>% 
   pivot_longer(cols=starts_with("V"), names_to = "Simulation",values_to="Number")
 
 F_data <- Whole_Pop_Ages_F %>% 
@@ -182,12 +175,11 @@ NTZ_Recruits <- NTZ_data %>%
   mutate(Mod_Year = as.factor(Mod_Year),
          Scenario = as.factor(Scenario))
 
-mod1.NTZ <- lm(log(Number) ~ Scenario, dat=NTZ_Recruits)
+mod1.NTZ <- aov(log(Number) ~ Scenario, dat=NTZ_Recruits)
 summary(mod1.NTZ)
 plot(mod1.NTZ$residuals)
 
-mod1.NTZ.aov <- aov(mod1.NTZ)
-mod1.NTZ.tukey <- TukeyHSD(mod1.NTZ.aov)
+mod1.NTZ.tukey <- TukeyHSD(mod1.NTZ)
 mod1.NTZ.tukey
 
 F_Recruits <- F_data %>% 
@@ -196,12 +188,11 @@ F_Recruits <- F_data %>%
   mutate(Mod_Year = as.factor(Mod_Year),
          Scenario = as.factor(Scenario))
 
-mod1.F <- lm(log(Number) ~ Scenario, dat=F_Recruits)
+mod1.F <- aov(log(Number) ~ Scenario, dat=F_Recruits)
 summary(mod1.F)
 plot(mod1.F$residuals)
 
-mod1.F.aov <- aov(mod1.F)
-mod1.F.tukey <- TukeyHSD(mod1.F.aov)
+mod1.F.tukey <- TukeyHSD(mod1.F)
 mod1.F.tukey
 
 # Sublegal
@@ -211,12 +202,11 @@ NTZ_Sublegal <- NTZ_data %>%
   mutate(Mod_Year = as.factor(Mod_Year),
          Scenario = as.factor(Scenario))
 
-mod2.NTZ <- lm(log(Number) ~ Scenario, dat=NTZ_Sublegal)
+mod2.NTZ <- aov(log(Number) ~ Scenario, dat=NTZ_Sublegal)
 summary(mod2.NTZ)
 plot(mod2.NTZ$residuals)
 
-mod2.NTZ.aov <- aov(mod2.NTZ)
-mod2.NTZ.tukey <- TukeyHSD(mod2.NTZ.aov)
+mod2.NTZ.tukey <- TukeyHSD(mod2.NTZ)
 mod2.NTZ.tukey
 
 
@@ -237,12 +227,11 @@ NTZ_Legal <- NTZ_data %>%
   mutate(Mod_Year = as.factor(Mod_Year),
          Scenario = as.factor(Scenario))
 
-mod3.NTZ <- lm(log(Number) ~ Scenario, dat=NTZ_Legal)
+mod3.NTZ <- aov(log(Number) ~ Scenario, dat=NTZ_Legal)
 summary(mod3.NTZ)
 plot(mod3.NTZ$residuals)
 
-mod3.NTZ.aov <- aov(mod3.NTZ)
-mod3.NTZ.tukey <- TukeyHSD(mod3.NTZ.aov)
+mod3.NTZ.tukey <- TukeyHSD(mod3.NTZ)
 mod3.NTZ.tukey
 
 
@@ -269,12 +258,11 @@ NTZ_Large <- NTZ_data %>%
   mutate(Mod_Year = as.factor(Mod_Year),
          Scenario = as.factor(Scenario)) 
 
-mod4.NTZ <- lm(log(Number) ~ Scenario, dat=NTZ_Large)
+mod4.NTZ <- aov(log(Number) ~ Scenario, dat=NTZ_Large)
 summary(mod4.NTZ)
 plot(mod4.NTZ$residuals)
 
-mod4.NTZ.aov <- aov(mod4.NTZ)
-mod4.NTZ.tukey <- TukeyHSD(mod4.NTZ.aov)
+mod4.NTZ.tukey <- TukeyHSD(mod4.NTZ)
 mod4.NTZ.tukey
 
 
@@ -559,9 +547,12 @@ Dist.Catch.10km <- Dist.Catch %>%
   left_join(., Effort.10km, by=c("Scenario", "Distance", "Year")) %>% 
   mutate(CPUE = Total/Effort)
 
-mod1.10km <- lm(log(CPUE) ~ Scenario, dat=Dist.Catch.10km)
+mod1.10km <- aov(log(CPUE) ~ Scenario, dat=Dist.Catch.10km)
 summary(mod1.10km)
 plot(mod1.10km$residuals)
+
+mod1.10km.Tukey <- TukeyHSD(mod1.10km)
+mod1.10km.Tukey 
 
 ## Catch model 50km
 Effort.50km <- Effort_Dist[[2]]
@@ -573,9 +564,13 @@ Dist.Catch.50km <- Dist.Catch %>%
   left_join(., Effort.50km, by=c("Scenario", "Distance", "Year")) %>% 
   mutate(CPUE = Total/Effort)
 
-mod2.50km <- lm(log(CPUE) ~ Scenario, dat=Dist.Catch.50km)
+mod2.50km <- aov(log(CPUE) ~ Scenario, dat=Dist.Catch.50km)
 summary(mod2.50km)
 plot(mod2.50km$residuals)
+
+mod2.50km.Tukey <- TukeyHSD(mod2.50km)
+mod2.50km.Tukey 
+
 
 ## Catch model 100km
 Effort.100km <- Effort_Dist[[3]]
@@ -587,9 +582,13 @@ Dist.Catch.100km <- Dist.Catch %>%
   left_join(., Effort.100km, by=c("Scenario", "Distance", "Year")) %>% 
   mutate(CPUE = Total/Effort)
 
-mod3.100km <- lm(log(CPUE) ~ Scenario, dat=Dist.Catch.100km)
+mod3.100km <- aov(log(CPUE) ~ Scenario, dat=Dist.Catch.100km)
 summary(mod3.100km)
 plot(mod3.100km$residuals)
+
+mod3.100km.Tukey <- TukeyHSD(mod3.100km)
+mod3.100km.Tukey 
+
 
 #### MOVEMENT SCENARIO GLMS ####
 setwd(pop_dir)

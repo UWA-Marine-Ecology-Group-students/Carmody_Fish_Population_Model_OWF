@@ -300,6 +300,7 @@ ggsave('broad-site-plot.png', dpi = 200, width = 10, height = 10)
 setwd(sg_dir)
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water"))
+Water <- readRDS(paste0(model.name, sep="_","water")) ## This one doesn't get changed
 
 setwd(sp_dir)
 bathy <- raster("ga_bathy_ningaloocrop.tif")
@@ -394,8 +395,8 @@ ggsave(map, filename="Whole_map.png", height = a4.width*1, width = a4.width, uni
 
 ####EFFORT MAP ####
 
-Names <- c("Historical and Current Management", "No Spatial Management", 
-           "Temporal and Spatial Management","Temporal Management Only" )
+Names <- c("Current NTZs", "No temporal management or NTZs", 
+           "Temporal management and NTZs","Temporal management")
 
 Effort_Scen <- list()
 Spatial_Qs <- list()
@@ -431,9 +432,7 @@ for(S in 1:4){
   
   Boat_Days[[S]] <- Boat_Days_Scen
 }
-colSums(Boat_Days[[2]][,,2])
-Effort_Scen[[1]][1000:1834,,50]
-Effort_Scen[[3]][1000:1834,,50]
+
 #* Sum up effort for every year in each of the scenarios
 
 Boat_Days_sum <- NULL
@@ -596,6 +595,9 @@ MeanAge_S00 <- Spatial_Age_Mean %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MeanAge_S00 
 
+setwd(fig_dir)
+ggsave(MeanAge_S00, filename="MeanAge_S00.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 MeanAge_S01 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[2]) %>% 
   ggplot()+
@@ -607,6 +609,9 @@ MeanAge_S01 <- Spatial_Age_Mean %>%
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MeanAge_S01 
+
+setwd(fig_dir)
+ggsave(MeanAge_S01, filename="MeanAge_S01.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 MeanAge_S02 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[3]) %>% 
@@ -620,6 +625,9 @@ MeanAge_S02 <- Spatial_Age_Mean %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MeanAge_S02 
 
+setwd(fig_dir)
+ggsave(MeanAge_S02, filename="MeanAge_S02.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 MeanAge_S03 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[4]) %>% 
   ggplot()+
@@ -631,6 +639,9 @@ MeanAge_S03 <- Spatial_Age_Mean %>%
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MeanAge_S03
+
+setwd(fig_dir)
+ggsave(MeanAge_S03, filename="MeanAge_S03.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 ##### Spatial Plots of Catch ####
 setwd(pop_dir)
@@ -684,6 +695,9 @@ SpatialCatch_S00 <- Spatial_Catch_Shallow  %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 SpatialCatch_S00
 
+setwd(fig_dir)
+ggsave(SpatialCatch_S00, filename="SpatialCatch_S00.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 SpatialCatch_S01 <- Spatial_Catch_Shallow  %>% 
   filter(Scenario %in% Names[2]) %>% 
   ggplot()+
@@ -695,6 +709,9 @@ SpatialCatch_S01 <- Spatial_Catch_Shallow  %>%
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 SpatialCatch_S01
+
+setwd(fig_dir)
+ggsave(SpatialCatch_S01, filename="SpatialCatch_S01.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 SpatialCatch_S02 <- Spatial_Catch_Shallow  %>% 
   filter(Scenario %in% Names[3]) %>% 
@@ -708,6 +725,9 @@ SpatialCatch_S02 <- Spatial_Catch_Shallow  %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 SpatialCatch_S02
 
+setwd(fig_dir)
+ggsave(SpatialCatch_S02, filename="SpatialCatch_S02.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 SpatialCatch_S03 <- Spatial_Catch_Shallow  %>% 
   filter(Scenario %in% Names[4]) %>% 
   ggplot()+
@@ -719,6 +739,9 @@ SpatialCatch_S03 <- Spatial_Catch_Shallow  %>%
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 SpatialCatch_S03
+
+setwd(fig_dir)
+ggsave(SpatialCatch_S03, filename="SpatialCatch_S03.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 #### Spatial Plot of Biomass ####
 setwd(sg_dir)
@@ -828,6 +851,9 @@ MedianWeight_S00 <- Spatial_Weight_Mean %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MedianWeight_S00 
 
+setwd(fig_dir)
+ggsave(MedianWeight_S00, filename="MedianWeight_S00.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 MedianWeight_S01 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[2]) %>% 
   mutate(Mean.Age=log(Mean.Age+1)) %>% 
@@ -840,6 +866,9 @@ MedianWeight_S01 <- Spatial_Weight_Mean %>%
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MedianWeight_S01 
+
+setwd(fig_dir)
+ggsave(MedianWeight_S01, filename="MedianWeight_S01.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 MedianWeight_S02 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[3]) %>% 
@@ -854,6 +883,9 @@ MedianWeight_S02 <- Spatial_Weight_Mean %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MedianWeight_S02 
 
+setwd(fig_dir)
+ggsave(MedianWeight_S02, filename="MedianWeight_S02.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+
 MedianWeight_S03 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[4]) %>% 
   mutate(Mean.Age=log(Mean.Age+1)) %>% 
@@ -866,4 +898,7 @@ MedianWeight_S03 <- Spatial_Weight_Mean %>%
         panel.background = element_blank(), axis.line = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MedianWeight_S03
+
+setwd(fig_dir)
+ggsave(MedianWeight_S03, filename="MedianWeight_S03.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
