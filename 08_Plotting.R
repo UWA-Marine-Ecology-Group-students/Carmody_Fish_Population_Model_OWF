@@ -176,6 +176,12 @@ total_pop <- total.pop.format(pop.file.list = total_pop_list, scenario.names = N
 setwd(sg_dir)
 unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 
+check <- Sim.Ages[1:30,48,1]
+
+temp3 <- check * maturity[,12]
+check2<- sum(temp3 * Weight[,12])
+
+
 temp <- unfished.bio[,12,]
 temp2 <- colSums(temp)
 temp3 <- temp2 * maturity[,12]

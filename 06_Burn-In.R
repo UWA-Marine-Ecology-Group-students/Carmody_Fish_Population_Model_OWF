@@ -54,6 +54,7 @@ Water <- readRDS(paste0(model.name, sep="_","water"))
 start.pop <- readRDS(paste0(model.name, sep="_","Starting_Pop"))
 Selectivity <- readRDS("selret")
 Mature <- readRDS("maturity")
+maturity <- readRDS("maturity")
 Weight <- readRDS("weight")
 
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment")) 
@@ -75,8 +76,8 @@ water <- readRDS(paste0(model.name, sep="_","water"))
 NatMort = 0.146
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
-BHa = 0.4344209 #0.4344209
-BHb = 0.009398152 #0.003759261 #0.0009398152 #0.01889882
+BHa = 0.4344209 
+BHb = 0.003132717
 PF = 0.5
 
 # Model settings
@@ -113,7 +114,7 @@ PopTotal <- array(0, dim=c(MaxCell, 12, MaxYear)) # This is our total population
 #### RUN MODEL ####
 
 Start=Sys.time()
-for (YEAR in 0:50){
+for (YEAR in 0:49){
   
   print(YEAR)
   
@@ -212,3 +213,5 @@ temp2 <- colSums(temp)
 temp3 <- temp2 * maturity[,12]
 Mat.Bio <- sum(temp3 * Weight[,12])
 
+
+Mat.Bio/Unf.Mat.Bio
