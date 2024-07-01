@@ -56,15 +56,15 @@ pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150)
 my.colours <- "PuBu"
 
 model.name = "ningaloo"
-Movement_Speed = "medium_movement"
+Movement_Speed = "slow_movement"
 
 #### LOAD FILES ####
 
 ## Normal Model Files
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement_fast"))
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_slow"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment"))
-Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
+# Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 Water <- readRDS(paste0(model.name, sep="_","water")) %>% 
   st_make_valid()
@@ -75,9 +75,9 @@ Weight <- readRDS("weight")
 
 # Simulation Files
 # Need to set different seeds for each scenario so that they are different but run the same every time
-# setwd(sim_dir)
-# Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
-Scenario <- "S00"
+setwd(sim_dir)
+Effort <- readRDS(paste0(model.name, sep="_", "S03_fishing"))
+Scenario <- "S03"
 
 #### SET UP SPATIAL EXTENT FOR PLOTS ####
 setwd(sp_dir)
@@ -86,7 +86,6 @@ WHA <- st_read("2013_02_WorldHeritageMarineProgramme.shp") %>%
   st_transform(4283)%>%
   st_make_valid %>% 
   st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5) 
-
 
 #* Create list of cells to restrict plots to shallow Water (<30m)
 Water_points <- st_centroid_within_poly(Water) 
@@ -182,7 +181,7 @@ SIM.Weight.Catches <- list()
 
 #### RUN MODEL ####
 Start=Sys.time()
-for (SIM in 1:1){ # Simulation loop
+for (SIM in 1:100){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -307,31 +306,31 @@ End = Sys.time()
 Runtime = End - Start
 Runtime
 
-# finished_email <- gm_mime() %>% 
-#   gm_to("charlotte.aston@research.uwa.edu.au") %>% 
-#   gm_from("charlotte.aston@marineecology.io") %>% 
-#   gm_subject("Code has finished running on my computer") %>% 
-#   gm_text_body("It's done, Yew!")
+finished_email <- gm_mime() %>%
+  gm_to("charlotte.aston@research.uwa.edu.au") %>%
+  gm_from("charlotte.aston@marineecology.io") %>%
+  gm_subject("Code has finished running on my computer") %>%
+  gm_text_body("It's done, Yew!")
+
+d <- gm_create_draft(finished_email)
+gm_send_draft(d)
+
 # 
-# d <- gm_create_draft(finished_email)
-# gm_send_draft(d)
-
-
-setwd(sg_dir)
-unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
-
-temp <- unfished.bio[,12,]
-temp2 <- colSums(temp)
-temp3 <- temp2 * maturity[,12]
-Unf.Mat.Bio <- sum(temp3 * Weight[,12])
-
-
-fished.bio <- Sim.Ages[,,1]
-temp <- fished.bio[,48]
+# setwd(sg_dir)
+# unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+# 
+# temp <- unfished.bio[,12,]
 # temp2 <- colSums(temp)
-temp3 <- temp * maturity[,12]
-Mat.Bio <- sum(temp3 * Weight[,12])
-
-
-Mat.Bio/Unf.Mat.Bio
-sum(SIM.N.Catches[[1]][,59])
+# temp3 <- temp2 * maturity[,12]
+# Unf.Mat.Bio <- sum(temp3 * Weight[,12])
+# 
+# 
+# fished.bio <- Sim.Ages[,,1]
+# temp <- fished.bio[,48]
+# # temp2 <- colSums(temp)
+# temp3 <- temp * maturity[,12]
+# Mat.Bio <- sum(temp3 * Weight[,12])
+# 
+# 
+# Mat.Bio/Unf.Mat.Bio
+# sum(SIM.N.Catches[[1]][,59])

@@ -450,6 +450,7 @@ Boat_Days_sum <- Boat_Days_sum %>%
   rename(Effort = ".") %>% 
   mutate(Mortality = Effort*(0.00001)) %>% 
   mutate(Finite = 1-exp(-Mortality))
+
 #* Spatial Plot of Peak Effort ####
 
 ## Extract peak effort - 
@@ -540,9 +541,9 @@ for(S in 1:4){
     
   }
   
-  temp5 <- temp4 %>% 
+  temp5 <- temp4 %>%
     group_by(ID) %>% 
-    summarise(Mean.Age = mean(Frequency)) %>% 
+    summarise(Mean.Age = mean(`value`)) %>% 
     left_join(., water_WHA, by=c("ID")) %>% 
     mutate(Scenario = Names[S])
   
@@ -565,7 +566,7 @@ for(S in 1:4){
       mutate(ID = F_ID) %>% 
       pivot_longer(cols =1:30, names_to="Age") %>% 
       mutate(Age = as.numeric(str_replace(Age, "V", ""))) %>% 
-      mutate(Frequency = Age*`value`) 
+      mutate(Frequency = Age*`value`)
     
     temp4 <- rbind(temp4,temp3)
     
@@ -573,7 +574,8 @@ for(S in 1:4){
   
   temp5 <- temp4 %>% 
     group_by(ID) %>% 
-    summarise(Mean.Age = mean(Frequency)) %>% 
+    filter(Age>4) %>% 
+    summarise(Mean.Age = mean(`value`)) %>% 
     left_join(., water_WHA, by=c("ID")) %>% 
     mutate(Scenario = Names[S])
   
@@ -583,11 +585,14 @@ for(S in 1:4){
 Spatial_Age_Mean <- rbind(NTZ_Age_Mean, F_Age_Mean) %>% 
   st_as_sf()
 
+# Just need to change the name of the legend
+
 MeanAge_S00 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[1]) %>% 
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Mean Age", palette="Geyser", limits=c(0,12))+
+  # geom_sf(aes(fill= log(Mean.Age+1)), color = NA, lwd=0)+
+  geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
+  scale_fill_carto_c(name="Mean no. mature fish", palette="Geyser", limits=c(0,18))+
   geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -601,8 +606,8 @@ ggsave(MeanAge_S00, filename="MeanAge_S00.png",height = a4.width*1, width = a4.w
 MeanAge_S01 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[2]) %>% 
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Mean Age", palette="Geyser",  limits=c(0,12))+
+  geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
+  scale_fill_carto_c(name="", palette="Geyser", limits=c(0,18))+
   geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -616,8 +621,8 @@ ggsave(MeanAge_S01, filename="MeanAge_S01.png",height = a4.width*1, width = a4.w
 MeanAge_S02 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[3]) %>% 
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Mean Age", palette="Geyser",  limits=c(0,12))+
+  geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
+  scale_fill_carto_c(name="", palette="Geyser", limits=c(0,18))+
   geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -631,8 +636,8 @@ ggsave(MeanAge_S02, filename="MeanAge_S02.png",height = a4.width*1, width = a4.w
 MeanAge_S03 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[4]) %>% 
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Mean Age", palette="Geyser",  limits=c(0,12))+
+  geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
+  scale_fill_carto_c(name="", palette="Geyser", limits=c(0,18))+
   geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -687,7 +692,7 @@ SpatialCatch_S00 <- Spatial_Catch_Shallow  %>%
   filter(Scenario %in% Names[1]) %>% 
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,8))+
+  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,30))+
   geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -702,7 +707,7 @@ SpatialCatch_S01 <- Spatial_Catch_Shallow  %>%
   filter(Scenario %in% Names[2]) %>% 
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,8))+
+  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,30))+
   geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -717,7 +722,7 @@ SpatialCatch_S02 <- Spatial_Catch_Shallow  %>%
   filter(Scenario %in% Names[3]) %>% 
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,8))+
+  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,30))+
   geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -732,7 +737,7 @@ SpatialCatch_S03 <- Spatial_Catch_Shallow  %>%
   filter(Scenario %in% Names[4]) %>% 
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,8))+
+  scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,30))+
   geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -786,7 +791,8 @@ for(S in 1:4){
       mutate(Frequency = Age*`value`) %>% 
       group_by(ID) %>% 
       mutate(Maturity = Frequency * mature[,12]) %>% 
-      mutate(Weight = Maturity * weight[,12])
+      mutate(Weight = Maturity * weight[,12]) %>% 
+      summarise(Total.Weight = sum(Weight))
     
     temp4 <- rbind(temp4,temp3)
     
@@ -794,7 +800,7 @@ for(S in 1:4){
   
   temp5 <- temp4 %>% 
     group_by(ID) %>% 
-    summarise(Mean.Age = median(Weight)) %>% 
+    summarise(Mean.Age = median(Total.Weight)) %>% 
     left_join(., water_WHA, by=c("ID")) %>% 
     mutate(Scenario = Names[S])
   
@@ -820,7 +826,8 @@ for(S in 1:4){
       mutate(Frequency = Age*`value`) %>% 
       group_by(ID)  %>% 
       mutate(Maturity = Frequency * mature[,12]) %>% 
-      mutate(Weight = Maturity * weight[,12])
+      mutate(Weight = Maturity * weight[,12]) %>% 
+      summarise(Total.Weight = sum(Weight))
     
     temp4 <- rbind(temp4,temp3)
     
@@ -828,7 +835,7 @@ for(S in 1:4){
   
   temp5 <- temp4 %>% 
     group_by(ID) %>% 
-    summarise(Mean.Age = median(Weight)) %>% 
+    summarise(Mean.Age = median(Total.Weight)) %>% 
     left_join(., water_WHA, by=c("ID")) %>% 
     mutate(Scenario = Names[S])
   
@@ -840,10 +847,10 @@ Spatial_Weight_Mean <- rbind(NTZ_Weight_Mean, F_Weight_Mean) %>%
 
 MedianWeight_S00 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[1]) %>% 
-  mutate(Mean.Age=log(Mean.Age+1)) %>%
+  # mutate(Mean.Age=log(Mean.Age+1)) %>%
   ggplot()+
   geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+ # Didn't change the variable name in the loop
-  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser", limits=c(0,2.5))+
+  scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,5000))+
   geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -856,10 +863,10 @@ ggsave(MedianWeight_S00, filename="MedianWeight_S00.png",height = a4.width*1, wi
 
 MedianWeight_S01 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[2]) %>% 
-  mutate(Mean.Age=log(Mean.Age+1)) %>% 
+  # mutate(Mean.Age=log(Mean.Age+1)) %>%
   ggplot()+
   geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,2.5))+
+  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,5000))+
   geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -872,10 +879,10 @@ ggsave(MedianWeight_S01, filename="MedianWeight_S01.png",height = a4.width*1, wi
 
 MedianWeight_S02 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[3]) %>% 
-  mutate(Mean.Age=log(Mean.Age+1)) %>% 
+  # mutate(Mean.Age=log(Mean.Age+1)) %>%
   ggplot()+
   geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,2.5))+
+  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,5000))+
   geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -888,10 +895,10 @@ ggsave(MedianWeight_S02, filename="MedianWeight_S02.png",height = a4.width*1, wi
 
 MedianWeight_S03 <- Spatial_Weight_Mean %>% 
   filter(Scenario %in% Names[4]) %>% 
-  mutate(Mean.Age=log(Mean.Age+1)) %>% 
+  # mutate(Mean.Age=log(Mean.Age+1)) %>% 
   ggplot()+
   geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Median Biomass\n(Log(Kg+1))", palette="Geyser",  limits=c(0,2.5))+
+  scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser",  limits=c(0,5000))+
   geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),

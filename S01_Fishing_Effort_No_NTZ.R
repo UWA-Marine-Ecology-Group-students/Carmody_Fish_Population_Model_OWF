@@ -226,7 +226,7 @@ Year2011_1990 <- Year2011_1990 %>%
 
 boat_days_hind <- rbind(TotalYear, Year2011_1990)
 
-effort <- seq(500, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to 0 
+effort <- seq(-20000, 47485.01, length=41) # Use the max from the predictive model to then get a straight line back to  
 years <- seq(1960, 2000, by=1)
 
 Years_1960_1989 <- as.data.frame(cbind(years, effort)) %>% 
@@ -329,7 +329,7 @@ water_area <- water %>%
   mutate(q_17 = Area_17/Sum_17) %>% 
   mutate(ID = row_number())
 
-spatial_q <- array(0.00001, dim=c(NCELL, 59))
+spatial_q <- array(0.000006, dim=c(NCELL, 59))
 
 for (y in 31:59){
   spatial_q[ ,y] <- spatial_q[ ,y-1] * 1.02

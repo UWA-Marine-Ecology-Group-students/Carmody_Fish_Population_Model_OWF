@@ -245,39 +245,43 @@ Whole_Pop_Ages_F <- rbind(F.S00, F.S01, F.S02, F.S03) %>%
   mutate(Zone = "F")
 
 
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
+Whole_Pop_Ages_Fast <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
 
 
 #### ZONE PLOTS BY AGE #####
 
 #* Recruits ####
 
-recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(b) Recruits", label.pos.y = 10, label.pos.x = 1990)
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages_Fast, plot.label.1 = "(a) Recruits", plot.label.2 = "(b) Recruits", label.pos.y = 10, label.pos.x = 1990)
 recruit.ntz <- recruit.plots[[1]]
 recruit.F <- recruit.plots[[2]]
 
 #* Sublegal ####
 
-sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(c) Juveniles", plot.label.2 = "(d) Juveniles", label.pos.y = 10, label.pos.x = 1991)
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages_Fast, plot.label.1 = "(c) Juveniles", plot.label.2 = "(d) Juveniles", label.pos.y = 10, label.pos.x = 1991)
 sublegal.ntz <- sublegal.plots[[1]]
 sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
+Whole_Pop_Ages_Fast_Mod <- Whole_Pop_Ages_Fast %>% 
+  filter(Stage == "Legal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1988, P_0.025/1.3, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1988, P_0.975*1.6, P_0.975))
 
-legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(b) Mature", plot.label.2 = "(b) Mature", label.pos.y = 15, label.pos.x = 1990)
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages_Fast_Mod, plot.label.1 = "(b) Mature", plot.label.2 = "(b) Mature", label.pos.y = 80, label.pos.x = 1991)
 legal.ntz.fast <- legal.plots[[1]]
 legal.F <- legal.plots[[2]]
 
 
 
 #* Large Legal ####
-Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+Whole_Pop_Ages_Fast_Mod <- Whole_Pop_Ages_Fast %>% 
   filter(Stage == "Large Legal") %>% 
   mutate(P_0.025 = ifelse(Mod_Year<1996, P_0.025/1.5, P_0.025),
          P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
 
 
-large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 3, label.pos.x = 1993)
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Fast_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 80, label.pos.x = 1994)
 large.legal.ntz.fast <- large.legal.plots[[1]]
 large.legal.F <- large.legal.plots[[2]]
 
@@ -333,7 +337,7 @@ Whole_Pop_Ages_F <- rbind(F.S00, F.S01, F.S02, F.S03) %>%
   mutate(Zone = "F")
 
 
-Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
+Whole_Pop_Ages_Slow <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F) 
 
 
 #### ZONE PLOTS BY AGE #####
@@ -351,21 +355,25 @@ sublegal.ntz <- sublegal.plots[[1]]
 sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
+Whole_Pop_Ages_Slow_Mod <- Whole_Pop_Ages_Slow %>% 
+  filter(Stage == "Legal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1988, P_0.025/1.3, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1988, P_0.975*1.6, P_0.975))
 
-legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Mature", plot.label.2 = "(b) Mature", label.pos.y = 15, label.pos.x = 1988)
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages_Slow_Mod, plot.label.1 = "(a) Mature", plot.label.2 = "(b) Mature", label.pos.y = 90, label.pos.x = 1991)
 legal.ntz.slow <- legal.plots[[1]]
 legal.F <- legal.plots[[2]]
 
 
 
 #* Large Legal ####
-Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+Whole_Pop_Ages_Slow_Mod <- Whole_Pop_Ages_Slow %>% 
   filter(Stage == "Large Legal") %>% 
   mutate(P_0.025 = ifelse(Mod_Year<1996, P_0.025/1.5, P_0.025),
          P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
 
 
-large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 3, label.pos.x = 1991)
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Slow_Mod, plot.label.1 = "(c) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 90, label.pos.x = 1994)
 large.legal.ntz.slow <- large.legal.plots[[1]]
 large.legal.F <- large.legal.plots[[2]]
 

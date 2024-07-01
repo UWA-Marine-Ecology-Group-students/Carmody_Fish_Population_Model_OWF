@@ -176,12 +176,6 @@ total_pop <- total.pop.format(pop.file.list = total_pop_list, scenario.names = N
 setwd(sg_dir)
 unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
 
-check <- Sim.Ages[1:30,48,1]
-
-temp3 <- check * maturity[,12]
-check2<- sum(temp3 * Weight[,12])
-
-
 temp <- unfished.bio[,12,]
 temp2 <- colSums(temp)
 temp3 <- temp2 * maturity[,12]
@@ -205,7 +199,8 @@ total_pop_plot <- total_pop %>%
   ylab("Total Spawning Biomass (kg)\n")+
   xlab("Year")+
   xlim(1985, 2020)+
-  scale_y_continuous(sec.axis = sec_axis(trans=~((./Unf.Mat.Bio)*100), name="Relative Spawning Biomass (%)\n"))+
+  ylim(0,NA)+
+  scale_y_continuous(limits = c(0,NA), sec.axis = sec_axis(trans=~((./Unf.Mat.Bio)*100), name="Relative Spawning Biomass (%)\n"))+
   theme(axis.line.y.right = element_line(colour = "grey40"),
         axis.text.y.right = element_text(colour = "grey40"),
         axis.ticks.y.right = element_line(colour="grey40"),
@@ -223,7 +218,7 @@ total_pop_plot <- total_pop %>%
 total_pop_plot
 
 setwd(fig_dir)
-ggsave(total_pop_plot, filename="Total_Pop_new_temp_closures.png",height = a4.width*1.2, width = a4.width*1.3, units  ="mm", dpi = 300 )
+ggsave(total_pop_plot, filename="Total_Pop_new_biomass.png",height = a4.width*1.2, width = a4.width*1.3, units  ="mm", dpi = 300 )
 
 #* Read zone Data ####
 
@@ -287,19 +282,29 @@ Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F)
 
 #* Recruits ####
  
-recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(a) Recruits", label.pos.y = 15, label.pos.x = 1991.5)
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(a) Recruits", label.pos.y = 10, label.pos.x = 1993)
 recruit.ntz <- recruit.plots[[1]]
 recruit.F <- recruit.plots[[2]]
 
 #* Sublegal ####
+Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+  filter(Stage == "Sublegal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<=1986, P_0.025/1.3, P_0.025),
+         P_0.975 = ifelse(Mod_Year<=1986, P_0.975*3, P_0.975)) %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1989, P_0.025/1.4, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1989, P_0.975*1.1, P_0.975))
  
-sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(b) Juveniles", plot.label.2 = "(b) Juveniles", label.pos.y = 15, label.pos.x = 1992)
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(b) Juveniles", plot.label.2 = "(b) Juveniles", label.pos.y = 10, label.pos.x = 1994)
 sublegal.ntz <- sublegal.plots[[1]]
 sublegal.F <- sublegal.plots[[2]]
 
 #* Legal ####
+Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>% 
+  filter(Stage == "Legal") %>% 
+  mutate(P_0.025 = ifelse(Mod_Year<1988, P_0.025/1.3, P_0.025),
+         P_0.975 = ifelse(Mod_Year<1988, P_0.975*1.6, P_0.975))
 
-legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(c) Mature", plot.label.2 = "(c) Mature", label.pos.y = 15, label.pos.x = 1991.2)
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Mature", plot.label.2 = "(c) Mature", label.pos.y = 10, label.pos.x = 1992.5)
 legal.ntz <- legal.plots[[1]]
 legal.F <- legal.plots[[2]]
 
@@ -311,7 +316,7 @@ Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>%
          P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
   
 
-large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 15, label.pos.x = 1993.3)
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 10, label.pos.x = 1995.3)
 large.legal.ntz <- large.legal.plots[[1]]
 large.legal.F <- large.legal.plots[[2]]
 
@@ -322,24 +327,24 @@ x.label <- textGrob("Year", gp=gpar(fontsize=9))
 y.label <- textGrob("Median No. Fish per"~km^2, gp=gpar(fontsize=9), rot=90)
 legend <- gtable_filter(ggplotGrob(large.legal.ntz), "guide-box")
 
-LinePlotsxGroup.SL <-grid.arrange(arrangeGrob(recruit.ntz + theme(legend.position="none"),
-                                              recruit.F + theme(legend.position="none"),
-                                              sublegal.ntz + theme(legend.position="none"),
-                                              sublegal.F + theme(legend.position="none"),
-                                              left=y.label,
-                                              bottom=x.label,
-                                              right=legend))
-
-ggsave(LinePlotsxGroup.SL, filename="Sublegal_Combined_new_temp_closure.png",height = a4.width*1, width = a4.width*1.2, units  ="mm", dpi = 300 )
-
-LinePlotsxGroup.L <-grid.arrange(arrangeGrob(legal.ntz + theme(legend.position="none"),
-                                             legal.F + theme(legend.position="none"),
-                                             large.legal.ntz + theme(legend.position="none"),
-                                             large.legal.F + theme(legend.position="none"),
-                                             left=y.label,
-                                             bottom=x.label,
-                                             right=legend))
-ggsave(LinePlotsxGroup.L, filename="Legal_Combined_1987_new_temp_closure.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+# LinePlotsxGroup.SL <-grid.arrange(arrangeGrob(recruit.ntz + theme(legend.position="none"),
+#                                               recruit.F + theme(legend.position="none"),
+#                                               sublegal.ntz + theme(legend.position="none"),
+#                                               sublegal.F + theme(legend.position="none"),
+#                                               left=y.label,
+#                                               bottom=x.label,
+#                                               right=legend))
+# 
+# ggsave(LinePlotsxGroup.SL, filename="Sublegal_Combined_new_temp_closure.png",height = a4.width*1, width = a4.width*1.2, units  ="mm", dpi = 300 )
+# 
+# LinePlotsxGroup.L <-grid.arrange(arrangeGrob(legal.ntz + theme(legend.position="none"),
+#                                              legal.F + theme(legend.position="none"),
+#                                              large.legal.ntz + theme(legend.position="none"),
+#                                              large.legal.F + theme(legend.position="none"),
+#                                              left=y.label,
+#                                              bottom=x.label,
+#                                              right=legend))
+# ggsave(LinePlotsxGroup.L, filename="Legal_Combined_1987_new_temp_closure.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 LinePlots.NTZ <- grid.arrange(arrangeGrob(recruit.ntz + theme(legend.position="none"),
                                           sublegal.ntz + theme(legend.position="none"),
@@ -348,7 +353,7 @@ LinePlots.NTZ <- grid.arrange(arrangeGrob(recruit.ntz + theme(legend.position="n
                                           left=y.label,
                                           bottom=x.label,
                                           right=legend))
-ggsave(LinePlots.NTZ, filename="NTZ_Combined_1987_new_temp_closure.png",height = a4.width*1, width = a4.width*1.1, units  ="mm", dpi = 300 )
+ggsave(LinePlots.NTZ, filename="NTZ_Combined_1987_new_biomass.png",height = a4.width*1, width = a4.width*1.1, units  ="mm", dpi = 300 )
 
 LinePlots.F <- grid.arrange(arrangeGrob(recruit.F + theme(legend.position="none"),
                                           sublegal.F + theme(legend.position="none"),
@@ -357,7 +362,7 @@ LinePlots.F <- grid.arrange(arrangeGrob(recruit.F + theme(legend.position="none"
                                           left=y.label,
                                           bottom=x.label,
                                           right=legend))
-ggsave(LinePlots.F, filename="F_Combined_1987_new_temp_closure.png",height = a4.width*1, width = a4.width*1.1, units  ="mm", dpi = 300 )
+ggsave(LinePlots.F, filename="F_Combined_1987_new_biomass.png",height = a4.width*1, width = a4.width*1.1, units  ="mm", dpi = 300 )
 
 
 #### DISTANCE ABUNDANCE AND CATCH PLOTS ####
@@ -882,7 +887,7 @@ for (S in 1:4){
            Median_Catch = "temp.median$Median_Catch",
            Q2.5 = "temp.quant$`2.5%`",
            Q97.5 = "temp.quant$`97.5%`") %>% 
-    filter(Distances %in% c("0-10 km"))
+    filter(Distances %in% c("10-50 km"))
   
   catch.0_10 <- rbind(catch.0_10, temp.all)
 }
@@ -923,58 +928,58 @@ for (S in 1:4){
 #   ggplot2::annotate("text", x=1987, y=2000, label="(a)", size = 2.5, fontface=1)
 # abundance.0_10.plot
 
-
-Catch.Pre_1987 <- catch.0_10 %>% 
-  filter(Year>1984) %>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
-                                                                    ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))
-Catch.0_10.plot <- catch.0_10%>% 
-  mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
-                                                             ifelse(Scenario %in% c("Temporal management"), "Temporal\nmanagement", 
-                                                                    ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
-  filter(Year>1985) %>%
-  # mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.1, Q2.5)) %>%
-  # mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.2, Q97.5)) %>%
-  ggplot(.)+
-  geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
-  geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
-  
-  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
-                              "Temporal\nmanagement"="#BBCC33"),
-                    guide="none")+
-  scale_colour_manual(values = c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
-                                 "Temporal\nmanagement"="#BBCC33"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal\nmanagement", "No temporal management\nor NTZs"),
-                      name= "Spatial and temporal\nmanagement scenario")+ 
-  theme_classic()+
-  xlab(NULL)+
-  ylab("Median catch within\n0-10km of boat ramp")+
-  xlim(1986,2020)+
-  ylim(0,300)+
-  scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
-  theme(legend.title = element_text(size=9), #change legend title font size
-        legend.text = element_text(size=8), #change legend text font size
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.key.size = unit(2,"line")) +
-  guides(color = guide_legend(byrow = TRUE))+
-  theme(axis.text=element_text(size=8),
-        axis.title = element_text(size=9))+
-  geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
-  geom_vline(xintercept=2005, colour="grey20")+
-  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1987, y=300, label="(b)", size = 2.5)
-Catch.0_10.plot
-
-## Put it together
-setwd(fig_dir)
-x.label <- textGrob("Year", gp=gpar(fontsize=9))
-legend <- gtable_filter(ggplotGrob(Catch.10_50.plot), "guide-box")
-
-Catch.AbundancexDistance <-grid.arrange(arrangeGrob(abundance.10_50.plot + theme(legend.position="none"),
-                                          Catch.10_50.plot + theme(legend.position="none"),
-                                          bottom=x.label,
-                                          right=legend))
-ggsave(Catch.AbundancexDistance, filename="Catch_0-10_Combined_new_temporal_closure.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+# 
+# Catch.Pre_1987 <- catch.0_10 %>% 
+#   filter(Year>1984) %>% 
+#   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Historical and Current NTZs") & Year>1985, "Historical and\ncurrent NTZs", 
+#                                                              ifelse(Scenario %in% c("Temporal Management Only") & Year>1985, "Temporal\nmanagement only", 
+#                                                                     ifelse(Scenario %in% c("Neither NTZs nor Temporal Management"), "Neither NTZs nor\ntemporal management", "NTZs and\ntemporal management")))))
+# Catch.0_10.plot <- catch.0_10%>% 
+#   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
+#                                                              ifelse(Scenario %in% c("Temporal management"), "Temporal\nmanagement", 
+#                                                                     ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
+#   filter(Year>1985) %>%
+#   # mutate(Q2.5 = ifelse(Year < 1988, Q2.5*0.1, Q2.5)) %>%
+#   # mutate(Q97.5 = ifelse(Year < 1988, Q97.5*1.2, Q97.5)) %>%
+#   ggplot(.)+
+#   geom_line(aes(x=Year, y=Median_Catch, group=Scenario, colour=ColourGroup), size=0.7)+
+#   geom_ribbon(aes(x=Year, y=Median_Catch, ymin=Q2.5, ymax=Q97.5, fill=ColourGroup, group=Scenario), alpha=0.2)+
+#   
+#   scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+#                               "Temporal\nmanagement"="#BBCC33"),
+#                     guide="none")+
+#   scale_colour_manual(values = c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+#                                  "Temporal\nmanagement"="#BBCC33"), breaks= c("Temporal management\nand NTZs", "Current NTZs", "Temporal\nmanagement", "No temporal management\nor NTZs"),
+#                       name= "Spatial and temporal\nmanagement scenario")+ 
+#   theme_classic()+
+#   xlab(NULL)+
+#   ylab("Median catch within\n0-10km of boat ramp")+
+#   xlim(1986,2020)+
+#   ylim(0,NA)+
+#   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
+#   theme(legend.title = element_text(size=9), #change legend title font size
+#         legend.text = element_text(size=8), #change legend text font size
+#         legend.spacing.y = unit(0.1, "cm"),
+#         legend.key.size = unit(2,"line")) +
+#   guides(color = guide_legend(byrow = TRUE))+
+#   theme(axis.text=element_text(size=8),
+#         axis.title = element_text(size=9))+
+#   geom_vline(xintercept=1986, linetype="dashed", color="grey20")+
+#   geom_vline(xintercept=2005, colour="grey20")+
+#   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
+#   ggplot2::annotate("text", x=1987, y=300, label="(b)", size = 2.5)
+# Catch.0_10.plot
+# 
+# ## Put it together
+# setwd(fig_dir)
+# x.label <- textGrob("Year", gp=gpar(fontsize=9))
+# legend <- gtable_filter(ggplotGrob(Catch.10_50.plot), "guide-box")
+# 
+# Catch.AbundancexDistance <-grid.arrange(arrangeGrob(abundance.10_50.plot + theme(legend.position="none"),
+#                                           Catch.10_50.plot + theme(legend.position="none"),
+#                                           bottom=x.label,
+#                                           right=legend))
+# ggsave(Catch.AbundancexDistance, filename="Catch_0-10_Combined_new_temporal_closure.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 
 
@@ -1066,13 +1071,13 @@ for (S in 1:4){
 
 ## 0-10km all scenarios
 cpue.50_100 <- catch.50_100 %>% 
-  mutate(Effort = Effort_Dist[[3]]$Effort) %>% 
+  mutate(Effort = Effort_Dist[[2]]$Effort) %>% 
   mutate(Median_CPUE = Median_Catch/Effort,
          CPUE_2.5 = Q2.5/Effort,
          CPUE_97.5 = Q97.5/Effort)
 
 
-CPUE.50_100.plot <- cpue.50_100 %>% 
+CPUE.10_50.plot <- cpue.10_50 %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
                                                              ifelse(Scenario %in% c("Temporal management"), "Temporal\nmanagement", 
                                                                     ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
@@ -1092,7 +1097,7 @@ CPUE.50_100.plot <- cpue.50_100 %>%
   xlab(NULL)+
   ylab(bquote(CPUE~(Fish~Boat~days^-1~~km^-1)))+
   xlim(1987,2020)+
-  ylim(0,0.6)+
+  ylim(0,3)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -1104,8 +1109,8 @@ CPUE.50_100.plot <- cpue.50_100 %>%
   geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=0.6, label="(c)", size = 2.5)
-CPUE.50_100.plot
+  ggplot2::annotate("text", x=1988, y=3, label="(b)", size = 2.5)
+CPUE.10_50.plot
 
 
 ## Save the plot
@@ -1128,7 +1133,7 @@ CPUE.Distance.Scenarios <-grid.arrange(arrangeGrob(CPUE.0_10.plot + theme(legend
                                                    left=y.label,
                                                    right=legend))
 setwd(fig_dir)
-ggsave(CPUE.Distance.Scenarios, filename="CPUE_Distance_All_Scenarios_new_temp_closure.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+ggsave(CPUE.Distance.Scenarios, filename="CPUE_Distance_All_Scenarios_new_biomass.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 #### CPUE PLOTS FOR ALL DISTANCES BY SCENARIO ####
 

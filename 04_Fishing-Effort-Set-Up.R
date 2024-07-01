@@ -319,6 +319,7 @@ EffortPlot <- Full_Boat_Days %>%
   geom_point(data=boat_days_real, aes(x=Year, y= total_real)) +
   theme_classic()+
   xlim(1986, NA)+
+  ylim(0,NA)+
   ylab("Effort (Boat days)")+
   scale_x_continuous(breaks=c(1985,1990,1995,2000,2005,2010,2015,2020))+
   geom_vline(xintercept=1991, linetype="dotted", color="#302383")+
