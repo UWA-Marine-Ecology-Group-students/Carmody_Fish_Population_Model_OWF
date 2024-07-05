@@ -77,7 +77,7 @@ NatMort = 0.146
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 BHa = 0.4344209 
-BHb = 0.003132717
+BHb = 0.0002349538
 PF = 0.5
 
 # Model settings

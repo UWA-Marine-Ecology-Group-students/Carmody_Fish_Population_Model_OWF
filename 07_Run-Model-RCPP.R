@@ -56,13 +56,13 @@ pop.groups <- c(0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150)
 my.colours <- "PuBu"
 
 model.name = "ningaloo"
-Movement_Speed = "slow_movement"
+Movement_Speed = "medium_movement"
 
 #### LOAD FILES ####
 
 ## Normal Model Files
 setwd(sg_dir)
-AdultMove <- readRDS(paste0(model.name, sep="_", "movement_slow"))
+AdultMove <- readRDS(paste0(model.name, sep="_", "movement_medium"))
 Settlement <- readRDS(paste0(model.name, sep="_","recruitment"))
 # Effort <- readRDS(paste0(model.name, sep="_", "fishing"))
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
@@ -135,7 +135,7 @@ NatMort = 0.146
 
 # Beverton-Holt Recruitment Values - Have sourced the script but need to check that alpha and beta are there
 BHa = 0.4344209 #0.4344209
-BHb = 0.002349538
+BHb = 0.0001708755
 PF = 0.5
 
 # Model settings
@@ -181,7 +181,7 @@ SIM.Weight.Catches <- list()
 
 #### RUN MODEL ####
 Start=Sys.time()
-for (SIM in 1:100){ # Simulation loop
+for (SIM in 1:200){ # Simulation loop
   
   #### SET UP LISTS TO HOLD THE PLOTS ####
   SpatialPlots <- list()
@@ -236,9 +236,9 @@ for (SIM in 1:100){ # Simulation loop
     # if(YEAR==58){ # Have to subtract one because the loop now starts at 0
     #   TotalPop <- as.data.frame(Total) %>%
     #     rename(Tot.Pop="V1")
-    #   TotalPop$Year <- seq(1960, 2018, by=1)
+    #   TotalPop$Year <- seq(1987, 2018, by=1)
     #   TotalPlot <- total.plot.func(pop=TotalPop)
-    #   print(TotalPlot)
+    # #   print(TotalPlot)
     # } else { }
     # 
     # if(YEAR %%5==0|YEAR==58){
@@ -306,31 +306,33 @@ End = Sys.time()
 Runtime = End - Start
 Runtime
 
-finished_email <- gm_mime() %>%
-  gm_to("charlotte.aston@research.uwa.edu.au") %>%
-  gm_from("charlotte.aston@marineecology.io") %>%
-  gm_subject("Code has finished running on my computer") %>%
-  gm_text_body("It's done, Yew!")
-
-d <- gm_create_draft(finished_email)
-gm_send_draft(d)
+# finished_email <- gm_mime() %>%
+#   gm_to("charlotte.aston@research.uwa.edu.au") %>%
+#   gm_from("charlotte.aston@marineecology.io") %>%
+#   gm_subject("Code has finished running on my computer") %>%
+#   gm_text_body("It's done, Yew!")
+# 
+# d <- gm_create_draft(finished_email)
+# gm_send_draft(d)
 
 # 
-# setwd(sg_dir)
-# unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
-# 
-# temp <- unfished.bio[,12,]
+setwd(sg_dir)
+unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+
+temp <- unfished.bio[,12,]
+temp2 <- colSums(temp)
+temp3 <- temp2 * Mature[,12]
+Unf.Mat.Bio <- sum(temp3 * Weight[,12])
+
+
+fished.Bio <- total_pop_list[[1]]
+
+fished.bio <- total_pop_list[[1]][,,1]
+temp <- fished.bio[,48]
 # temp2 <- colSums(temp)
-# temp3 <- temp2 * maturity[,12]
-# Unf.Mat.Bio <- sum(temp3 * Weight[,12])
-# 
-# 
-# fished.bio <- Sim.Ages[,,1]
-# temp <- fished.bio[,48]
-# # temp2 <- colSums(temp)
-# temp3 <- temp * maturity[,12]
-# Mat.Bio <- sum(temp3 * Weight[,12])
-# 
-# 
-# Mat.Bio/Unf.Mat.Bio
-# sum(SIM.N.Catches[[1]][,59])
+temp3 <- temp * Mature[,12]
+Mat.Bio <- sum(temp3 * Weight[,12])
+
+
+Mat.Bio/Unf.Mat.Bio
+sum(SIM.N.Catches[[1]][,59])

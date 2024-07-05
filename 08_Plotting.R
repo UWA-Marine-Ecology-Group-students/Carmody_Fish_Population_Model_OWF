@@ -100,7 +100,7 @@ AMP <- st_read("NTZ and Fished areas for status.shp") %>%
   st_transform(4283)%>%
   st_make_valid%>%
   st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5)
-plot(AMP)
+# plot(AMP)
 
 AMP_NTZ <- AMP %>% 
   filter(ResName == "Ningaloo"|COMMENTS == "Cloates Sanctuary Zone") %>% # Select just Cloates
@@ -108,7 +108,7 @@ AMP_NTZ <- AMP %>%
   rename(Name = "COMMENTS") %>% 
   mutate(Name = ifelse(is.na(Name), "Comm Cloates", Name)) %>% 
   dplyr::select(Name, Year.Sanct, geometry) 
-plot(AMP_NTZ$geometry)
+# plot(AMP_NTZ$geometry)
 
 setwd(sp_dir)
 gdacrs <- "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"
@@ -200,7 +200,7 @@ total_pop_plot <- total_pop %>%
   xlab("Year")+
   xlim(1985, 2020)+
   ylim(0,NA)+
-  scale_y_continuous(limits = c(0,NA), sec.axis = sec_axis(trans=~((./Unf.Mat.Bio)*100), name="Relative Spawning Biomass (%)\n"))+
+  scale_y_continuous(limits = c(0,NA), sec.axis = sec_axis(trans=~((./Unf.Mat.Bio)*100), name="Relative Spawning Biomass (%)\n"), labels = ~ format(.x, scientific = FALSE))+
   theme(axis.line.y.right = element_line(colour = "grey40"),
         axis.text.y.right = element_text(colour = "grey40"),
         axis.ticks.y.right = element_line(colour="grey40"),
@@ -282,7 +282,7 @@ Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F)
 
 #* Recruits ####
  
-recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(a) Recruits", label.pos.y = 10, label.pos.x = 1993)
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(a) Recruits", label.pos.y = 250, label.pos.x = 1993)
 recruit.ntz <- recruit.plots[[1]]
 recruit.F <- recruit.plots[[2]]
 
@@ -294,7 +294,7 @@ Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>%
   mutate(P_0.025 = ifelse(Mod_Year<1989, P_0.025/1.4, P_0.025),
          P_0.975 = ifelse(Mod_Year<1989, P_0.975*1.1, P_0.975))
  
-sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(b) Juveniles", plot.label.2 = "(b) Juveniles", label.pos.y = 10, label.pos.x = 1994)
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(b) Juveniles", plot.label.2 = "(b) Juveniles", label.pos.y = 250, label.pos.x = 1994)
 sublegal.ntz <- sublegal.plots[[1]]
 sublegal.F <- sublegal.plots[[2]]
 
@@ -304,7 +304,7 @@ Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>%
   mutate(P_0.025 = ifelse(Mod_Year<1988, P_0.025/1.3, P_0.025),
          P_0.975 = ifelse(Mod_Year<1988, P_0.975*1.6, P_0.975))
 
-legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Mature", plot.label.2 = "(c) Mature", label.pos.y = 10, label.pos.x = 1992.5)
+legal.plots <- age.group.plots(age.group = "Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(c) Mature", plot.label.2 = "(c) Mature", label.pos.y = 25, label.pos.x = 1992.5)
 legal.ntz <- legal.plots[[1]]
 legal.F <- legal.plots[[2]]
 
@@ -316,7 +316,7 @@ Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>%
          P_0.975 = ifelse(Mod_Year<1996, P_0.975*1.4, P_0.975))
   
 
-large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 10, label.pos.x = 1995.3)
+large.legal.plots <- age.group.plots(age.group = "Large Legal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(d) Large Mature", plot.label.2 = "(d) Large Mature", label.pos.y = 25, label.pos.x = 1995.3)
 large.legal.ntz <- large.legal.plots[[1]]
 large.legal.F <- large.legal.plots[[2]]
 
@@ -1071,13 +1071,13 @@ for (S in 1:4){
 
 ## 0-10km all scenarios
 cpue.50_100 <- catch.50_100 %>% 
-  mutate(Effort = Effort_Dist[[2]]$Effort) %>% 
+  mutate(Effort = Effort_Dist[[3]]$Effort) %>% 
   mutate(Median_CPUE = Median_Catch/Effort,
          CPUE_2.5 = Q2.5/Effort,
          CPUE_97.5 = Q97.5/Effort)
 
 
-CPUE.10_50.plot <- cpue.10_50 %>% 
+CPUE.50_100.plot <- cpue.50_100 %>% 
   mutate(ColourGroup = ifelse(Year<=1985, "Pre-1987", ifelse(Scenario %in% c("Current NTZs"), "Current NTZs", 
                                                              ifelse(Scenario %in% c("Temporal management"), "Temporal\nmanagement", 
                                                                     ifelse(Scenario %in% c("No temporal management or NTZs"), "No temporal management\nor NTZs", "Temporal management\nand NTZs")))))%>% 
@@ -1097,7 +1097,7 @@ CPUE.10_50.plot <- cpue.10_50 %>%
   xlab(NULL)+
   ylab(bquote(CPUE~(Fish~Boat~days^-1~~km^-1)))+
   xlim(1987,2020)+
-  ylim(0,3)+
+  ylim(0,7.5)+
   scale_linetype_manual(values = c("longdash", "solid" ), labels=c("Always Fished", "NTZ Area"), name="Model Area")+
   theme(legend.title = element_text(size=9), #change legend title font size
         legend.text = element_text(size=8), #change legend text font size
@@ -1109,8 +1109,8 @@ CPUE.10_50.plot <- cpue.10_50 %>%
   geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
   geom_vline(xintercept=2005, colour="grey20")+
   geom_vline(xintercept=2017, linetype="dotted", colour="grey20")+
-  ggplot2::annotate("text", x=1988, y=3, label="(b)", size = 2.5)
-CPUE.10_50.plot
+  ggplot2::annotate("text", x=1988, y=7.5, label="(c)", size = 2.5)
+CPUE.50_100.plot
 
 
 ## Save the plot
@@ -1580,10 +1580,76 @@ for(SIM in 1:1){
   check.catch <- temp2
 }
 
+Numbers <- NULL
 
 
+for(S in 1:4){
+  
+  Years <- NULL
+  
+  for(YEAR in 1:59){
+    temp <- as.data.frame(total_pop_list[[S]][,YEAR,1]) %>% 
+      rename(numbers = "total_pop_list[[S]][, YEAR, 1]") %>% 
+      mutate(Mat = numbers*Mature[,12]) %>% 
+      mutate(Biomass = Mat*Weight[,12])
+    
+    temp2 <- sum(temp$Biomass)
+    Years <- rbind(Years, temp2)
+    
+  }
+  temp4 <- Years %>% 
+    as.data.frame() %>% 
+    mutate(Scenario = Names[S]) %>% 
+    mutate(Year = seq(1960, 2018, 1))
+  
+  Numbers <- rbind(Numbers, temp4) 
+    
+}
 
 
+setwd(sg_dir)
+unfished.bio <- readRDS(paste0(model.name, sep="_", "BurnInPop"))
+
+temp <- unfished.bio[,12,]
+temp2 <- colSums(temp)
+temp3 <- temp2 * maturity[,12]
+Unf.Mat.Bio <- sum(temp3 * Weight[,12])
+
+total_pop_plot <- Numbers %>% 
+  mutate(Scenario = as.factor(Scenario)) %>% 
+  mutate(Scenario = fct_recode(Scenario, "Current NTZs"="Current NTZs", "No temporal management\nor NTZs"="No temporal management or NTZs",
+                               "Temporal management\nand NTZs"="Temporal management and NTZs", "Temporal management"="Temporal management"
+  )) %>% 
+  ggplot() +
+  geom_line(aes(x=Year, y=V1, group=Scenario, color=Scenario), size=0.7)+
+  # geom_ribbon(aes(x=Year, y=Median_MatBio, ymin=P_0.025, ymax=P_0.975, group=Scenario,
+  #                 fill=Scenario), alpha=0.2)+
+  # scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
+  #                             "Temporal management"="#BBCC33"),
+  #                   guide="none")+
+  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
+                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Current NTZs", "No temporal management\nor NTZs", "Temporal management", "Temporal management\nand NTZs"),name= "Spatial and temporal\nmanagement scenario")+ 
+  theme_classic()+
+  ylab("Total Spawning Biomass (kg)\n")+
+  xlab("Year")+
+  xlim(1985, 2020)+
+  ylim(0,NA)+
+  scale_y_continuous(limits = c(0,NA), sec.axis = sec_axis(trans=~((./Unf.Mat.Bio)*100), name="Relative Spawning Biomass (%)\n"))+
+  theme(axis.line.y.right = element_line(colour = "grey40"),
+        axis.text.y.right = element_text(colour = "grey40"),
+        axis.ticks.y.right = element_line(colour="grey40"),
+        axis.title.y.right = element_text(colour="grey40"))+
+  #ylim(0,57500)+
+  theme(plot.title = element_text(size=10, face="bold", hjust=0.45))+ 
+  theme(legend.title = element_text(size=9), #change legend title font size
+        legend.text = element_text(size=8), #change legend text font size
+        legend.spacing.y = unit(0.05, "cm"),
+        legend.key.size = unit(2,"line")) +
+  guides(color = guide_legend(byrow = TRUE))+
+  geom_vline(xintercept=1987, linetype="dashed", color="grey20")+
+  geom_vline(xintercept=2005, colour="grey20")+
+  geom_vline(xintercept=2017, linetype="dotted", colour="grey20")
+total_pop_plot
 
 
 
