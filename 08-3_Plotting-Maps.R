@@ -249,10 +249,10 @@ p3 <- ggplot() +
   labs(fill = "Australian Marine Parks") +
   new_scale_fill() +
   geom_sf(data = cwatr, colour = "firebrick", alpha = 4/5, size = 0.4) +
-  labs(x = NULL, y = NULL) +
+  labs(x=NULL, y=NULL)+
   new_scale_fill() +
   geom_sf(data=BR,aes(shape=Name), size=2)+
-  scale_shape_manual(values=c(4,4,4,4), labels=c("Boat Ramp", "Boat Ramp", "Boat Ramp", "Boat Ramp"), name="")+
+  scale_shape_manual(values=c(4,4,4,4), labels=c("Boat Ramp", "Boat Ramp", "Boat Ramp", "Boundary of State waters"), name="")+
   # geom_sf(data=WHA, aes(colour=Full_Name), fill=NA, linewidth=0.5)+
   # wha_colour +
   # guides(fill = guide_legend(order = 1)) +
@@ -372,14 +372,15 @@ water <- water_WHA %>%
 #### MAP OF THE NINGALOO MODEL ####
 water <- water %>% 
   mutate(WHA = ifelse(ID %in% c(model_WHA$row.id), "Y", "N")) %>% 
-  mutate(Map_Colour = ifelse(Fished_2017=="N", "NTZ", ifelse(WHA=="Y", "WHA", "None")))
+  mutate(Map_Colour = ifelse(Fished_1960=="N", "NTZ", ifelse(WHA=="Y", "WHA", "None")))
 
 
 map <- water %>% 
   filter(!ID==387) %>% # Weird cell on the side that makes things look odd
   ggplot(.)+
+  geom_sf(data = ausc, fill = "grey80", colour = "grey80", size = 0.1)+
   geom_sf(aes(fill=Map_Colour), colour="grey20", lwd=0.2)+
-  scale_fill_manual(values=c("NTZ"= "#48A02D", "WHA"="#D6CF7D", "None"="skyblue1"),
+  scale_fill_manual(values=c("NTZ"= "#66ccee", "WHA"="#66ccee", "None"="#66ccee"),
                     labels = c("No-take zone", "World heritage area", "Outside world heritage\nand marine park area"),
                     name="Zone type")+
   theme_void() +
@@ -757,17 +758,17 @@ setwd(pop_dir)
 
 Age_Dist_NTZ <- list()
 
-Age_Dist_NTZ[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S00", sep="_", "medium_movement"))
-Age_Dist_NTZ[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S01", sep="_", "medium_movement"))
-Age_Dist_NTZ[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S02", sep="_", "medium_movement"))
-Age_Dist_NTZ[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S03", sep="_", "medium_movement"))
+Age_Dist_NTZ[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S00", sep="_", "slow_movement"))
+Age_Dist_NTZ[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S01", sep="_", "slow_movement"))
+Age_Dist_NTZ[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S02", sep="_", "slow_movement"))
+Age_Dist_NTZ[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S03", sep="_", "slow_movement"))
 
 Age_Dist_F <- list()
 
-Age_Dist_F[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S00", sep="_", "medium_movement"))
-Age_Dist_F[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S01", sep="_", "medium_movement"))
-Age_Dist_F[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S02", sep="_", "medium_movement"))
-Age_Dist_F[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S03", sep="_", "medium_movement"))
+Age_Dist_F[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S00", sep="_", "slow_movement"))
+Age_Dist_F[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S01", sep="_", "slow_movement"))
+Age_Dist_F[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S02", sep="_", "slow_movement"))
+Age_Dist_F[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S03", sep="_", "slow_movement"))
 
 NTZ_Weight_Mean <- NULL
 F_Weight_Mean <- NULL
@@ -778,7 +779,7 @@ for(S in 1:4){
   
   temp4 <- NULL
   
-  for(SIM in 1:200){
+  for(SIM in 1:100){
     
     temp2 <- temp[[SIM]]
     
@@ -813,7 +814,7 @@ for(S in 1:4){
   
   temp4 <- NULL
   
-  for(SIM in 1:200){
+  for(SIM in 1:100){
     
     temp2 <- temp[[SIM]]
     
@@ -906,6 +907,6 @@ MedianWeight_S03 <- Spatial_Weight_Mean %>%
         axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 MedianWeight_S03
 
-setwd(fig_dir)
+slowsetwd(fig_dir)
 ggsave(MedianWeight_S03, filename="MedianWeight_S03.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 

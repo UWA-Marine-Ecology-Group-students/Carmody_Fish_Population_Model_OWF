@@ -21,6 +21,7 @@ library(gtable)
 library(purrr)
 library(matrixStats)
 library(sfnetworks)
+library(rcartocolor)
 
 
 rm(list = ls())
@@ -35,6 +36,7 @@ sp_dir <- paste(working.dir, "Spatial_Data", sep="/")
 sg_dir <- paste(working.dir, "Staging", sep="/")
 pop_dir <-  paste(working.dir, "Output_Population", sep="/")
 sim_dir <-  paste(working.dir, "Simulations", sep="/")
+gif_dir <-  paste(working.dir, "GIFs", sep="/")
 
 a4.width = 160
 model.name <- "ningaloo"
@@ -42,8 +44,14 @@ model.name <- "ningaloo"
 setwd(working.dir)
 source("X_Functions.R")
 
+Names <- c("Current NTZs", "No temporal management or NTZs", 
+           "Temporal management and NTZs","Temporal management")
 #### READ IN DATA ####
 setwd(sg_dir)
+
+weight <- readRDS("Weight")
+mature <- readRDS("maturity")
+
 NoTake <- readRDS(paste0(model.name, sep="_","NoTakeList"))
 water <- readRDS(paste0(model.name, sep="_","water")) %>% 
   mutate(cell_area = as.vector(cell_area/1000000))
@@ -93,27 +101,21 @@ AMP_NTZ <- AMP %>%
   dplyr::select(Name, Year.Sanct, geometry) 
 plot(AMP_NTZ$geometry)
 
+
 # Put all of the NTZs together into one object
 NTZ <- rbind(old_MP, NTZ, AMP_NTZ) # Put all the different NTZs together into one object
 NTZ <- st_make_valid(NTZ) 
 
-setwd(pop_dir)
+NTZ_cropped <- NTZ %>% 
+  st_crop(xmin=112.5, xmax=114.7, ymin=-23.45, ymax=-20.5)
+plot(NTZ_cropped$geometry)
 
-Cell.Pop <- list()
-Cell.Catch <- list()
+setwd(sg_dir)
+NTZ_ID <- readRDS(paste0(model.name, sep="_", "NTZ_Cell_ID"))
+F_ID <- readRDS(paste0(model.name, sep="_", "F_Cell_ID"))
+Shallow_ID <- c(NTZ_ID, F_ID)
 
-# Each layer is a simulation, rows are cells and columns are years
-Cell.Pop[[1]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S00"))
-Cell.Pop[[2]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S01"))
-Cell.Pop[[3]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S02"))
-Cell.Pop[[4]] <- readRDS(paste0(model.name, sep="_", "Cell_Population", sep="_", "S03"))
-
-Cell.Catch[[1]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S00"))
-Cell.Catch[[2]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S01"))
-Cell.Catch[[3]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S02"))
-Cell.Catch[[4]] <- readRDS(paste0(model.name, sep="_", "Catch_by_Cell", sep="_", "S03"))
-
-## Create list of cells to restrict plots to shallow water (<30m)
+# crop to the WHA area as well
 water_points <- st_centroid_within_poly(water) 
 
 water_bathy <- raster::extract(bathy, water_points, fun=mean, df=TRUE)
@@ -125,60 +127,137 @@ model_WHA <- water %>%
   st_intersects(., WHA) %>% 
   as.data.frame()
 
-
-Names <- c("S00", "S01", 
-           "S02","S03")
+water_WHA <-water[c(as.numeric(model_WHA$row.id)), ]
 
 
 #### FORMAT DATA TO GET MEAN FOR EVERY CELL ####
 
-temp2 <- array(0, dim=c(NCELL, 59, 100))
-cell.pop.means <- list()
-cell.catch.means <- list()
+setwd(pop_dir)
 
-# Population
+Age_Dist_NTZ <- list()
+
+Age_Dist_NTZ[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S00", sep="_", "medium_movement"))
+Age_Dist_NTZ[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S01", sep="_", "medium_movement"))
+Age_Dist_NTZ[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S02", sep="_", "medium_movement"))
+Age_Dist_NTZ[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_NTZ", sep="_", "S03", sep="_", "medium_movement"))
+
+Age_Dist_F <- list()
+
+Age_Dist_F[[1]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S00", sep="_", "medium_movement"))
+Age_Dist_F[[2]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S01", sep="_", "medium_movement"))
+Age_Dist_F[[3]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S02", sep="_", "medium_movement"))
+Age_Dist_F[[4]] <- readRDS(paste0(model.name, sep="_", "Sp_Population_F", sep="_", "S03", sep="_", "medium_movement"))
+
+NTZ_Weight_Mean <- NULL
+F_Weight_Mean <- NULL
+
+Years <- seq(1960,2018, 1)
+
+temp6 <- array(0, dim=c(length(NTZ_ID), length(Years)))
+
 for(S in 1:4){
   
-  temp <- Cell.Pop[[S]]
+  temp <- Age_Dist_NTZ[[S]]
   
-  for(SIM in 1:100){
-    temp2[,,SIM] <- temp[[SIM]]
+  temp4 <- array(0, dim=c(length(NTZ_ID), 200, length(Years)))
+  
+  for(SIM in 1:200){
+    
+    temp2 <- temp[[SIM]]
+    
+    for(YEAR in 25:59){
+      
+      temp3 <- temp2[,,YEAR] %>% 
+        as.data.frame() %>% 
+        mutate(ID = NTZ_ID) %>% 
+        pivot_longer(cols =1:30, names_to="Age") %>% 
+        mutate(Age = as.numeric(str_replace(Age, "V", ""))) %>% 
+        mutate(Frequency = Age*`value`) %>% 
+        group_by(ID) %>% 
+        mutate(Maturity = Frequency * mature[,12]) %>% 
+        mutate(Weight = Maturity * weight[,12]) %>% 
+        summarise(Total.Weight = sum(Weight)) %>% 
+        mutate(Year = Years[YEAR]) 
+      
+      temp4[,SIM,YEAR] <- temp3$Total.Weight
+      
+    }
+    
   }
   
-  temp3 <- rowMeans(temp2, dim=2)
+  for(YEAR in 25:59){
+    
+    temp5 <- temp4[,,YEAR] %>% 
+      as.data.frame() %>% 
+      mutate(Year.Median = rowMedians(as.matrix(.[,1:34]))) 
+    
+    temp6[,YEAR] <- temp5[,201] 
+  }
+
+    
+  temp7 <-  temp6 %>% 
+    as.data.frame() %>% 
+    mutate(ID = NTZ_ID) %>% 
+    left_join(., water_WHA, by=c("ID")) %>% 
+    mutate(Scenario = Names[S])
   
-  cell.pop.means[[S]] <- temp3
-  
+  NTZ_Weight_Mean <- rbind(NTZ_Weight_Mean, temp7)
 }
 
-# catches
+temp6 <- array(0, dim=c(length(F_ID), length(Years)))
+
 for(S in 1:4){
   
-  temp <- Cell.Catch[[S]]
+  temp <- Age_Dist_F[[S]]
   
-  for(SIM in 1:100){
-    temp2[,,SIM] <- temp[[SIM]]
+  
+  temp4 <- array(0, dim=c(length(F_ID), 200, length(Years)))
+  
+  for(SIM in 1:200){
+    
+    temp2 <- temp[[SIM]]
+    
+    for(YEAR in 25:59){
+      
+      temp3 <- temp2[,,YEAR] %>% 
+        as.data.frame() %>% 
+        mutate(ID = F_ID) %>% 
+        pivot_longer(cols =1:30, names_to="Age") %>% 
+        mutate(Age = as.numeric(str_replace(Age, "V", ""))) %>% 
+        mutate(Frequency = Age*`value`) %>% 
+        group_by(ID) %>% 
+        mutate(Maturity = Frequency * mature[,12]) %>% 
+        mutate(Weight = Maturity * weight[,12]) %>% 
+        summarise(Total.Weight = sum(Weight)) %>% 
+        mutate(Year = Years[YEAR]) 
+      
+      temp4[,SIM,YEAR] <- temp3$Total.Weight
+      
+    }
+    
   }
   
-  temp3 <- rowMeans(temp2, dim=2)
+  for(YEAR in 25:59){
+    
+    temp5 <- temp4[,,YEAR] %>% 
+      as.data.frame() %>% 
+      mutate(Year.Median = rowMedians(as.matrix(.[,1:34]))) 
+    
+    temp6[,YEAR] <- temp5[,201] 
+  }
   
-  cell.catch.means[[S]] <- temp3
   
+  temp7 <-  temp6 %>% 
+    as.data.frame() %>% 
+    mutate(ID = F_ID) %>% 
+    left_join(., water_WHA, by=c("ID")) %>% 
+    mutate(Scenario = Names[S])
+  
+  F_Weight_Mean <- rbind(F_Weight_Mean, temp7)
 }
 
-
-#### JOIN PULATION AND CATCH DATA WITH WATER ####
-water.pop <- list()
-water.catch <- list()
-
-for(S in 1:4){
-  water1 <- cbind(water,cell.pop.means[[S]])
-  water.pop[[S]] <- water1
-  
-  water2 <- cbind(water,cell.catch.means[[S]])
-  water.catch[[S]] <- water2
-  
-}
+Spatial_Weight_Mean <- rbind(NTZ_Weight_Mean, F_Weight_Mean) %>% 
+  st_as_sf()
 
 #### MAKE PLOTS AND SAVE THEM ####
 colours <- "PuBu"
@@ -187,74 +266,67 @@ pop.breaks <- c(0, 0.5,1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 10, 15, 20, 25)
 nb.cols <- length(pop.breaks)
 mycols <- colorRampPalette(rev(brewer.pal(8, colours)))(nb.cols)
 
-Years <- seq(1960,2018,1)
+Years <- seq(1986,2018,1)
 
 ## Population Plots
-setwd(fig_dir)
+setwd(gif_dir)
 
 for(S in 1:4){
   
-  Pop <- water.pop[[S]]
-  
-  Pop <- Pop %>% 
-    mutate(across(X1:X59, ~./cell_area)) %>% 
-    #mutate(across(X1:X59, ~log(.+1))) %>% 
-    mutate(ID = row_number())
-  
-  Pop <- Pop[c(as.numeric(model_WHA$row.id)), ]
-  
   if(S==1|S==3){
-    for(YEAR in 1:59){
+    for(YEAR in 25:59){
       
-      pop.to.plot <- Pop[,c(2,3,4,5,7,YEAR+8)]%>% 
-        rename_at(vars(starts_with('X')), function(.){'pop'}) %>% 
-        mutate(pop_level = cut(pop, pop.breaks, include.lowest=T))
+      pop.to.plot <- Spatial_Weight_Mean[,c(YEAR, 60:69)] %>% 
+        filter(Scenario %in% Names[S]) 
+      
+      colnames(pop.to.plot)[1] = "Median.Weight"
       
       if(YEAR<27){
         map <- ggplot()+
-          geom_sf(data=pop.to.plot, aes(fill=pop_level), color = NA, lwd=0)+
-          scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-          annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+          geom_sf(data=pop.to.plot, aes(fill=Median.Weight), color = NA, lwd=0)+ # Didn't change the variable name in the loop
+          scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,15000))+
+          geom_sf(data=sancs, aes(), fill=NA, color="grey20", lwd=0.3)+
+          annotate("text", x = 113.8, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                 panel.background = element_blank(), axis.line = element_blank(),
                 axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
       }
       
       if(YEAR>=27 & YEAR<45){
-        sancs <- NTZ %>% 
+        sancs <- NTZ_cropped %>% 
           filter(Year.Sanct %in% c(1987))
         map <- ggplot()+
-          geom_sf(data=pop.to.plot, aes(fill=pop_level), color = NA, lwd=0)+
-          scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-          geom_sf(data=sancs, aes(), fill=NA, color="springgreen4", lwd=0.6)+
-          annotate("text", x = 113.4, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+          geom_sf(data=pop.to.plot, aes(fill=Median.Weight), color = NA, lwd=0)+ # Didn't change the variable name in the loop
+          scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,15000))+
+          geom_sf(data=sancs, aes(), fill=NA, color="grey20", lwd=0.3)+
+          annotate("text", x = 113.8, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                 panel.background = element_blank(), axis.line = element_blank(),
                 axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
         
-      }
+      } 
       
       if(YEAR>=45 & YEAR<58){
-        sancs <- NTZ %>% 
+        sancs <- NTZ_cropped %>% 
           filter(Year.Sanct %in% c(2005))
         map <- ggplot()+
-          geom_sf(data=pop.to.plot, aes(fill=pop_level), color = NA, lwd=0)+
-          scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-          geom_sf(data=sancs, aes(), fill=NA, color="springgreen4", lwd=0.6)+
-          annotate("text", x = 113.4, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+          geom_sf(data=pop.to.plot, aes(fill=Median.Weight), color = NA, lwd=0)+ # Didn't change the variable name in the loop
+          scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,15000))+
+          geom_sf(data=sancs, aes(), fill=NA, color="grey20", lwd=0.3)+
+          annotate("text", x = 113.8, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                 panel.background = element_blank(), axis.line = element_blank(),
                 axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
       }
       
       if(YEAR>=58){
-        sancs <- NTZ %>% 
+        sancs <- NTZ_cropped %>% 
           filter(Year.Sanct %in% c(2005,2017))
         map <- ggplot()+
-          geom_sf(data=pop.to.plot, aes(fill=pop_level), color = NA, lwd=0)+
-          scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-          geom_sf(data=sancs, aes(), fill=NA, color="springgreen4", lwd=0.6)+
-          annotate("text", x = 113.4, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+          geom_sf(data=pop.to.plot, aes(fill=Median.Weight), color = NA, lwd=0)+ # Didn't change the variable name in the loop
+          scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,15000))+
+          geom_sf(data=sancs, aes(), fill=NA, color="grey20", lwd=0.3)+
+          annotate("text", x = 113.8, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                 panel.background = element_blank(), axis.line = element_blank(),
                 axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
@@ -266,17 +338,17 @@ for(S in 1:4){
     }
     
   } else{
-    for(YEAR in 1:59){
+    for(YEAR in 25:59){
       
-      pop.to.plot <- Pop[,c(2,3,4,5,YEAR+8)]%>% 
-        rename_at(vars(starts_with('X')), function(.){'pop'}) %>% 
-        mutate(pop_level = cut(pop, pop.breaks, include.lowest=T)) %>% 
-        mutate(Year = Years[YEAR])
+      pop.to.plot <- Spatial_Weight_Mean[,c(YEAR, 60:69)] %>% 
+        filter(Scenario %in% Names[S]) 
+      
+      colnames(pop.to.plot)[1] = "Median.Weight"
       
         map <- ggplot()+
-          geom_sf(data=pop.to.plot, aes(fill=pop_level), color = NA, lwd=0)+
-          scale_fill_manual(name="Population", values= mycols, drop=FALSE)+
-          annotate("text", x = 113.4, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
+          geom_sf(data=pop.to.plot, aes(fill=Median.Weight), color = NA, lwd=0)+ # Didn't change the variable name in the loop
+          scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,15000))+
+          annotate("text", x = 113.8, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
                 panel.background = element_blank(), axis.line = element_blank(),
                 axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
@@ -286,8 +358,6 @@ for(S in 1:4){
     }
     
   }
-  
-  
   
 }
 

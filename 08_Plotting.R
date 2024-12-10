@@ -282,7 +282,7 @@ Whole_Pop_Ages <- rbind(Whole_Pop_Ages_NTZ, Whole_Pop_Ages_F)
 
 #* Recruits ####
  
-recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(a) Recruits", label.pos.y = 250, label.pos.x = 1993)
+recruit.plots <- age.group.plots(age.group = "Recruit", data.to.plot = Whole_Pop_Ages, plot.label.1 = "(a) Recruits", plot.label.2 = "(a) Recruits", label.pos.y = 25, label.pos.x = 1993)
 recruit.ntz <- recruit.plots[[1]]
 recruit.F <- recruit.plots[[2]]
 
@@ -294,7 +294,7 @@ Whole_Pop_Ages_Mod <- Whole_Pop_Ages %>%
   mutate(P_0.025 = ifelse(Mod_Year<1989, P_0.025/1.4, P_0.025),
          P_0.975 = ifelse(Mod_Year<1989, P_0.975*1.1, P_0.975))
  
-sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(b) Juveniles", plot.label.2 = "(b) Juveniles", label.pos.y = 250, label.pos.x = 1994)
+sublegal.plots <- age.group.plots(age.group = "Sublegal", data.to.plot = Whole_Pop_Ages_Mod, plot.label.1 = "(b) Juveniles", plot.label.2 = "(b) Juveniles", label.pos.y = 25, label.pos.x = 1994)
 sublegal.ntz <- sublegal.plots[[1]]
 sublegal.F <- sublegal.plots[[2]]
 
