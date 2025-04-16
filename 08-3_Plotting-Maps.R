@@ -31,6 +31,7 @@ library(ggpattern)
 library(patchwork)
 library(viridis)
 library(ggspatial)
+library(ggtext)
 
 rm(list = ls())
 
@@ -87,8 +88,8 @@ mpa <- st_crop(aumpa, e)                                                        
 unique(mpa$ZoneName)
 mpa$ZoneName <- factor(mpa$ZoneName, levels = c("Multiple Use Zone", 
                                                 "Recreational Use Zone",
-                                                "Habitat Protection Zone",
-                                                "National Park Zone"))
+                                                "National Park Zone",
+                                                "Habitat Protection Zone")) 
 npz <- mpa[mpa$ZoneName %in% "National Park Zone", ]                            # Just National Park Zones
 # plot(mpa$geometry)
 
@@ -212,7 +213,7 @@ closed_fills <- scale_pattern_color_manual(values= c("Pilbara Fish Trap and Traw
                                             "Point Maud to Tantabiddi Closure" = "red",
                                             "Shark Bay Prawn Fishery" = "red",
                                             "Gascoyne Demersal Scalefish Fishery" = "chartreuse4"),
-                                           name = "Fishery Closures")
+                                           name = "Commercial Fishery Closure")
 closure_pattern <- scale_pattern_angle_manual(values = c(-30, 30), guide="none")
 
 wha_colour <- scale_colour_manual(values = c("Ningaloo Coast" = "darkgoldenrod4"), name="")
@@ -233,7 +234,7 @@ p3 <- ggplot() +
   geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
   new_scale_fill() +
   geom_sf_pattern(data=fisheries_closures, aes(pattern_colour = name, pattern_angle=pattern_dir),
-                  pattern= "stripe" ,pattern_size=0.1, pattern_spacing=0.01, pattern_alpha=0.5,
+                  pattern= "stripe" ,pattern_size=0.1, pattern_spacing=0.01, pattern_alpha=0.75,
                   colour=NA, alpha=0)+
   closed_fills + 
   closure_pattern +
@@ -251,7 +252,7 @@ p3 <- ggplot() +
   geom_sf(data = cwatr, colour = "firebrick", alpha = 4/5, size = 0.4) +
   labs(x=NULL, y=NULL)+
   new_scale_fill() +
-  geom_sf(data=BR,aes(shape=Name), size=2)+
+  geom_sf(data=BR,aes(shape=Name), size=4)+
   scale_shape_manual(values=c(4,4,4,4), labels=c("Boat Ramp", "Boat Ramp", "Boat Ramp", "Boundary of State waters"), name="")+
   # geom_sf(data=WHA, aes(colour=Full_Name), fill=NA, linewidth=0.5)+
   # wha_colour +
@@ -262,7 +263,7 @@ p3 <- ggplot() +
            size = 3) +
   annotate(geom = "point", x = c(114.1279, 113.6775), 
            y = c(-21.9323, -22.7212)) +
-  coord_sf(xlim = c(112.5, 114.7), ylim = c(-24, -21.5)) +
+  coord_sf(xlim = c(113.4, 114.7), ylim = c(-24, -21.5)) +
   theme_minimal() +
   annotation_scale(location="tl", pad_x = unit(1,"cm"))+
   theme(legend.justification = "centre",
@@ -279,8 +280,12 @@ p3.1 <- ggplot() +
   coord_sf(xlim = c(108, 125), ylim = c(-37, -13)) +
   annotate(geom = "text", x=c(110), y=c(-29.4), label = c("Indian\nOcean"), size=4)+
   annotate(geom = "text", x=c(120.75), y=c(-25.94), label = c("Western\nAustralia"), size=4)+
-  annotate("rect", xmin = 113, xmax = 114.35, ymin = -22.8, ymax = -21.5,   # Change here 
+  annotate("rect", xmin = 113.4, xmax = 114.6, ymin = -24, ymax = -21.5,   # Change here 
            colour = "grey25", fill = "white", alpha = 1/5, size = 0.2) +
+  # annotate("segment", xend = 110, x = 114.5, yend = -27, y = -27,   # Change here 
+  #          colour = "grey25",  linetype="dashed", alpha=1/4) +
+  # annotate("segment", xend = 110, x = 114.5, yend = -21.5, y = -21.5,   # Change here 
+  #          colour = "grey25", linetype="dashed", alpha=1/4) +
   theme_bw() +
   theme(axis.text = element_blank(), 
         axis.ticks = element_blank(),
@@ -290,10 +295,10 @@ p3.1 <- ggplot() +
   xlab(NULL)
 p3.1
 
-p3 + inset_element(p3.1, left = -1.05, right = 2.66, top = 0.425, bottom = 0.029)  
+p3 + inset_element(p3.1, left = -1.05, right = 2.43, top = 0.425, bottom = 0.029)  
 
 setwd(fig_dir)
-ggsave('broad-site-plot.png', dpi = 200, width = 10, height = 10)
+ggsave('broad-site-plot_bioeconomic.png', dpi = 200, width = 10, height = 10)
 
 
 #### PLOTS OF THE MODEL ####
@@ -372,7 +377,7 @@ water <- water_WHA %>%
 #### MAP OF THE NINGALOO MODEL ####
 water <- water %>% 
   mutate(WHA = ifelse(ID %in% c(model_WHA$row.id), "Y", "N")) %>% 
-  mutate(Map_Colour = ifelse(Fished_1960=="N", "NTZ", ifelse(WHA=="Y", "WHA", "None")))
+  mutate(Map_Colour = ifelse(Fished_2017=="N", "NTZ", ifelse(WHA=="Y", "WHA", "None")))
 
 
 map <- water %>% 
@@ -479,7 +484,9 @@ map <- ggplot()+
                 y=c(-21.83106, -21.95587, -21.91276, -23.15521), label = c("Bundegi", "Exmouth", "Tantabiddi", "Coral Bay"), size=2.5)+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  annotation_scale(location="tl", pad_x = unit(1,"cm"))
+  
 map
 
 setwd(fig_dir)
@@ -487,8 +494,6 @@ a4.width <- 160
 ggsave(map, filename="ningaloo_spatial_Effort_Plot_Geyser.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 #### Spatial Plot of Mean Age ####
-Names <- c("Current NTZs", "No temporal management or NTZs", 
-           "Temporal management and NTZs","Temporal management")
 
 colours <- "PuBu"
 pop.breaks <- c(0, 0.5,1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 10, 15, 20, 25)
@@ -500,6 +505,9 @@ setwd(sg_dir)
 NTZ_ID <- readRDS(paste0(model.name, sep="_", "NTZ_Cell_ID"))
 F_ID <- readRDS(paste0(model.name, sep="_", "F_Cell_ID"))
 Shallow_ID <- c(NTZ_ID, F_ID)
+
+NTZ_cropped <- NTZ %>% 
+  st_crop(xmin=112.5, xmax=114.7, ymin=-23.45, ymax=-20.5)
 
 setwd(pop_dir)
 
@@ -594,26 +602,30 @@ MeanAge_S00 <- Spatial_Age_Mean %>%
   # geom_sf(aes(fill= log(Mean.Age+1)), color = NA, lwd=0)+
   geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
   scale_fill_carto_c(name="Mean no. mature fish", palette="Geyser", limits=c(0,39))+
-  geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MeanAge_S00 
 
 setwd(fig_dir)
-ggsave(MeanAge_S00, filename="MeanAge_S00.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
+ggsave(MeanAge_S00, filename="MeanAge_S00.png", height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 
 MeanAge_S01 <- Spatial_Age_Mean %>% 
   filter(Scenario %in% Names[2]) %>% 
   ggplot()+
   geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
   scale_fill_carto_c(name="", palette="Geyser", limits=c(0,39))+
-  geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MeanAge_S01 
 
 setwd(fig_dir)
@@ -624,11 +636,13 @@ MeanAge_S02 <- Spatial_Age_Mean %>%
   ggplot()+
   geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
   scale_fill_carto_c(name="", palette="Geyser", limits=c(0,39))+
-  geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MeanAge_S02 
 
 setwd(fig_dir)
@@ -639,11 +653,13 @@ MeanAge_S03 <- Spatial_Age_Mean %>%
   ggplot()+
   geom_sf(aes(fill= Mean.Age), color = NA, lwd=0)+
   scale_fill_carto_c(name="", palette="Geyser", limits=c(0,39))+
-  geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MeanAge_S03
 
 setwd(fig_dir)
@@ -694,11 +710,13 @@ SpatialCatch_S00 <- Spatial_Catch_Shallow  %>%
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
   scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,80))+
-  geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 SpatialCatch_S00
 
 setwd(fig_dir)
@@ -709,11 +727,13 @@ SpatialCatch_S01 <- Spatial_Catch_Shallow  %>%
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
   scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,80))+
-  geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 SpatialCatch_S01
 
 setwd(fig_dir)
@@ -724,11 +744,13 @@ SpatialCatch_S02 <- Spatial_Catch_Shallow  %>%
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
   scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,80))+
-  geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 SpatialCatch_S02
 
 setwd(fig_dir)
@@ -739,11 +761,13 @@ SpatialCatch_S03 <- Spatial_Catch_Shallow  %>%
   ggplot()+
   geom_sf(aes(fill=Catch), color = NA, lwd=0)+
   scale_fill_carto_c(name="Median Catch", palette="Geyser", limits=c(0,80))+
-  geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 SpatialCatch_S03
 
 setwd(fig_dir)
@@ -850,13 +874,17 @@ MedianWeight_S00 <- Spatial_Weight_Mean %>%
   filter(Scenario %in% Names[1]) %>% 
   # mutate(Mean.Age=log(Mean.Age+1)) %>%
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+ # Didn't change the variable name in the loop
-  scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser", limits=c(0,15000))+
-  geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
+  geom_sf(aes(fill=(Mean.Age/1000)), color = NA, lwd=0)+ # Didn't change the variable name in the loop
+  scale_fill_carto_c(name="Median Biomass\n(Tonnes)", palette="Geyser", limits=c(0,20))+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))+
+  annotation_scale(location="tl", pad_x = unit(1,"cm"))
+  
 MedianWeight_S00 
 
 setwd(fig_dir)
@@ -866,13 +894,15 @@ MedianWeight_S01 <- Spatial_Weight_Mean %>%
   filter(Scenario %in% Names[2]) %>% 
   # mutate(Mean.Age=log(Mean.Age+1)) %>%
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,15000))+
-  geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
+  geom_sf(aes(fill=(Mean.Age/1000)), color = NA, lwd=0)+
+  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,20))+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MedianWeight_S01 
 
 setwd(fig_dir)
@@ -882,13 +912,15 @@ MedianWeight_S02 <- Spatial_Weight_Mean %>%
   filter(Scenario %in% Names[3]) %>% 
   # mutate(Mean.Age=log(Mean.Age+1)) %>%
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Log of Median Biomass (Kg)", palette="Geyser",  limits=c(0,15000))+
-  geom_sf(data=NTZ, aes(), fill=NA, color="grey20", lwd=0.3)+
+  geom_sf(aes(fill=(Mean.Age/1000)), color = NA, lwd=0)+
+  scale_fill_carto_c(name="Median Biomass (Tonnes)", palette="Geyser",  limits=c(0,20))+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color="grey20", lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MedianWeight_S02 
 
 setwd(fig_dir)
@@ -898,15 +930,17 @@ MedianWeight_S03 <- Spatial_Weight_Mean %>%
   filter(Scenario %in% Names[4]) %>% 
   # mutate(Mean.Age=log(Mean.Age+1)) %>% 
   ggplot()+
-  geom_sf(aes(fill=Mean.Age), color = NA, lwd=0)+
-  scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser",  limits=c(0,15000))+
-  geom_sf(data=NTZ, aes(), fill=NA, color=NA, lwd=0.3)+
+  geom_sf(aes(fill=(Mean.Age/1000)), color = NA, lwd=0)+
+  scale_fill_carto_c(name="Median Biomass (Kg)", palette="Geyser",  limits=c(0,20))+
+  geom_sf(data=NTZ_cropped, aes(), fill=NA, color=NA, lwd=0.3)+
   #annotate("text", x = 113.45, y = -21.5, colour = "black", size = 6, label=Years[YEAR])+
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.background = element_blank(), axis.line = element_blank(),
-        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
+        axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())+
+  geom_sf(data = ausc, fill = "seashell2", colour = "grey80", size = 0.1) +
+  coord_sf(xlim = c(113.4, 114.45), ylim = c(-23.45, -21.5))
 MedianWeight_S03
 
-slowsetwd(fig_dir)
+setwd(fig_dir)
 ggsave(MedianWeight_S03, filename="MedianWeight_S03.png",height = a4.width*1, width = a4.width, units  ="mm", dpi = 300 )
 

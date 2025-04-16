@@ -6,6 +6,7 @@
 # See script six for more complex plots
 ###################################################
 
+install.packages('/Users/22291142/Documents/PhD/R Code/FishPopModel_1.0.tar.gz', repos = NULL, type="source")
 
 library(tidyverse)
 library(dplyr)
@@ -19,6 +20,7 @@ library(RcppArmadillo)
 library(raster)
 library(gmailr)
 library(beepr)
+library(FishPopPackage)
 
 rm(list = ls())
 

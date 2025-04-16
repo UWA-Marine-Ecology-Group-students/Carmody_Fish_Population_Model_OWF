@@ -183,18 +183,18 @@ Unf.Mat.Bio <- sum(temp3 * Weight[,12])
 
 total_pop_plot <- total_pop %>% 
   mutate(Scenario = as.factor(Scenario)) %>% 
-  mutate(Scenario = fct_recode(Scenario, "Current NTZs"="Current NTZs", "No temporal management\nor NTZs"="No temporal management or NTZs",
-                               "Temporal management\nand NTZs"="Temporal management and NTZs", "Temporal management"="Temporal management"
+  mutate(Scenario = fct_recode(Scenario, "Scenario 1: real-world NTZs"="Current NTZs", "Scenario 2: No NTZs or NTTZs"="No temporal management or NTZs",
+                               "Scenario 4: NTZs and NTTCs"="Temporal management and NTZs", "Scenario 3: NTTCs only"="Temporal management"
   )) %>% 
   ggplot() +
   geom_line(aes(x=Year, y=Median_MatBio, group=Scenario, color=Scenario), size=0.7)+
   geom_ribbon(aes(x=Year, y=Median_MatBio, ymin=P_0.025, ymax=P_0.975, group=Scenario,
                   fill=Scenario), alpha=0.2)+
-  scale_fill_manual(values= c("Current NTZs"="#36753B", "No temporal management\nor NTZs"="#302383" ,"Temporal management\nand NTZs"="#66CCEE",
-                              "Temporal management"="#BBCC33"),
+  scale_fill_manual(values= c("Scenario 1: real-world NTZs"="#36753B", "Scenario 2: No NTZs or NTTZs"="#302383" ,"Scenario 4: NTZs and NTTCs"="#66CCEE",
+                              "Scenario 3: NTTCs only"="#BBCC33"),
                     guide="none")+
-  scale_colour_manual(values = c("Temporal management\nand NTZs"="#66CCEE","Current NTZs"="#36753B", "Temporal management"="#BBCC33", 
-                                 "No temporal management\nor NTZs"="#302383"), breaks= c("Current NTZs", "No temporal management\nor NTZs", "Temporal management", "Temporal management\nand NTZs"),name= "Spatial and temporal\nmanagement scenario")+ 
+  scale_colour_manual(values = c("Scenario 4: NTZs and NTTCs"="#66CCEE","Scenario 1: real-world NTZs"="#36753B", "Scenario 3: NTTCs only"="#BBCC33", 
+                                 "Scenario 2: No NTZs or NTTZs"="#302383"), breaks= c("Scenario 1: real-world NTZs", "Scenario 2: No NTZs or NTTZs", "Scenario 3: NTTCs only", "Scenario 4: NTZs and NTTCs"),name= "Spatial and temporal\nmanagement scenario")+ 
   theme_classic()+
   ylab("Total Spawning Biomass (kg)\n")+
   xlab("Year")+

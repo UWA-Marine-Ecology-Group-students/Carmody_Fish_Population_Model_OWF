@@ -19,6 +19,7 @@ library(raster)
 library(gmailr)
 library(beepr)
 library(pwr)
+library(sfnetworks)
 
 rm(list = ls())
 
@@ -86,22 +87,48 @@ total_pop <- total_pop %>%
          Scenario = as.factor(Scenario)) %>% 
   mutate(Movement = "Medium")
 
-mod <- aov(log(MatBio) ~ Scenario, data = total_pop)
-summary(mod)
+differences <- total_pop %>% 
+  mutate(ID = rep(1:200, times=4)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID),names_from=Scenario, values_from=MatBio) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
 
-total_pop %>% group_by(Scenario) %>% 
-  summarise(mean = mean(MatBio),
-            sd = sd(MatBio))
+Summary.Perc.Change <- differences %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
 
-ggplot()+
-  geom_boxplot(data=total_pop, aes(x=Scenario, y=log(MatBio)), notch=T)
+test_dat <- differences 
 
 
-summary(mod)
-plot(mod$residuals)
+wilcox.test(test_dat$Comp.3.4, conf.int = TRUE, conf.level = 0.95)
 
-mod.tukey <- TukeyHSD(mod)
-mod.tukey
+
+# mod <- aov(log(MatBio) ~ Scenario, data = total_pop)
+# summary(mod)
+# 
+# total_pop %>% group_by(Scenario) %>% 
+#   summarise(mean = mean(MatBio),
+#             sd = sd(MatBio))
+# 
+# ggplot()+
+#   geom_boxplot(data=total_pop, aes(x=Scenario, y=log(MatBio)), notch=T)
+# 
+# 
+# summary(mod)
+# plot(mod$residuals)
+# 
+# mod.tukey <- TukeyHSD(mod)
+# mod.tukey
 
 #* ZONE MODELS ####
 setwd(pop_dir)
@@ -168,6 +195,35 @@ F_data <- Whole_Pop_Ages_F %>%
   
 
 ## NTZ models 
+differences <- NTZ_data %>% 
+  filter(Mod_Year %in% 2018) %>% 
+  mutate(ID = rep(1:200, times=4)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID,Stage),names_from=Scenario, values_from=Number) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
+
+Summary.Perc.Change <- differences %>% 
+  group_by(Stage) %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
+
+test_dat <- differences %>% 
+  filter(Stage %in% "Large Legal")
+
+
+wilcox.test(test_dat$Comp.3.4, conf.int = TRUE, conf.level = 0.95)
+
+
 # Recruits 
 NTZ_Recruits <- NTZ_data %>% 
   filter(Mod_Year %in% c(2018)) %>% 
@@ -291,6 +347,11 @@ BR <- BR[1:4,]
 
 network <- st_read(paste0(model.name, sep="_","network.shapefile.shp"))
 
+WHA <- st_read("2013_02_WorldHeritageMarineProgramme.shp") %>% 
+  st_transform(4283)%>%
+  st_make_valid %>% 
+  st_crop(xmin=112.5, xmax=114.7, ymin=-24, ymax=-20.5) 
+
 setwd(sg_dir)
 
 water <- readRDS(paste0(model.name, sep="_","water"))
@@ -306,6 +367,10 @@ points <- as.data.frame(st_coordinates(centroids))%>% #The points start at the b
 points_sf <- st_as_sf(points, coords = c("X", "Y")) 
 st_crs(points_sf) <- NA
 
+
+model_WHA <- water %>% 
+  st_intersects(., WHA) %>% 
+  as.data.frame()
 
 network <- as_sfnetwork(network, directed = FALSE) %>%
   activate("edges") %>%
@@ -537,6 +602,35 @@ Pop.Catch.S03 <- Catch.res[[4]]
 
 Dist.Catch <- rbind(Pop.Catch.S00, Pop.Catch.S01, Pop.Catch.S02, Pop.Catch.S03)
 
+differences <- Dist.Catch %>% 
+  filter(Year %in% 2018) %>% 
+  mutate(ID = rep(1:200, times=4*3)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID, Distance), names_from=Scenario, values_from=Total) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
+
+# Could work out the proportion of one out of the other and see if that is different from one 
+
+Summary.Perc.Change <- differences %>% 
+  group_by(Distance) %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
+
+test_dat <- differences %>% 
+  filter(Distance %in% "50-100 km")
+
+wilcox.test(test_dat$Comp.3.4, conf.int = TRUE, conf.level = 0.95)
+
 ## Catch model 10km
 Effort.10km <- Effort_Dist[[1]]
 
@@ -604,6 +698,34 @@ total_pop_list_slow[[4]] <-  readRDS(paste0(model.name, sep="_","Age_Distributio
 # NEED TO TURN OFF THE BIT OF THE FUNCITON THAT CREATES THE MEDIANS AS YOU WANT ALL OF THE SEPARATE RUNS
 total_pop_slow <- total.pop.format.full(pop.file.list = total_pop_list, scenario.names = Names, nsim=100, nyears=59, startyear=26, maxage=30, mat = Mature, kg=Weight)
 
+differences <- total_pop_slow %>% 
+  filter(Year %in% 2018) %>% 
+  mutate(ID = rep(1:100, times=4)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID), names_from=Scenario, values_from=MatBio) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
+
+Summary.Perc.Change <- differences %>% 
+  #group_by(Distance) %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
+
+test_dat <- differences 
+
+
+wilcox.test(test_dat$Comp.1.4, conf.int = TRUE, conf.level = 0.95)
+
+
 total_pop_slow <- total_pop_slow %>% 
   filter(Year %in% c(2018)) %>% 
   mutate(Year = as.factor(Year),
@@ -627,6 +749,33 @@ total_pop_list_fast[[3]] <-  readRDS(paste0(model.name, sep="_","Age_Distributio
 total_pop_list_fast[[4]] <-  readRDS(paste0(model.name, sep="_","Age_Distribution_S03_fast_movement"))
 
 total_pop_fast <- total.pop.format.full(pop.file.list = total_pop_list_fast, scenario.names = Names, nsim=100, nyears=59, startyear=26, maxage=30, mat = Mature, kg=Weight)
+
+differences <- total_pop_fast %>% 
+  filter(Year %in% 2018) %>% 
+  mutate(ID = rep(1:100, times=4)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID), names_from=Scenario, values_from=MatBio) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
+
+Summary.Perc.Change <- differences %>% 
+  #group_by(Distance) %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
+
+test_dat <- differences 
+
+
+wilcox.test(test_dat$Comp.1.4, conf.int = TRUE, conf.level = 0.95)
 
 total_pop_fast <- total_pop_fast %>% 
   filter(Year %in% c(2018)) %>% 
@@ -758,6 +907,29 @@ NTZ_data_slow <- Whole_Pop_Ages_NTZ %>%
 F_data_slow <- Whole_Pop_Ages_F %>% 
   pivot_longer(cols=starts_with("V"), names_to = "Simulation",values_to="Number")
 
+
+differences <- NTZ_data_slow %>% 
+  filter(Mod_Year %in% 2018) %>% 
+  mutate(ID = rep(1:100, times=4)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID, Stage), names_from=Scenario, values_from=Number) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
+
+Summary.Perc.Change <- differences %>% 
+  ungroup() %>% 
+  #group_by(Stage) %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
 
 ## NTZ models 
 # Recruits 
@@ -944,6 +1116,29 @@ NTZ_data_fast <- Whole_Pop_Ages_NTZ %>%
 F_data_fast <- Whole_Pop_Ages_F %>% 
   pivot_longer(cols=starts_with("V"), names_to = "Simulation",values_to="Number")
 
+
+differences <- NTZ_data_fast %>% 
+  filter(Mod_Year %in% 2018) %>% 
+  mutate(ID = rep(1:100, times=4)) %>%
+  #mutate(MatBio = log(MatBio)) %>% 
+  pivot_wider(id_cols=c(ID, Stage), names_from=Scenario, values_from=Number) %>% 
+  mutate(Comp.1.2 = `Current NTZs` - `No temporal management or NTZs`,
+         Comp.1.3 = `Current NTZs`- `Temporal management and NTZs`,
+         Comp.1.4 = `Current NTZs` - `Temporal management`,
+         Comp.2.3 = `No temporal management or NTZs` - `Temporal management and NTZs`,
+         Comp.2.4 = `No temporal management or NTZs` - `Temporal management`,
+         Comp.3.4 = `Temporal management and NTZs` - `Temporal management`) %>% 
+  mutate(Comp.1.2.Perc = ((`Current NTZs` - `No temporal management or NTZs`)/((`Current NTZs`+`No temporal management or NTZs`)/2))*100,
+         Comp.1.3.Perc = ((`Current NTZs`- `Temporal management and NTZs`)/((`Current NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.1.4.Perc = ((`Current NTZs` - `Temporal management`)/((`Current NTZs`+`Temporal management`)/2))*100,
+         Comp.2.3.Perc = ((`No temporal management or NTZs` - `Temporal management and NTZs`)/((`No temporal management or NTZs`+`Temporal management and NTZs`)/2))*100,
+         Comp.2.4.Perc = ((`No temporal management or NTZs` - `Temporal management`)/((`No temporal management or NTZs`+`Temporal management`)/2))*100,
+         Comp.3.4.Perc = ((`Temporal management and NTZs` - `Temporal management`)/((`Temporal management and NTZs`+`Temporal management`)/2)*100))
+
+Summary.Perc.Change <- differences %>% 
+  ungroup() %>% 
+  #group_by(Stage) %>% 
+  summarise_at(vars(Comp.1.2.Perc:Comp.3.4.Perc), median)
 
 ## NTZ models 
 # Recruits 

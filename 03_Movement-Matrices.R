@@ -414,7 +414,7 @@ plot(y=data$Cumulative_Prob, x=data$Distance, type="l")
 ## Want the recruits to be in the lagoons and then move out from there 
 dispersal <- lagoon_perc %>% 
   dplyr::select(perc_habitat, ID)
-dispersal$area <- as.vector(Water$cell_area*0.000001)
+dispersal$area <- as.vector(water$cell_area*0.000001)
 
 dispersal <- dispersal %>% 
   filter(perc_habitat!=0) %>% 
